@@ -1,0 +1,6 @@
+{
+  "name": "Rajsamand District Assessment Portal",
+  "description": "Rajsamand District Assessment Portal with candidate login, AI test paper parsing to MCQs, automated grading, performance analytics, downloadable progress reports, and Resend email notifications.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

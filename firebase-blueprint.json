@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "Candidate": {
+      "title": "Candidate",
+      "description": "Registered candidate profile for district assessment system",
+      "type": "object",
+      "properties": {
+        "registrationId": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 128 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "block": { "type": "string", "maxLength": 64 },
+        "category": { "type": "string", "maxLength": 32 },
+        "activeStatus": { "type": "boolean" },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["registrationId", "name", "email", "block"]
+    },
+    "TestPaper": {
+      "title": "TestPaper",
+      "description": "Assessment test paper with multiple choice questions",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "subject": { "type": "string", "maxLength": 100 },
+        "targetBlock": { "type": "string", "maxLength": 64 },
+        "timeLimitMinutes": { "type": "number" },
+        "totalMarks": { "type": "number" },
+        "passingMarks": { "type": "number" },
+        "instructions": { "type": "string", "maxLength": 1000 },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "maxLength": 32 }
+      },
+      "required": ["title", "subject", "status"]
+    },
+    "TestAttempt": {
+      "title": "TestAttempt",
+      "description": "Candidate completed test attempt and scorecard",
+      "type": "object",
+      "properties": {
+        "testId": { "type": "string", "maxLength": 128 },
+        "testTitle": { "type": "string", "maxLength": 200 },
+        "candidateId": { "type": "string", "maxLength": 128 },
+        "candidateName": { "type": "string", "maxLength": 128 },
+        "candidateEmail": { "type": "string", "maxLength": 128 },
+        "block": { "type": "string", "maxLength": 64 },
+        "scoreObtained": { "type": "number" },
+        "totalMarks": { "type": "number" },
+        "scorePercentage": { "type": "number" },
+        "correctCount": { "type": "number" },
+        "wrongCount": { "type": "number" },
+        "unattemptedCount": { "type": "number" },
+        "status": { "type": "string", "maxLength": 32 },
+        "timeTakenMinutes": { "type": "number" },
+        "submittedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["testId", "candidateId", "scoreObtained", "status"]
+    },
+    "EmailLog": {
+      "title": "EmailLog",
+      "description": "Audit log for sent email notifications",
+      "type": "object",
+      "properties": {
+        "toEmail": { "type": "string", "maxLength": 128 },
+        "toName": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "maxLength": 64 },
+        "subject": { "type": "string", "maxLength": 200 },
+        "sentAt": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "maxLength": 32 }
+      },
+      "required": ["toEmail", "type", "sentAt"]
+    }
+  },
+  "firestore": {
+    "/candidates/{candidateId}": {
+      "schema": "Candidate",
+      "description": "Collection of registered candidate accounts"
+    },
+    "/tests/{testId}": {
+      "schema": "TestPaper",
+      "description": "Collection of assessment test papers"
+    },
+    "/attempts/{attemptId}": {
+      "schema": "TestAttempt",
+      "description": "Collection of test submission attempts"
+    },
+    "/email_logs/{logId}": {
+      "schema": "EmailLog",
+      "description": "Collection of audit logs for email notifications"
+    }
+  }
+}
