@@ -377,13 +377,32 @@ export async function parseTestPaperAPI(params: ParseTestPaperParams) {
 
 export async function sendEmailAPI(params: SendEmailParams) {
   try {
-    const response = await fetch('/api/send-email', {
+    let response = await fetch('/api/send-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),
     });
 
-    const contentType = response.headers.get('content-type') || '';
+    let contentType = response.headers.get('content-type') || '';
+
+    // If /api/send-email returned HTML (Netlify SPA fallback), try direct Netlify Functions endpoint path
+    if (!contentType.includes('application/json')) {
+      try {
+        const netlifyFuncRes = await fetch('/.netlify/functions/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(params),
+        });
+        const nfContentType = netlifyFuncRes.headers.get('content-type') || '';
+        if (nfContentType.includes('application/json')) {
+          response = netlifyFuncRes;
+          contentType = nfContentType;
+        }
+      } catch (nfErr) {
+        console.warn('Direct Netlify function endpoint fetch failed:', nfErr);
+      }
+    }
+
     if (contentType.includes('application/json')) {
       const data = await response.json();
       return data;
@@ -485,11 +504,11 @@ export async function sendEmailAPI(params: SendEmailParams) {
       }
     }
 
-    // 3. Static hosting mode fallback (when no API keys provided)
+    // 3. Static hosting fallback (when serverless function endpoint is not yet active on Netlify deployment)
     return {
       success: true,
       sentRealEmail: false,
-      message: `Notification logged locally for ${params.candidateName} (${params.candidateEmail}). Add VITE_RESEND_API_KEY in Netlify build environment to dispatch real inbox emails.`,
+      message: `Notification saved locally for ${params.candidateName} (${params.candidateEmail}). Netlify serverless function is not yet active on your site deploy. Please commit code and trigger 'Clear cache and deploy' in Netlify so your SMTP credentials take effect.`,
       data: { simulated: true },
     };
   } catch (err: any) {
