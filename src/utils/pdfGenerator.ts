@@ -38,7 +38,7 @@ export function createSubmissionPdfDocument(data: SubmissionPdfData): jsPDF {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(14);
-  doc.text('RAJSAMAND DISTRICT EDUCATION DEPARTMENT', pageWidth / 2, 10, { align: 'center' });
+  doc.text('RAJSAMAND DISTRICT ADMINISTRATION', pageWidth / 2, 10, { align: 'center' });
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -224,27 +224,6 @@ export function createSubmissionPdfDocument(data: SubmissionPdfData): jsPDF {
 
   doc.setDrawColor(226, 232, 240);
   doc.line(12, footerY - 5, pageWidth - 12, footerY - 5);
-
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text(
-    'This is an official computer-generated score report issued by Rajsamand District Education Evaluation Cell.',
-    12,
-    footerY
-  );
-  doc.text(
-    'Authenticity can be verified on the Rajsamand District Portal (rajsamand.gov.in/assessment).',
-    12,
-    footerY + 4
-  );
-
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 118, 110);
-  doc.text('District Education Officer (Evaluation)', pageWidth - 12, footerY, { align: 'right' });
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 116, 139);
-  doc.text('Rajsamand District, Rajasthan', pageWidth - 12, footerY + 4, { align: 'right' });
 
   return doc;
 }

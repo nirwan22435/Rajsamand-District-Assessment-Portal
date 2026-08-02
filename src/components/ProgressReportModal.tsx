@@ -60,7 +60,7 @@ export const ProgressReportModal: React.FC<ProgressReportModalProps> = ({ candid
               RJ
             </div>
             <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-              District Education Department, Rajsamand
+              Rajsamand District Administration
             </h2>
             <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
               Government of Rajasthan • Candidate Performance & Progress Report Card
