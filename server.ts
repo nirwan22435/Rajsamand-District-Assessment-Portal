@@ -480,6 +480,22 @@ ${rawText || 'N/A'}`;
     }
   });
 
+  // Catch-all 404 handler for API routes to prevent returning HTML index.html
+  app.all('/api/*', (req, res) => {
+    res.status(404).json({ error: `API endpoint ${req.method} ${req.path} not found.` });
+  });
+
+  // Global Express JSON error handler
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error('[Express Global Error Handler]:', err);
+    if (res.headersSent) {
+      return next(err);
+    }
+    res.status(err.status || 500).json({
+      error: err.message || 'An unexpected server error occurred.',
+    });
+  });
+
   // Vite development vs Production static serving
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
