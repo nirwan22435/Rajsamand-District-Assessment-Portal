@@ -147,83 +147,197 @@ export function createSubmissionPdfDocument(data: SubmissionPdfData): jsPDF {
   // @ts-ignore - autoTable attaches lastAutoTable
   y = doc.lastAutoTable.finalY + 10;
 
-  // Question-by-Question Solution Table if available
+  // Question-by-Question Solution Cards if available
   if (data.questions && data.questions.length > 0) {
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(10.5);
     doc.setTextColor(15, 23, 42);
     doc.text('QUESTION-BY-QUESTION RESPONSE ANALYSIS', 12, y);
 
-    y += 3;
+    y += 5;
 
-    const tableRows = data.questions.map((q, idx) => {
+    const marginX = 12;
+    const cardWidth = pageWidth - 24; // 186mm
+
+    data.questions.forEach((q, idx) => {
       const userAns = data.answers?.find((a) => a.questionId === q.id);
-      let selectedText = 'Unattempted';
-      let statusText = 'Skipped';
-      let marksText = '0';
+      const isAttempted =
+        userAns !== undefined && userAns.selectedOptionIndex !== null && userAns.selectedOptionIndex !== undefined;
+      const isCorrect = isAttempted && !!userAns?.isCorrect;
 
-      if (userAns) {
-        if (userAns.selectedOptionIndex !== null && userAns.selectedOptionIndex !== undefined) {
-          selectedText = `Opt ${String.fromCharCode(65 + userAns.selectedOptionIndex)}: ${
-            q.options[userAns.selectedOptionIndex] || ''
-          }`;
-          statusText = userAns.isCorrect ? 'Correct (+)' : 'Incorrect (-)';
-          marksText = `${userAns.marksObtained}`;
+      // Candidate response text
+      let candidateOptionText = 'Not Attempted / Skipped';
+      if (isAttempted && userAns && userAns.selectedOptionIndex !== undefined && userAns.selectedOptionIndex !== null) {
+        const letter = String.fromCharCode(65 + userAns.selectedOptionIndex);
+        candidateOptionText = `Option (${letter}): ${q.options[userAns.selectedOptionIndex] || ''}`;
+      }
+
+      // Correct response text
+      const correctLetter = String.fromCharCode(65 + q.correctOptionIndex);
+      const correctOptionText = `Option (${correctLetter}): ${q.options[q.correctOptionIndex] || ''}`;
+
+      // Calculate line wrapping and height
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      const qLines = doc.splitTextToSize(`Q${idx + 1}. ${q.questionText}`, cardWidth - 50);
+      const qHeight = Math.max(qLines.length * 4, 5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      const candLines = doc.splitTextToSize(`Candidate Response: ${candidateOptionText}`, cardWidth - 16);
+      const candHeight = Math.max(candLines.length * 3.8, 5.5);
+
+      const corrLines = doc.splitTextToSize(`Correct Response:   ${correctOptionText}`, cardWidth - 16);
+      const corrHeight = Math.max(corrLines.length * 3.8, 5.5);
+
+      let explHeight = 0;
+      let explLines: string[] = [];
+      if (q.explanation) {
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(7.5);
+        explLines = doc.splitTextToSize(`Explanation: ${q.explanation}`, cardWidth - 16);
+        explHeight = Math.max(explLines.length * 3.5, 4.5);
+      }
+
+      const totalCardHeight = 8 + qHeight + candHeight + corrHeight + (explHeight > 0 ? explHeight + 3 : 0) + 4;
+
+      const pageHeight = doc.internal.pageSize.getHeight();
+      if (y + totalCardHeight > pageHeight - 18) {
+        doc.addPage();
+        y = 16;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`RAJSAMAND DISTRICT ADMINISTRATION • ASSESSMENT RESPONSE REPORT (Contd.)`, 12, 10);
+        doc.setDrawColor(226, 232, 240);
+        doc.line(12, 12, pageWidth - 12, 12);
+      }
+
+      // Outer Card Box
+      doc.setDrawColor(226, 232, 240);
+      doc.setFillColor(252, 253, 255);
+      doc.roundedRect(marginX, y, cardWidth, totalCardHeight, 2, 2, 'FD');
+
+      let currentY = y + 6;
+
+      // Status Badge top right
+      let badgeBg = [254, 243, 199]; // Amber
+      let badgeTextClr = [180, 83, 9];
+      let badgeBorderClr = [253, 230, 138];
+      let badgeLabel = 'SKIPPED (0 Marks)';
+
+      if (isAttempted) {
+        if (isCorrect) {
+          badgeBg = [220, 252, 231]; // Green
+          badgeTextClr = [21, 128, 61];
+          badgeBorderClr = [134, 239, 172];
+          badgeLabel = `CORRECT (+${userAns?.marksObtained ?? 4} Marks)`;
+        } else {
+          badgeBg = [254, 226, 226]; // Red
+          badgeTextClr = [185, 28, 28];
+          badgeBorderClr = [252, 165, 165];
+          badgeLabel = `INCORRECT (${userAns?.marksObtained ?? 0} Marks)`;
         }
       }
 
-      const correctOptText = `Opt ${String.fromCharCode(65 + q.correctOptionIndex)}: ${
-        q.options[q.correctOptionIndex] || ''
-      }`;
+      const badgeWidth = 44;
+      const badgeX = marginX + cardWidth - badgeWidth - 4;
+      doc.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2]);
+      doc.setDrawColor(badgeBorderClr[0], badgeBorderClr[1], badgeBorderClr[2]);
+      doc.roundedRect(badgeX, currentY - 2, badgeWidth, 6, 1.5, 1.5, 'FD');
 
-      return [
-        `Q${idx + 1}`,
-        q.questionText.length > 55 ? q.questionText.slice(0, 52) + '...' : q.questionText,
-        selectedText.length > 30 ? selectedText.slice(0, 28) + '...' : selectedText,
-        correctOptText.length > 30 ? correctOptText.slice(0, 28) + '...' : correctOptText,
-        statusText,
-        marksText,
-      ];
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(badgeTextClr[0], badgeTextClr[1], badgeTextClr[2]);
+      doc.text(badgeLabel, badgeX + badgeWidth / 2, currentY + 2, { align: 'center' });
+
+      // Question Stem
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(qLines, marginX + 4, currentY + 1);
+
+      currentY += qHeight + 3;
+
+      // Candidate Response Box
+      let candBoxBg = [248, 250, 252];
+      let candBoxBorder = [226, 232, 240];
+      let candBoxTxt = [51, 65, 85];
+
+      if (isAttempted) {
+        if (isCorrect) {
+          candBoxBg = [240, 253, 244];
+          candBoxBorder = [187, 247, 208];
+          candBoxTxt = [22, 101, 52];
+        } else {
+          candBoxBg = [254, 242, 242];
+          candBoxBorder = [254, 202, 202];
+          candBoxTxt = [153, 27, 27];
+        }
+      }
+
+      doc.setFillColor(candBoxBg[0], candBoxBg[1], candBoxBg[2]);
+      doc.setDrawColor(candBoxBorder[0], candBoxBorder[1], candBoxBorder[2]);
+      doc.roundedRect(marginX + 4, currentY, cardWidth - 8, candHeight, 1.5, 1.5, 'FD');
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(candBoxTxt[0], candBoxTxt[1], candBoxTxt[2]);
+      doc.text(candLines, marginX + 7, currentY + 3.8);
+
+      currentY += candHeight + 2;
+
+      // Correct Response Box (Always Emerald/Green)
+      doc.setFillColor(236, 253, 245);
+      doc.setDrawColor(167, 243, 208);
+      doc.roundedRect(marginX + 4, currentY, cardWidth - 8, corrHeight, 1.5, 1.5, 'FD');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(4, 120, 87);
+      doc.text(corrLines, marginX + 7, currentY + 3.8);
+
+      currentY += corrHeight + 2;
+
+      // Explanation Box
+      if (q.explanation) {
+        doc.setFillColor(241, 245, 249);
+        doc.setDrawColor(203, 213, 225);
+        doc.roundedRect(marginX + 4, currentY, cardWidth - 8, explHeight, 1.5, 1.5, 'FD');
+
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(7.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(explLines, marginX + 7, currentY + 3.5);
+
+        currentY += explHeight + 2;
+      }
+
+      y += totalCardHeight + 4;
     });
-
-    autoTable(doc, {
-      startY: y,
-      margin: { left: 12, right: 12 },
-      head: [['#', 'Question Stem', 'Your Selected Answer', 'Correct Answer', 'Status', 'Marks']],
-      body: tableRows,
-      theme: 'striped',
-      headStyles: {
-        fillColor: [30, 41, 59],
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-        fontSize: 8,
-      },
-      bodyStyles: {
-        textColor: [51, 65, 85],
-        fontSize: 7.5,
-      },
-      columnStyles: {
-        0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 65 },
-        2: { cellWidth: 42 },
-        3: { cellWidth: 42 },
-        4: { cellWidth: 18, halign: 'center' },
-        5: { cellWidth: 12, halign: 'center' },
-      },
-    });
-
-    // @ts-ignore
-    y = doc.lastAutoTable.finalY + 12;
   } else {
     y += 10;
   }
 
-  // Footer & Official Seal
+  // Footer & Page Numbers
+  const pageCount = doc.getNumberOfPages();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const footerY = Math.max(y, pageHeight - 25);
 
-  doc.setDrawColor(226, 232, 240);
-  doc.line(12, footerY - 5, pageWidth - 12, footerY - 5);
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(12, pageHeight - 12, pageWidth - 12, pageHeight - 12);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `Rajsamand District Administration • Official Candidate Scorecard • Page ${i} of ${pageCount}`,
+      pageWidth / 2,
+      pageHeight - 6,
+      { align: 'center' }
+    );
+  }
 
   return doc;
 }

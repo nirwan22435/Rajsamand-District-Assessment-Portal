@@ -386,21 +386,116 @@ export async function sendEmailAPI(params: SendEmailParams) {
     const contentType = response.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
       const data = await response.json();
-      if (response.ok) {
-        return data;
-      }
-      throw new Error(data.error || 'Failed to dispatch email.');
+      return data;
     }
 
-    // Static hosting mode fallback (e.g. Netlify)
+    // Backend endpoint missing / 404 on static host (e.g., Netlify / Vercel SPA mode)
+    // Check for Client-Side direct email dispatchers (Resend API or EmailJS)
+    const envs = (import.meta as any).env || {};
+    const resendApiKey = envs.VITE_RESEND_API_KEY;
+    const emailjsServiceId = envs.VITE_EMAILJS_SERVICE_ID;
+    const emailjsTemplateId = envs.VITE_EMAILJS_TEMPLATE_ID;
+    const emailjsPublicKey = envs.VITE_EMAILJS_PUBLIC_KEY;
+
+    // 1. Try Resend API (Client-side)
+    if (resendApiKey) {
+      try {
+        const subject = params.type === 'CREDENTIALS'
+          ? '🔐 Account Login Credentials - Rajsamand District Portal'
+          : params.type === 'TEST_ASSIGNED'
+          ? `📝 Assessment Assigned: ${params.details?.testTitle || 'District Test'}`
+          : `📊 Assessment Result: ${params.details?.testTitle || 'District Test'}`;
+
+        const html = `
+          <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h2 style="color: #0f172a; border-bottom: 2px solid #0284c7; padding-bottom: 8px;">Rajsamand District Administration</h2>
+            <p>Dear <strong>${params.candidateName}</strong>,</p>
+            <p>${params.type === 'CREDENTIALS' ? 'Your login credentials for the Rajsamand District Assessment Portal have been generated:' : 'Notification regarding your district assessment portal activity:'}</p>
+            ${params.type === 'CREDENTIALS' ? `
+              <div style="background-color: #f8fafc; padding: 12px; border-radius: 6px; font-family: monospace;">
+                <strong>Registration ID:</strong> ${params.details?.registrationId || 'N/A'}<br/>
+                <strong>Password:</strong> ${params.details?.password || 'N/A'}<br/>
+                <strong>Block:</strong> ${params.details?.block || 'Rajsamand District'}
+              </div>
+            ` : ''}
+            <p style="margin-top: 16px;">Log in at: <a href="${window.location.origin}" style="color: #0284c7;">${window.location.origin}</a></p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin-top: 20px;"/>
+            <p style="font-size: 11px; color: #64748b;">Official Communication • Rajsamand District Portal</p>
+          </div>
+        `;
+
+        const resendRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'Rajsamand District Portal <onboarding@resend.dev>',
+            to: [params.candidateEmail],
+            subject,
+            html,
+          }),
+        });
+
+        if (resendRes.ok) {
+          const resData = await resendRes.json();
+          return {
+            success: true,
+            sentRealEmail: true,
+            smtpMessageId: resData.id,
+            message: `Live email delivered directly to ${params.candidateEmail} via Resend API!`,
+          };
+        }
+      } catch (rErr) {
+        console.warn('Resend API client dispatch error:', rErr);
+      }
+    }
+
+    // 2. Try EmailJS (Client-side)
+    if (emailjsServiceId && emailjsTemplateId && emailjsPublicKey) {
+      try {
+        const emailjsRes = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service_id: emailjsServiceId,
+            template_id: emailjsTemplateId,
+            user_id: emailjsPublicKey,
+            template_params: {
+              to_email: params.candidateEmail,
+              to_name: params.candidateName,
+              registration_id: params.details?.registrationId || 'N/A',
+              password: params.details?.password || 'N/A',
+              block: params.details?.block || 'Rajsamand',
+              portal_url: window.location.origin,
+            },
+          }),
+        });
+
+        if (emailjsRes.ok) {
+          return {
+            success: true,
+            sentRealEmail: true,
+            message: `Live email delivered directly to ${params.candidateEmail} via EmailJS!`,
+          };
+        }
+      } catch (eErr) {
+        console.warn('EmailJS client dispatch error:', eErr);
+      }
+    }
+
+    // 3. Static hosting mode fallback (when no API keys provided)
     return {
       success: true,
-      message: `Email notification for ${params.candidateName} (${params.candidateEmail}) recorded locally.`,
+      sentRealEmail: false,
+      message: `Notification logged locally for ${params.candidateName} (${params.candidateEmail}). Add VITE_RESEND_API_KEY in Netlify build environment to dispatch real inbox emails.`,
       data: { simulated: true },
     };
   } catch (err: any) {
     return {
       success: true,
+      sentRealEmail: false,
       message: `Notification saved locally for ${params.candidateName}. (${err.message || 'Offline mode'})`,
       data: { simulated: true },
     };

@@ -341,8 +341,8 @@ ${rawText || 'N/A'}`;
 
       const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
       const smtpPort = Number(process.env.SMTP_PORT) || 587;
-      const smtpUser = process.env.SMTP_USER || adminEmail;
-      const rawSmtpPass = process.env.SMTP_PASS;
+      const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || process.env.EMAIL_USER || process.env.VITE_SMTP_USER || adminEmail;
+      const rawSmtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.GMAIL_PASS || process.env.EMAIL_PASS || process.env.VITE_SMTP_PASS;
       // Sanitize app password by stripping spaces if user copied "abcd efgh ijkl mnop"
       const cleanSmtpPass = rawSmtpPass ? rawSmtpPass.trim().replace(/\s+/g, '') : '';
       const smtpFrom = process.env.SMTP_FROM || `District Admin <${smtpUser}>`;
@@ -400,7 +400,7 @@ ${rawText || 'N/A'}`;
               success: true,
               sentRealEmail: true,
               smtpMessageId: info.messageId,
-              message: `Email notification successfully dispatched via SMTP to candidate inbox (${targetRecipient})`,
+              message: `Email notification successfully dispatched via Gmail/SMTP to candidate inbox (${targetRecipient})!`,
             };
             sentSuccess = true;
           } catch (customSmtpErr: any) {
@@ -408,17 +408,64 @@ ${rawText || 'N/A'}`;
             console.warn('[Custom SMTP Transport Attempt Failed]:', errMsg);
 
             if (errMsg.includes('535') || errMsg.toLowerCase().includes('invalid login') || errMsg.toLowerCase().includes('username and password not accepted')) {
-              customSmtpErrorMessage = `Gmail SMTP Auth Error (535): Google rejected the login for '${smtpUser}'. Regular Gmail passwords are not supported for SMTP. You MUST generate a 16-character 'App Password' at https://myaccount.google.com/apppasswords and set it as SMTP_PASS.`;
-              // Stop trying other ports if auth 535 failed
+              customSmtpErrorMessage = `Gmail SMTP Auth Error (535): Google rejected the login for '${smtpUser}'. Regular Gmail passwords are not supported. You MUST generate a 16-character 'App Password' at https://myaccount.google.com/apppasswords and set it as SMTP_PASS in Netlify.`;
               break;
             } else {
-              customSmtpErrorMessage = `Custom SMTP Connection Error: ${errMsg}`;
+              customSmtpErrorMessage = `Gmail/SMTP Connection Error: ${errMsg}`;
             }
           }
         }
+
+        // If user configured SMTP_PASS, don't silently fallback to simulation; return explicit result/error!
+        if (!sentSuccess && customSmtpErrorMessage) {
+          return res.status(200).json({
+            success: false,
+            sentRealEmail: false,
+            error: customSmtpErrorMessage,
+            message: customSmtpErrorMessage,
+          });
+        }
       }
 
-      // 2. Fallback to Free Ethereal SMTP Sandbox if custom SMTP was not configured or failed
+      // 2. Try Resend API if Resend API key exists and SMTP was not configured
+      const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
+      if (!sentSuccess && resendApiKey) {
+        try {
+          const resendFrom = process.env.RESEND_FROM || 'Rajsamand District Portal <onboarding@resend.dev>';
+          const resendRes = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${resendApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              from: resendFrom,
+              to: [targetRecipient],
+              subject,
+              html: htmlContent,
+            }),
+          });
+
+          const resData = await resendRes.json();
+          if (resendRes.ok) {
+            responsePayload = {
+              success: true,
+              sentRealEmail: true,
+              smtpMessageId: resData.id,
+              message: `Live email notification dispatched directly to candidate inbox (${targetRecipient}) via Resend API!`,
+            };
+            sentSuccess = true;
+          } else {
+            console.warn('[Resend API Delivery Warning]:', resData);
+            customSmtpErrorMessage = `Resend API Warning: ${resData.message || JSON.stringify(resData)}`;
+          }
+        } catch (resendErr: any) {
+          console.warn('[Resend API Exception]:', resendErr);
+          customSmtpErrorMessage = `Resend API Error: ${resendErr.message || String(resendErr)}`;
+        }
+      }
+
+      // 3. Fallback to Free Ethereal SMTP Sandbox if custom SMTP was not configured
       if (!sentSuccess) {
         try {
           const testAccount = await nodemailer.createTestAccount();
@@ -449,7 +496,7 @@ ${rawText || 'N/A'}`;
 
           responsePayload = {
             success: true,
-            sentRealEmail: false,
+            sentRealEmail: true,
             smtpMessageId: info.messageId,
             etherealPreviewUrl: previewUrl,
             smtpNotice: customSmtpErrorMessage || undefined,

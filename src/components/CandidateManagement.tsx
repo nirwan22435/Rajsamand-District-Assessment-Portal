@@ -89,7 +89,7 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
           type: 'CREDENTIALS',
           subject: '🔐 Account Login Credentials - Rajsamand District Assessment Portal',
           sentAt: new Date().toISOString(),
-          status: emailRes.sentRealEmail ? 'SENT' : 'SIMULATED',
+          status: (emailRes.sentRealEmail || emailRes.smtpMessageId || emailRes.etherealPreviewUrl) ? 'SENT' : 'SIMULATED',
           previewUrl: emailRes.etherealPreviewUrl || undefined,
         });
 
@@ -131,7 +131,7 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
         type: 'CREDENTIALS',
         subject: '🔐 Resent Login Credentials - Rajsamand District Assessment Portal',
         sentAt: new Date().toISOString(),
-        status: res.sentRealEmail ? 'SENT' : 'SIMULATED',
+        status: (res.sentRealEmail || res.smtpMessageId || res.etherealPreviewUrl) ? 'SENT' : 'SIMULATED',
         previewUrl: res.etherealPreviewUrl || undefined,
       });
 

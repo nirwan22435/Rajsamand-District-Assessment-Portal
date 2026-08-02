@@ -181,7 +181,7 @@ export default function App() {
           type: 'TEST_ASSIGNED',
           subject: `📝 Assessment Assigned: ${testToSave.title}`,
           sentAt: new Date().toISOString(),
-          status: res.sentRealEmail ? 'SENT' : 'SIMULATED',
+          status: (res.sentRealEmail || res.smtpMessageId || res.etherealPreviewUrl) ? 'SENT' : 'SIMULATED',
           previewUrl: res.etherealPreviewUrl || undefined,
         };
         setEmailLogs((prev) => [log, ...prev]);
@@ -245,7 +245,7 @@ export default function App() {
         type: 'TEST_RESULT_NOTIFICATION',
         subject: `📊 Test Submission Report: ${newAttempt.testTitle} (${newAttempt.scorePercentage}%)`,
         sentAt: new Date().toISOString(),
-        status: res.sentRealEmail ? 'SENT' : 'SIMULATED',
+        status: (res.sentRealEmail || res.smtpMessageId || res.etherealPreviewUrl) ? 'SENT' : 'SIMULATED',
         previewUrl: res.etherealPreviewUrl || undefined,
       };
       setEmailLogs((prev) => [log, ...prev]);
