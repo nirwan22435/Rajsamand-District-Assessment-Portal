@@ -2,7 +2,7 @@ import React from 'react';
 import { TestPaper, TestAttempt, Candidate } from '../types';
 import { FileText, Download, X, CheckCircle2, AlertTriangle, Users, Award, TrendingUp, BarChart3, Clock, Sparkles } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, PieChart, Pie, Legend } from 'recharts';
-import { generateAndDownloadSubmissionPdf } from '../utils/pdfGenerator';
+import { generateAndDownloadSubmissionPdf, generateAndDownloadTestPaperSummaryPdf } from '../utils/pdfGenerator';
 
 interface TestSummaryReportModalProps {
   test: TestPaper;
@@ -139,10 +139,17 @@ export const TestSummaryReportModal: React.FC<TestSummaryReportModalProps> = ({
               </button>
             )}
             <button
-              onClick={handlePrintReport}
-              className="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow transition-all flex items-center gap-1"
+              onClick={() => generateAndDownloadTestPaperSummaryPdf({ test, attempts, candidates })}
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold text-xs shadow transition-all flex items-center gap-1.5 hover:scale-[1.02] active:scale-[0.98]"
+              title="Download Full Test Paper Summary Report as PDF"
             >
-              <Download className="w-3.5 h-3.5" /> Print / PDF
+              <Download className="w-4 h-4" /> Download PDF Report
+            </button>
+            <button
+              onClick={handlePrintReport}
+              className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all flex items-center gap-1"
+            >
+              Print
             </button>
             <button
               onClick={onClose}

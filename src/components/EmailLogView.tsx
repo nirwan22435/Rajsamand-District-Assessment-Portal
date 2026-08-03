@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { EmailLog } from '../types';
+import { EmailLog, Candidate } from '../types';
 import { Mail, CheckCircle2, Send, Filter, RefreshCw, ExternalLink } from 'lucide-react';
 import { sendEmailAPI } from '../services/api';
 
 interface EmailLogViewProps {
   logs: EmailLog[];
+  candidates?: Candidate[];
 }
 
-export const EmailLogView: React.FC<EmailLogViewProps> = ({ logs }) => {
+export const EmailLogView: React.FC<EmailLogViewProps> = ({ logs, candidates = [] }) => {
   const [filterType, setFilterType] = useState<string>('ALL');
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -20,14 +21,32 @@ export const EmailLogView: React.FC<EmailLogViewProps> = ({ logs }) => {
     setResendingId(log.id);
     setToastMessage(null);
     try {
+      const matchedCand = candidates.find(
+        (c) => c.email.toLowerCase() === log.toEmail.toLowerCase()
+      );
+
+      const detailsToSend = {
+        ...log.details,
+        registrationId:
+          log.details?.registrationId ||
+          matchedCand?.registrationId ||
+          matchedCand?.id ||
+          'RJ-2026-REG',
+        password:
+          log.details?.password ||
+          matchedCand?.password ||
+          'Pass@1234',
+        block:
+          log.details?.block ||
+          matchedCand?.block ||
+          'District HQ',
+      };
+
       const res = await sendEmailAPI({
         type: log.type,
         candidateEmail: log.toEmail,
         candidateName: log.toName,
-        details: log.details || {
-          registrationId: 'RESEND_MANUAL',
-          block: 'District HQ',
-        },
+        details: detailsToSend,
       });
 
       setToastMessage(

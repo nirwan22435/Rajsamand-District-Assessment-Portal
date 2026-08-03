@@ -105,7 +105,7 @@ ${rawText || 'N/A'}`;
       }
 
       // Try primary and fallback models in case of temporary 503 / high demand spikes
-      const modelsToTry = ['gemini-2.5-flash', 'gemini-3.6-flash'];
+      const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
       let response: any = null;
       let lastError: any = null;
 

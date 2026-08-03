@@ -1,6 +1,6 @@
 import React from 'react';
 import { UserRole, Candidate } from '../types';
-import { Sun, Moon, ShieldCheck, User, LogOut, FileText, BarChart3, Users, Mail, Compass, Building2, PhoneCall } from 'lucide-react';
+import { Sun, Moon, ShieldCheck, User, LogOut, FileText, BarChart3, Users, Mail, Compass, Building2, PhoneCall, BookOpen } from 'lucide-react';
 
 interface NavbarProps {
   darkMode: boolean;
@@ -205,6 +205,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <BarChart3 className="w-4 h-4" />
                   <span>District Analytics</span>
+                </button>
+
+                <button
+                  id="tab-published-tests"
+                  onClick={() => setActiveTab('published-tests')}
+                  className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-extrabold uppercase tracking-wider rounded-lg transition-all ${
+                    activeTab === 'published-tests'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <BookOpen className="w-4 h-4" />
+                  <span>Published Test Papers & Reports</span>
                 </button>
 
                 <button

@@ -17,6 +17,7 @@ import { ProgressReportModal } from './components/ProgressReportModal';
 import { LoginModal } from './components/LoginModal';
 import { PortalLoginPage } from './components/PortalLoginPage';
 import { EmailLogView } from './components/EmailLogView';
+import { PublishedTestPapersView } from './components/PublishedTestPapersView';
 import { sendEmailAPI } from './services/api';
 import {
   subscribeCandidates,
@@ -113,6 +114,11 @@ export default function App() {
   const handleAddCandidate = async (newCand: Candidate) => {
     setCandidates((prev) => [newCand, ...prev]);
     await saveCandidateToFirestore(newCand);
+  };
+
+  const handleUpdateCandidate = async (updatedCand: Candidate) => {
+    setCandidates((prev) => prev.map((c) => (c.id === updatedCand.id ? updatedCand : c)));
+    await saveCandidateToFirestore(updatedCand);
   };
 
   const handleToggleCandidateStatus = async (id: string) => {
@@ -430,6 +436,23 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'published-tests' && (
+              <PublishedTestPapersView
+                tests={tests}
+                attempts={attempts}
+                candidates={candidates}
+                onNavigateToUpload={() => {
+                  setEditingTest(null);
+                  setActiveTab('upload-paper');
+                }}
+                onEditTest={(testToEdit) => {
+                  setEditingTest(testToEdit);
+                  setActiveTab('upload-paper');
+                }}
+                onDeleteTest={handleDeleteTest}
+              />
+            )}
+
             {activeTab === 'upload-paper' && (
               <TestUploadSection
                 onPublishTest={handlePublishTest}
@@ -445,6 +468,7 @@ export default function App() {
               <CandidateManagement
                 candidates={candidates}
                 onAddCandidate={handleAddCandidate}
+                onUpdateCandidate={handleUpdateCandidate}
                 onToggleStatus={handleToggleCandidateStatus}
                 onSelectCandidateForReport={(cand) => setSelectedReportCandidate(cand)}
                 onLogEmailSent={async (log) => {
@@ -454,7 +478,7 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'email-logs' && <EmailLogView logs={emailLogs} />}
+            {activeTab === 'email-logs' && <EmailLogView logs={emailLogs} candidates={candidates} />}
           </>
         ) : (
           /* Candidate Portal View */

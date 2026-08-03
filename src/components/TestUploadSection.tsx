@@ -49,6 +49,8 @@ export const TestUploadSection: React.FC<TestUploadSectionProps> = ({
   const [subject, setSubject] = useState<string>(editingTest?.subject || 'General Knowledge & District History');
   const [targetBlock, setTargetBlock] = useState<DistrictBlock>(editingTest?.targetBlock || 'District-Wide');
   const [timeLimit, setTimeLimit] = useState<number>(editingTest?.timeLimitMinutes || 30);
+  const [totalMarks, setTotalMarks] = useState<number>(editingTest?.totalMarks || 100);
+  const [passingMarks, setPassingMarks] = useState<number>(editingTest?.passingMarks || 40);
   const [instructions, setInstructions] = useState<string>(editingTest?.instructions || 'Select the correct choice for each MCQ question.');
   const [accessCode, setAccessCode] = useState<string>(
     editingTest?.accessCode || `RJ-${Math.floor(1000 + Math.random() * 9000)}`
@@ -162,11 +164,23 @@ export const TestUploadSection: React.FC<TestUploadSectionProps> = ({
       setSelectedFile(file);
       setParseError(null);
 
-      const reader = new FileReader();
-      reader.onload = () => {
-        setFilePreview(reader.result as string);
+      // Read as Data URL for base64 sending (PDF / Images)
+      const dataUrlReader = new FileReader();
+      dataUrlReader.onload = () => {
+        setFilePreview(dataUrlReader.result as string);
       };
-      reader.readAsDataURL(file);
+      dataUrlReader.readAsDataURL(file);
+
+      // Also read plain text files directly if text/csv
+      if (file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.csv')) {
+        const textReader = new FileReader();
+        textReader.onload = () => {
+          if (typeof textReader.result === 'string') {
+            setPastedText(textReader.result);
+          }
+        };
+        textReader.readAsText(file);
+      }
     }
   };
 
@@ -511,9 +525,51 @@ Correct Answer: A`);
               min={5}
               max={180}
               value={timeLimit}
-              onChange={(e) => setTimeLimit(Number(e.target.value))}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setTimeLimit(val);
+                if (parsedTest) setParsedTest({ ...parsedTest, timeLimitMinutes: val });
+              }}
               className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Total Marks
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={1000}
+                value={parsedTest ? parsedTest.totalMarks : totalMarks}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setTotalMarks(val);
+                  if (parsedTest) setParsedTest({ ...parsedTest, totalMarks: val });
+                }}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Passing Marks
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={parsedTest ? parsedTest.totalMarks : totalMarks}
+                value={parsedTest ? parsedTest.passingMarks : passingMarks}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setPassingMarks(val);
+                  if (parsedTest) setParsedTest({ ...parsedTest, passingMarks: val });
+                }}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold text-emerald-700 dark:text-emerald-400 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+            </div>
           </div>
 
           <div>
