@@ -427,45 +427,7 @@ ${rawText || 'N/A'}`;
         }
       }
 
-      // 2. Try Resend API if Resend API key exists and SMTP was not configured
-      const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
-      if (!sentSuccess && resendApiKey) {
-        try {
-          const resendFrom = process.env.RESEND_FROM || 'Rajsamand District Portal <onboarding@resend.dev>';
-          const resendRes = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${resendApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              from: resendFrom,
-              to: [targetRecipient],
-              subject,
-              html: htmlContent,
-            }),
-          });
-
-          const resData = await resendRes.json();
-          if (resendRes.ok) {
-            responsePayload = {
-              success: true,
-              sentRealEmail: true,
-              smtpMessageId: resData.id,
-              message: `Live email notification dispatched directly to candidate inbox (${targetRecipient}) via Resend API!`,
-            };
-            sentSuccess = true;
-          } else {
-            console.warn('[Resend API Delivery Warning]:', resData);
-            customSmtpErrorMessage = `Resend API Warning: ${resData.message || JSON.stringify(resData)}`;
-          }
-        } catch (resendErr: any) {
-          console.warn('[Resend API Exception]:', resendErr);
-          customSmtpErrorMessage = `Resend API Error: ${resendErr.message || String(resendErr)}`;
-        }
-      }
-
-      // 3. Fallback to Free Ethereal SMTP Sandbox if custom SMTP was not configured
+      // 2. Fallback to Free Ethereal SMTP Sandbox if custom SMTP was not configured
       if (!sentSuccess) {
         try {
           const testAccount = await nodemailer.createTestAccount();

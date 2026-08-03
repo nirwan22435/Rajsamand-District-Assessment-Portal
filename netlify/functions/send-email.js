@@ -111,7 +111,6 @@ exports.handler = async function (event, context) {
       </html>
     `;
 
-    const resendApiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY;
     const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
     const smtpPort = Number(process.env.SMTP_PORT) || 587;
     const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || process.env.EMAIL_USER || process.env.VITE_SMTP_USER || 'devkarannirwan01@gmail.com';
@@ -172,47 +171,7 @@ exports.handler = async function (event, context) {
       }
     }
 
-    // 2. Try Resend API if key exists and SMTP was not configured
-    if (resendApiKey) {
-      try {
-        const resendFrom = process.env.RESEND_FROM || 'Rajsamand District Portal <onboarding@resend.dev>';
-        const resendRes = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${resendApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: resendFrom,
-            to: [candidateEmail],
-            subject,
-            html: htmlContent,
-          }),
-        });
-
-        const resData = await resendRes.json();
-        if (resendRes.ok) {
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({
-              success: true,
-              sentRealEmail: true,
-              smtpMessageId: resData.id,
-              message: `Live email dispatched directly to candidate inbox (${candidateEmail}) via Resend API!`,
-            }),
-          };
-        } else {
-          console.warn('[Netlify Function Resend API Failed]:', resData);
-          errorMessage = `Resend Error: ${resData.message || JSON.stringify(resData)}`;
-        }
-      } catch (rErr) {
-        console.warn('[Netlify Function Resend Exception]:', rErr);
-        errorMessage = `Resend Exception: ${rErr.message || String(rErr)}`;
-      }
-    }
-
-    // 3. Fallback to Ethereal SMTP Sandbox if neither Gmail SMTP nor Resend was configured
+    // 2. Fallback to Ethereal SMTP Sandbox if Gmail/Custom SMTP was not configured
     try {
       const testAccount = await nodemailer.createTestAccount();
       const etherealTransporter = nodemailer.createTransport({
@@ -250,7 +209,7 @@ exports.handler = async function (event, context) {
           success: true,
           sentRealEmail: false,
           simulated: true,
-          message: `Logged locally for ${candidateEmail}. ${errorMessage || 'No SMTP_PASS or RESEND_API_KEY set.'}`,
+          message: `Logged locally for ${candidateEmail}. ${errorMessage || 'No SMTP_PASS configured in Netlify.'}`,
         }),
       };
     }
