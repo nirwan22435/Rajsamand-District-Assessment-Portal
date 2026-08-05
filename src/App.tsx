@@ -141,7 +141,6 @@ export default function App() {
     });
 
     setEditingTest(null);
-    setActiveTab('analytics');
     await saveTestToFirestore(testToSave);
 
     // Determine target candidates to notify
@@ -173,6 +172,8 @@ export default function App() {
           candidateName: cand.name,
           details: {
             testTitle: testToSave.title,
+            testId: testToSave.id,
+            accessCode: testToSave.accessCode,
             subject: testToSave.subject,
             duration: testToSave.timeLimitMinutes,
             totalQuestions: testToSave.questions.length,

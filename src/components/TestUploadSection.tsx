@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TestPaper, MCQQuestion, DistrictBlock, Candidate } from '../types';
 import { parseTestPaperAPI, sendEmailAPI } from '../services/api';
+import { PublishSuccessModal } from './PublishSuccessModal';
 import {
   Upload,
   Sparkles,
@@ -19,6 +20,7 @@ import {
   UserCheck,
   Search,
   Mail,
+  Award,
 } from 'lucide-react';
 
 interface TestUploadSectionProps {
@@ -127,6 +129,17 @@ export const TestUploadSection: React.FC<TestUploadSectionProps> = ({
   });
 
   const [notificationMsg, setNotificationMsg] = useState<string | null>(null);
+  const [publishedModalData, setPublishedModalData] = useState<{
+    isOpen: boolean;
+    test: TestPaper | null;
+    notifiedCount: number | string;
+    isEdit: boolean;
+  }>({
+    isOpen: false,
+    test: null,
+    notifiedCount: 'All',
+    isEdit: false,
+  });
 
   // Initialize manual mode with a sample blank question if user clicks Manual Mode and no test yet
   const handleSwitchToManual = () => {
@@ -324,6 +337,19 @@ Correct Answer: A`);
   };
 
   // MCQ Question Editing Helpers
+  const handleUpdateMarksPerQuestion = (newMarks: number) => {
+    if (!parsedTest) return;
+    const validMarks = Math.max(1, isNaN(newMarks) ? 1 : newMarks);
+    const updated = parsedTest.questions.map((q) => ({ ...q, marks: validMarks }));
+    const newTotal = updated.length * validMarks;
+    setParsedTest({
+      ...parsedTest,
+      totalMarks: newTotal,
+      passingMarks: Math.round(newTotal * 0.4),
+      questions: updated,
+    });
+  };
+
   const handleUpdateQuestionText = (qIndex: number, text: string) => {
     if (!parsedTest) return;
     const updated = [...parsedTest.questions];
@@ -355,23 +381,35 @@ Correct Answer: A`);
   const handleDeleteQuestion = (qIndex: number) => {
     if (!parsedTest) return;
     const updated = parsedTest.questions.filter((_, idx) => idx !== qIndex);
-    const newTotal = updated.reduce((sum, q) => sum + q.marks, 0);
-    setParsedTest({ ...parsedTest, questions: updated, totalMarks: newTotal });
+    const currentMarks = parsedTest.questions[0]?.marks || 4;
+    const newTotal = updated.length * currentMarks;
+    setParsedTest({
+      ...parsedTest,
+      questions: updated,
+      totalMarks: newTotal,
+      passingMarks: Math.round(newTotal * 0.4),
+    });
   };
 
   const handleAddQuestion = () => {
     if (!parsedTest) return;
+    const currentMarks = parsedTest.questions[0]?.marks || 4;
     const newQ: MCQQuestion = {
       id: `q-${Date.now()}-${parsedTest.questions.length}`,
       questionText: 'New Multiple Choice Question stem...',
       options: ['Option A', 'Option B', 'Option C', 'Option D'],
       correctOptionIndex: 0,
       explanation: 'Detailed explanation for correct choice.',
-      marks: 4,
+      marks: currentMarks,
     };
     const updated = [...parsedTest.questions, newQ];
-    const newTotal = updated.reduce((sum, q) => sum + q.marks, 0);
-    setParsedTest({ ...parsedTest, questions: updated, totalMarks: newTotal });
+    const newTotal = updated.length * currentMarks;
+    setParsedTest({
+      ...parsedTest,
+      questions: updated,
+      totalMarks: newTotal,
+      passingMarks: Math.round(newTotal * 0.4),
+    });
   };
 
   // Final Publish / Save Action
@@ -405,14 +443,23 @@ Correct Answer: A`);
 
     onPublishTest(testPaperToSave);
 
+    const calcCount = assignmentScope === 'SELECTED'
+      ? selectedCandidateIds.length
+      : candidates && candidates.length > 0
+        ? candidates.filter(c => c.activeStatus && (targetBlock === 'District-Wide' || c.block === targetBlock)).length
+        : 'All';
+
+    setPublishedModalData({
+      isOpen: true,
+      test: testPaperToSave,
+      notifiedCount: calcCount || 'All',
+      isEdit: !!editingTest,
+    });
+
     setNotificationMsg(
       editingTest
         ? `Test paper "${testPaperToSave.title}" has been updated and saved successfully!`
-        : `Test paper "${testPaperToSave.title}" published successfully! ${
-            assignmentScope === 'SELECTED'
-              ? `Notifications sent ONLY to ${selectedCandidateIds.length} assigned candidate(s).`
-              : 'Notifications sent to all candidates in block.'
-          }`
+        : `Test paper "${testPaperToSave.title}" published successfully!`
     );
   };
 
@@ -691,9 +738,37 @@ Correct Answer: A`);
             )}
 
             {parseError && (
-              <div className="mt-3 p-3 rounded-lg bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                <span>{parseError}</span>
+              <div className="mt-3 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-rose-200 dark:border-rose-800 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4.5 h-4.5 text-rose-600 dark:text-rose-400 flex-shrink-0" />
+                  <span className="font-semibold">{parseError}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {uploadMethod === 'TEXT' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setParseError(null);
+                        handleLoadSamplePaper('GK');
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> Load Sample Paper Text
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setParseError(null);
+                        setUploadMethod('TEXT');
+                        handleLoadSamplePaper('GK');
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> Use Sample Text Instead
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -910,22 +985,40 @@ Correct Answer: A`);
           </div>
 
           {/* Test Parameters Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-xs items-center">
             <div>
-              <span className="text-slate-500 dark:text-slate-400 block">Total Questions:</span>
-              <span className="font-bold text-slate-900 dark:text-white">{parsedTest.questions.length} MCQs</span>
+              <span className="text-slate-500 dark:text-slate-400 block font-medium">Total Questions:</span>
+              <span className="font-bold text-slate-900 dark:text-white text-sm">{parsedTest.questions.length} MCQs</span>
             </div>
             <div>
-              <span className="text-slate-500 dark:text-slate-400 block">Total Marks:</span>
-              <span className="font-bold text-slate-900 dark:text-white">{parsedTest.totalMarks} Marks</span>
+              <label htmlFor="marks-per-question-input" className="text-slate-500 dark:text-slate-400 block font-medium flex items-center gap-1">
+                <Award className="w-3.5 h-3.5 text-amber-500" />
+                Marks Per Question:
+              </label>
+              <div className="flex items-center gap-1.5 mt-1">
+                <input
+                  id="marks-per-question-input"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={parsedTest.questions[0]?.marks ?? 4}
+                  onChange={(e) => handleUpdateMarksPerQuestion(parseInt(e.target.value, 10) || 1)}
+                  className="w-16 px-2.5 py-1 text-xs font-extrabold text-center text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs"
+                />
+                <span className="text-slate-500 font-semibold">Marks</span>
+              </div>
             </div>
             <div>
-              <span className="text-slate-500 dark:text-slate-400 block">Passing Marks:</span>
-              <span className="font-bold text-slate-900 dark:text-white">{parsedTest.passingMarks} Marks</span>
+              <span className="text-slate-500 dark:text-slate-400 block font-medium">Total Marks:</span>
+              <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">{parsedTest.totalMarks} Marks</span>
             </div>
             <div>
-              <span className="text-slate-500 dark:text-slate-400 block">Duration:</span>
-              <span className="font-bold text-slate-900 dark:text-white">{parsedTest.timeLimitMinutes} Mins</span>
+              <span className="text-slate-500 dark:text-slate-400 block font-medium">Passing Marks:</span>
+              <span className="font-bold text-slate-900 dark:text-white text-sm">{parsedTest.passingMarks} Marks</span>
+            </div>
+            <div>
+              <span className="text-slate-500 dark:text-slate-400 block font-medium">Duration:</span>
+              <span className="font-bold text-slate-900 dark:text-white text-sm">{parsedTest.timeLimitMinutes} Mins</span>
             </div>
           </div>
 
@@ -1008,6 +1101,20 @@ Correct Answer: A`);
           </div>
         </div>
       )}
+
+      {/* Creative Success Popup Modal */}
+      <PublishSuccessModal
+        isOpen={publishedModalData.isOpen}
+        onClose={() => {
+          setPublishedModalData((prev) => ({ ...prev, isOpen: false }));
+          setParsedTest(null);
+          setPastedText('');
+          if (onCancelEdit) onCancelEdit();
+        }}
+        test={publishedModalData.test}
+        notifiedCount={publishedModalData.notifiedCount}
+        isEdit={publishedModalData.isEdit}
+      />
     </div>
   );
 };

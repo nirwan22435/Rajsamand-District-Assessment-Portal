@@ -19,6 +19,8 @@ export interface SendEmailParams {
     block?: string;
     registrationId?: string;
     testTitle?: string;
+    testId?: string;
+    accessCode?: string;
     subject?: string;
     duration?: number;
     totalQuestions?: number;
@@ -425,11 +427,16 @@ export async function sendEmailAPI(params: SendEmailParams) {
           ? `📝 Assessment Assigned: ${params.details?.testTitle || 'District Test'}`
           : `📊 Assessment Result: ${params.details?.testTitle || 'District Test'}`;
 
+        const testIdParam = params.details?.testId ? `&testId=${encodeURIComponent(params.details.testId)}` : '';
+        const codeParam = params.details?.accessCode ? `&code=${encodeURIComponent(params.details.accessCode)}` : '';
+        const emailParam = params.candidateEmail ? `&email=${encodeURIComponent(params.candidateEmail)}` : '';
+        const attemptLink = `${window.location.origin}/?attempt=true${testIdParam}${codeParam}${emailParam}`;
+
         const html = `
           <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; border: 1px solid #e2e8f0; border-radius: 8px;">
             <h2 style="color: #0f172a; border-bottom: 2px solid #0284c7; padding-bottom: 8px;">Rajsamand District Administration</h2>
             <p>Dear <strong>${params.candidateName}</strong>,</p>
-            <p>${params.type === 'CREDENTIALS' ? 'Your login credentials for the Rajsamand District Assessment Portal have been generated:' : 'Notification regarding your district assessment portal activity:'}</p>
+            <p>${params.type === 'CREDENTIALS' ? 'Your login credentials for the Rajsamand District Assessment Portal have been generated:' : params.type === 'TEST_ASSIGNED' ? 'A new test has been assigned to you on the Rajsamand District Assessment Portal:' : 'Notification regarding your district assessment portal activity:'}</p>
             ${params.type === 'CREDENTIALS' ? `
               <div style="background-color: #f8fafc; padding: 12px; border-radius: 6px; font-family: monospace;">
                 <strong>Registration ID:</strong> ${params.details?.registrationId || 'N/A'}<br/>
@@ -437,7 +444,19 @@ export async function sendEmailAPI(params: SendEmailParams) {
                 <strong>Block:</strong> ${params.details?.block || 'Rajsamand District'}
               </div>
             ` : ''}
-            <p style="margin-top: 16px;">Log in at: <a href="${window.location.origin}" style="color: #0284c7;">${window.location.origin}</a></p>
+            ${params.type === 'TEST_ASSIGNED' ? `
+              <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px; border-radius: 6px; margin: 16px 0;">
+                <h3 style="margin: 0 0 8px 0; color: #14532d;">${params.details?.testTitle || 'District Assessment'}</h3>
+                <p style="margin: 4px 0; color: #166534;"><strong>Subject:</strong> ${params.details?.subject || 'General Knowledge'}</p>
+                <p style="margin: 4px 0; color: #166534;"><strong>Duration:</strong> ${params.details?.duration || 30} Minutes</p>
+                ${params.details?.accessCode ? `<p style="margin: 4px 0; color: #166534;"><strong>Access Code:</strong> <code style="background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${params.details.accessCode}</code></p>` : ''}
+              </div>
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${attemptLink}" style="background-color: #16a34a; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">Start Assessment Now</a>
+              </div>
+            ` : `
+              <p style="margin-top: 16px;">Log in at: <a href="${window.location.origin}" style="color: #0284c7;">${window.location.origin}</a></p>
+            `}
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin-top: 20px;"/>
             <p style="font-size: 11px; color: #64748b;">Official Communication • Rajsamand District Portal</p>
           </div>

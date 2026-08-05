@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Candidate, DistrictBlock, EmailLog } from '../types';
 import { sendEmailAPI } from '../services/api';
+import { CandidateSuccessModal } from './CandidateSuccessModal';
 import { Users, UserPlus, Search, Filter, Mail, Shield, CheckCircle2, XCircle, Key, RefreshCw, Send, AlertCircle, Edit3, Eye, EyeOff } from 'lucide-react';
 
 interface CandidateManagementProps {
@@ -48,6 +49,15 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
+  const [createdCandidateModalData, setCreatedCandidateModalData] = useState<{
+    isOpen: boolean;
+    candidate: Candidate | null;
+    emailSent: boolean;
+  }>({
+    isOpen: false,
+    candidate: null,
+    emailSent: true,
+  });
 
   // Open Edit Modal
   const handleOpenEditModal = (cand: Candidate) => {
@@ -204,6 +214,11 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
 
     setIsSubmitting(false);
     setShowCreateModal(false);
+    setCreatedCandidateModalData({
+      isOpen: true,
+      candidate: newCand,
+      emailSent: sendCredentialsEmail,
+    });
     // Reset form
     setName('');
     setEmail('');
@@ -741,6 +756,15 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
           </div>
         </div>
       )}
+
+      {/* Creative Candidate Success Modal */}
+      <CandidateSuccessModal
+        isOpen={createdCandidateModalData.isOpen}
+        onClose={() => setCreatedCandidateModalData((prev) => ({ ...prev, isOpen: false }))}
+        candidate={createdCandidateModalData.candidate}
+        emailSent={createdCandidateModalData.emailSent}
+        onResendEmail={handleResendCredentials}
+      />
     </div>
   );
 };

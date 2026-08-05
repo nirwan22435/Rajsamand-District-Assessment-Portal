@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TestPaper, TestAttempt, Candidate } from '../types';
 import { BookOpen, Key, Copy, Check, Users, UserCheck, BarChart3, Edit3, Trash2, Download, Search, Filter } from 'lucide-react';
 import { TestSummaryReportModal } from './TestSummaryReportModal';
+import { PublishSuccessModal } from './PublishSuccessModal';
 import { generateAndDownloadTestPaperSummaryPdf } from '../utils/pdfGenerator';
 import { sendEmailAPI } from '../services/api';
 
@@ -35,6 +36,15 @@ export const PublishedTestPapersView: React.FC<PublishedTestPapersViewProps> = (
   const [modalAssignScope, setModalAssignScope] = useState<'ALL' | 'SELECTED'>('ALL');
   const [modalAssignSuccessMsg, setModalAssignSuccessMsg] = useState<string | null>(null);
   const [isDispatchingAssign, setIsDispatchingAssign] = useState<boolean>(false);
+  const [publishedModalData, setPublishedModalData] = useState<{
+    isOpen: boolean;
+    test: TestPaper | null;
+    notifiedCount: number | string;
+  }>({
+    isOpen: false,
+    test: null,
+    notifiedCount: 0,
+  });
 
   const handleOpenAssignModal = (testPaper: TestPaper) => {
     setAssigningTest(testPaper);
@@ -81,6 +91,8 @@ export const PublishedTestPapersView: React.FC<PublishedTestPapersViewProps> = (
           candidateName: cand.name,
           details: {
             testTitle: assigningTest.title,
+            testId: assigningTest.id,
+            accessCode: assigningTest.accessCode,
             subject: assigningTest.subject,
             duration: assigningTest.timeLimitMinutes,
             totalQuestions: assigningTest.questions.length,
@@ -93,15 +105,15 @@ export const PublishedTestPapersView: React.FC<PublishedTestPapersViewProps> = (
     }
 
     setIsDispatchingAssign(false);
-    setModalAssignSuccessMsg(
-      modalAssignScope === 'SELECTED'
-        ? `Test paper assigned to ${modalAssignSelectedIds.length} candidate(s)! Emails dispatched.`
-        : 'Test paper assigned to all candidates in block! Emails dispatched.'
-    );
+    const assignedTestRef = assigningTest;
+    const assignedCount = newlyAssigned.length;
 
-    setTimeout(() => {
-      setAssigningTest(null);
-    }, 1800);
+    setAssigningTest(null);
+    setPublishedModalData({
+      isOpen: true,
+      test: assignedTestRef,
+      notifiedCount: assignedCount,
+    });
   };
 
   const filteredTests = tests.filter((t) => {
@@ -508,6 +520,14 @@ export const PublishedTestPapersView: React.FC<PublishedTestPapersViewProps> = (
           </div>
         </div>
       )}
+
+      {/* Creative Success Popup Modal */}
+      <PublishSuccessModal
+        isOpen={publishedModalData.isOpen}
+        onClose={() => setPublishedModalData((prev) => ({ ...prev, isOpen: false }))}
+        test={publishedModalData.test}
+        notifiedCount={publishedModalData.notifiedCount}
+      />
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { Users, FileCheck, Award, TrendingUp, Download, Search, CheckCircle2, AlertTriangle, UserCheck, RefreshCw, FileSpreadsheet, ExternalLink, Mail, Send, Edit3, BarChart3, BookOpen, Key, Copy, Check, Trash2, Globe } from 'lucide-react';
 import { sendEmailAPI } from '../services/api';
 import { TestSummaryReportModal } from './TestSummaryReportModal';
+import { PublishSuccessModal } from './PublishSuccessModal';
 
 interface AdminDashboardProps {
   candidates: Candidate[];
@@ -44,6 +45,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [modalAssignScope, setModalAssignScope] = useState<'ALL' | 'SELECTED'>('ALL');
   const [modalAssignSuccessMsg, setModalAssignSuccessMsg] = useState<string | null>(null);
   const [isDispatchingAssign, setIsDispatchingAssign] = useState<boolean>(false);
+  const [publishedModalData, setPublishedModalData] = useState<{
+    isOpen: boolean;
+    test: TestPaper | null;
+    notifiedCount: number | string;
+  }>({
+    isOpen: false,
+    test: null,
+    notifiedCount: 0,
+  });
 
   const handleOpenAssignModal = (testPaper: TestPaper) => {
     setAssigningTest(testPaper);
@@ -94,6 +104,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           candidateName: cand.name,
           details: {
             testTitle: assigningTest.title,
+            testId: assigningTest.id,
+            accessCode: assigningTest.accessCode,
             subject: assigningTest.subject,
             duration: assigningTest.timeLimitMinutes,
             totalQuestions: assigningTest.questions.length,
@@ -106,15 +118,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
 
     setIsDispatchingAssign(false);
-    setModalAssignSuccessMsg(
-      modalAssignScope === 'SELECTED'
-        ? `Test paper assigned to ${modalAssignSelectedIds.length} candidate(s)! Emails dispatched.`
-        : 'Test paper assigned to all candidates in block! Emails dispatched.'
-    );
+    const assignedTestRef = assigningTest;
+    const assignedCount = newlyAssigned.length;
 
-    setTimeout(() => {
-      setAssigningTest(null);
-    }, 1800);
+    setAssigningTest(null);
+    setPublishedModalData({
+      isOpen: true,
+      test: assignedTestRef,
+      notifiedCount: assignedCount,
+    });
   };
 
   const handleResendAttemptEmail = async (att: TestAttempt) => {
@@ -959,6 +971,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
       )}
+
+      {/* Creative Success Popup Modal */}
+      <PublishSuccessModal
+        isOpen={publishedModalData.isOpen}
+        onClose={() => setPublishedModalData((prev) => ({ ...prev, isOpen: false }))}
+        test={publishedModalData.test}
+        notifiedCount={publishedModalData.notifiedCount}
+      />
     </div>
   );
 };

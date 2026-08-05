@@ -31,6 +31,37 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
   const [candidateAccessCode, setCandidateAccessCode] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const emailParam = searchParams.get('email');
+    const codeParam = searchParams.get('code');
+    const testIdParam = searchParams.get('testId');
+    const attemptParam = searchParams.get('attempt');
+
+    if (emailParam || codeParam || testIdParam || attemptParam) {
+      setSelectedRole('CANDIDATE');
+      if (emailParam) {
+        setCandidateEmailInput(emailParam);
+        const matched = candidates.find((c) => c.email.toLowerCase() === emailParam.toLowerCase());
+        if (matched) {
+          setSelectedCandidateId(matched.id);
+        }
+      }
+
+      let accessCodeToUse = codeParam || '';
+      if (!accessCodeToUse && testIdParam) {
+        const foundTest = tests.find((t) => t.id === testIdParam);
+        if (foundTest && foundTest.accessCode) {
+          accessCodeToUse = foundTest.accessCode;
+        }
+      }
+
+      if (accessCodeToUse) {
+        setCandidateAccessCode(accessCodeToUse.toUpperCase());
+      }
+    }
+  }, [candidates, tests]);
+
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminEmail.trim() || !adminPassword.trim()) {

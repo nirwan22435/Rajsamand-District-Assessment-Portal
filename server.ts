@@ -193,7 +193,8 @@ ${rawText || 'N/A'}`;
       let subject = 'Rajsamand District Assessment Portal Notification';
       let htmlContent = '';
 
-      const portalUrl = process.env.APP_URL || 'https://rajsamand.gov.in/assessment';
+      const requestOrigin = req.headers.origin || (req.headers.host ? `${req.protocol || 'http'}://${req.headers.host}` : '');
+      const portalUrl = process.env.APP_URL || requestOrigin || 'https://rajsamand.gov.in/assessment';
 
       if (type === 'CREDENTIALS') {
         subject = `🔐 Account Login Credentials - Rajsamand District Assessment Portal`;
@@ -224,6 +225,12 @@ ${rawText || 'N/A'}`;
         `;
       } else if (type === 'TEST_ASSIGNED') {
         subject = `📝 New Test Assigned: ${details?.testTitle || 'District Assessment'}`;
+        
+        const testIdParam = details?.testId ? `&testId=${encodeURIComponent(details.testId)}` : '';
+        const codeParam = details?.accessCode ? `&code=${encodeURIComponent(details.accessCode)}` : '';
+        const emailParam = candidateEmail ? `&email=${encodeURIComponent(candidateEmail)}` : '';
+        const testAttemptUrl = `${portalUrl}/?attempt=true${testIdParam}${codeParam}${emailParam}`;
+
         htmlContent = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; background-color: #ffffff;">
             <div style="background-color: #0f766e; padding: 16px; border-radius: 6px; text-align: center; color: #ffffff; margin-bottom: 20px;">
@@ -240,11 +247,14 @@ ${rawText || 'N/A'}`;
               <p style="margin: 4px 0; color: #166534;"><strong>Duration:</strong> ${details?.duration || '30'} Minutes</p>
               <p style="margin: 4px 0; color: #166534;"><strong>Total Questions:</strong> ${details?.totalQuestions || '10'} MCQs</p>
               <p style="margin: 4px 0; color: #166534;"><strong>Total Marks:</strong> ${details?.totalMarks || '50'} Marks</p>
+              ${details?.accessCode ? `<p style="margin: 8px 0 0 0; color: #166534;"><strong>Test Access Code:</strong> <code style="background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-weight: bold; color: #14532d;">${details.accessCode}</code></p>` : ''}
             </div>
 
             <div style="text-align: center; margin: 28px 0;">
-              <a href="${portalUrl}" style="background-color: #16a34a; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">Start Assessment Now</a>
+              <a href="${testAttemptUrl}" style="background-color: #16a34a; color: #ffffff; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; font-size: 15px;">🚀 Start Assessment Now</a>
             </div>
+
+            <p style="text-align: center; font-size: 12px; color: #64748b; margin-top: -10px;">Direct Link: <a href="${testAttemptUrl}" style="color: #16a34a; word-break: break-all;">${testAttemptUrl}</a></p>
 
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
             <p style="color: #94a3b8; font-size: 12px; text-align: center; margin: 0;">Rajsamand District Education Evaluation Cell</p>
