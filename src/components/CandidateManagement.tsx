@@ -184,6 +184,8 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
             registrationId: newRegistrationId,
             password,
             block,
+            portalUrl: window.location.origin,
+            portalLoginUrl: `${window.location.origin}/?login=true&regId=${encodeURIComponent(newRegistrationId)}`,
           },
         });
 
@@ -237,6 +239,8 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
           registrationId: cand.registrationId || cand.id,
           password: cand.password,
           block: cand.block,
+          portalUrl: window.location.origin,
+          portalLoginUrl: `${window.location.origin}/?login=true&regId=${encodeURIComponent(cand.registrationId || cand.id)}`,
         },
       });
 

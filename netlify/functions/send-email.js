@@ -50,6 +50,20 @@ export const handler = async function (event, context) {
     const password = details.password || 'N/A';
     const block = details.block || 'Rajsamand District HQ';
 
+    // Compute Base & Specific URLs for Links & Buttons
+    const requestHost = event.headers ? (event.headers['x-forwarded-host'] || event.headers.host || event.headers.origin) : '';
+    const protocol = (event.headers && event.headers['x-forwarded-proto']) || 'https';
+    const computedOrigin = requestHost ? (requestHost.startsWith('http') ? requestHost : `${protocol}://${requestHost}`) : '';
+    
+    const baseUrl = details.portalUrl || process.env.APP_URL || process.env.URL || computedOrigin || 'https://rajsamand.gov.in/assessment';
+    
+    const testIdParam = details.testId ? `&testId=${encodeURIComponent(details.testId)}` : '';
+    const codeParam = details.accessCode ? `&code=${encodeURIComponent(details.accessCode)}` : '';
+    const emailParam = candidateEmail ? `&email=${encodeURIComponent(candidateEmail)}` : '';
+    
+    const attemptUrl = details.attemptUrl || `${baseUrl}/?attempt=true${testIdParam}${codeParam}${emailParam}`;
+    const portalLoginUrl = details.portalLoginUrl || `${baseUrl}/?login=true&regId=${encodeURIComponent(registrationId)}`;
+
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -61,11 +75,9 @@ export const handler = async function (event, context) {
           .header h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
           .header p { margin: 4px 0 0 0; font-size: 13px; opacity: 0.9; }
           .body-content { padding: 24px; line-height: 1.6; }
-          .cred-box { background-color: #f1f5f9; border-left: 4px solid #0284c7; padding: 16px; border-radius: 6px; margin: 20px 0; font-family: monospace; }
+          .cred-box { background-color: #f1f5f9; border-left: 4px solid #0284c7; padding: 16px; border-radius: 8px; margin: 20px 0; font-family: monospace; }
           .cred-row { margin-bottom: 8px; font-size: 14px; }
-          .badge { display: inline-block; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 9999px; background-color: #e0f2fe; color: #0369a1; }
           .footer { background-color: #f8fafc; padding: 16px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; }
-          .btn { display: inline-block; background-color: #0284c7; color: #ffffff !important; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px; margin-top: 12px; }
         </style>
       </head>
       <body>
@@ -80,25 +92,59 @@ export const handler = async function (event, context) {
               type === 'CREDENTIALS'
                 ? `<p>Your official account credentials for the Rajsamand District Candidate Assessment Portal have been generated.</p>
                    <div class="cred-box">
-                     <div class="cred-row"><strong>Registration ID:</strong> <span style="color: #0284c7;">${registrationId}</span></div>
-                     <div class="cred-row"><strong>Password:</strong> ${password}</div>
+                     <div class="cred-row"><strong>Registration ID:</strong> <span style="color: #0284c7; font-weight: bold;">${registrationId}</span></div>
+                     <div class="cred-row"><strong>Temporary Password:</strong> <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${password}</code></div>
                      <div class="cred-row"><strong>Assigned Block:</strong> ${block}</div>
                    </div>
-                   <p>Please log in to your portal using the credentials above to complete assigned assessments.</p>`
-                : type === 'TEST_ASSIGNED'
-                ? `<p>A new assessment paper has been assigned to your portal profile:</p>
-                   <div class="cred-box">
-                     <div class="cred-row"><strong>Test Paper:</strong> ${details.testTitle || 'N/A'}</div>
-                     <div class="cred-row"><strong>Subject:</strong> ${details.subject || 'General'}</div>
-                     <div class="cred-row"><strong>Duration:</strong> ${details.duration || 30} minutes</div>
-                     <div class="cred-row"><strong>Total Marks:</strong> ${details.totalMarks || 100}</div>
+                   
+                   <div style="text-align: center; margin: 28px 0;">
+                     <a href="${portalLoginUrl}" target="_blank" style="background-color: #0284c7; color: #ffffff !important; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.3);">
+                       🔑 Log In to Candidate Portal
+                     </a>
                    </div>
-                   <p>Log in to your candidate account to begin the assessment.</p>`
+
+                   <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; text-align: center; margin-top: 16px;">
+                     <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b; font-weight: bold;">Direct Portal Login Link:</p>
+                     <a href="${portalLoginUrl}" target="_blank" style="color: #0284c7; font-size: 13px; word-break: break-all; font-family: monospace;">${portalLoginUrl}</a>
+                   </div>`
+                : type === 'TEST_ASSIGNED'
+                ? `<p>A new assessment paper has been assigned to your portal profile on the Rajsamand District Portal:</p>
+                   <div class="cred-box" style="background-color: #f0fdf4; border-left: 4px solid #16a34a;">
+                     <div class="cred-row" style="font-size: 16px; font-weight: bold; color: #14532d; margin-bottom: 8px;">${details.testTitle || 'District Assessment'}</div>
+                     <div class="cred-row" style="color: #166534;"><strong>Subject:</strong> ${details.subject || 'General'}</div>
+                     <div class="cred-row" style="color: #166534;"><strong>Duration:</strong> ${details.duration || 30} minutes</div>
+                     <div class="cred-row" style="color: #166534;"><strong>Total Questions:</strong> ${details.totalQuestions || '10'} MCQs</div>
+                     <div class="cred-row" style="color: #166534;"><strong>Total Marks:</strong> ${details.totalMarks || 100} Marks</div>
+                     ${details.accessCode ? `<div class="cred-row" style="margin-top: 8px; color: #166534;"><strong>Test Access Code:</strong> <code style="background: #dcfce7; padding: 3px 8px; border-radius: 4px; font-weight: bold; color: #14532d;">${details.accessCode}</code></div>` : ''}
+                   </div>
+                   
+                   <div style="text-align: center; margin: 28px 0;">
+                     <a href="${attemptUrl}" target="_blank" style="background-color: #16a34a; color: #ffffff !important; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.3);">
+                       🚀 Click Here to Start Assessment Now
+                     </a>
+                   </div>
+
+                   <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; text-align: center; margin-top: 16px;">
+                     <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b; font-weight: bold;">Direct Candidate Attempt Link:</p>
+                     <a href="${attemptUrl}" target="_blank" style="color: #16a34a; font-size: 13px; word-break: break-all; font-family: monospace;">${attemptUrl}</a>
+                   </div>`
                 : `<p>Your test submission report for <strong>${details.testTitle || 'District Assessment'}</strong> has been processed:</p>
                    <div class="cred-box">
-                     <div class="cred-row"><strong>Score Obtained:</strong> ${details.scoreObtained || 0} / ${details.totalMarks || 100} (${details.scorePercentage || 0}%)</div>
+                     <div class="cred-row"><strong>Score Obtained:</strong> <span style="font-weight: bold; color: #16a34a;">${details.scoreObtained || 0} / ${details.totalMarks || 100} (${details.scorePercentage || 0}%)</span></div>
                      <div class="cred-row"><strong>Correct Answers:</strong> ${details.correctCount || 0}</div>
                      <div class="cred-row"><strong>Incorrect Answers:</strong> ${details.wrongCount || 0}</div>
+                     <div class="cred-row"><strong>Unattempted Questions:</strong> ${details.unattemptedCount || 0}</div>
+                   </div>
+                   
+                   <div style="text-align: center; margin: 28px 0;">
+                     <a href="${baseUrl}" target="_blank" style="background-color: #0284c7; color: #ffffff !important; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.3);">
+                       📊 View Detailed Solutions & Portal
+                     </a>
+                   </div>
+
+                   <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; text-align: center; margin-top: 16px;">
+                     <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b; font-weight: bold;">Portal Link:</p>
+                     <a href="${baseUrl}" target="_blank" style="color: #0284c7; font-size: 13px; word-break: break-all; font-family: monospace;">${baseUrl}</a>
                    </div>`
             }
           </div>

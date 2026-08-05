@@ -32,6 +32,9 @@ export interface SendEmailParams {
     unattemptedCount?: number;
     timeTakenMinutes?: number;
     submittedAt?: string;
+    portalUrl?: string;
+    attemptUrl?: string;
+    portalLoginUrl?: string;
     questions?: MCQQuestion[];
     answers?: QuestionAnswer[];
   };
@@ -430,7 +433,7 @@ export async function sendEmailAPI(params: SendEmailParams) {
         const testIdParam = params.details?.testId ? `&testId=${encodeURIComponent(params.details.testId)}` : '';
         const codeParam = params.details?.accessCode ? `&code=${encodeURIComponent(params.details.accessCode)}` : '';
         const emailParam = params.candidateEmail ? `&email=${encodeURIComponent(params.candidateEmail)}` : '';
-        const attemptLink = `${window.location.origin}/?attempt=true${testIdParam}${codeParam}${emailParam}`;
+        const attemptLink = params.details?.attemptUrl || `${window.location.origin}/?attempt=true${testIdParam}${codeParam}${emailParam}`;
 
         const html = `
           <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; border: 1px solid #e2e8f0; border-radius: 8px;">
@@ -443,6 +446,9 @@ export async function sendEmailAPI(params: SendEmailParams) {
                 <strong>Password:</strong> ${params.details?.password || 'N/A'}<br/>
                 <strong>Block:</strong> ${params.details?.block || 'Rajsamand District'}
               </div>
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${params.details?.portalLoginUrl || window.location.origin}" target="_blank" style="background-color: #0284c7; color: #ffffff !important; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">🔑 Log In to Candidate Portal</a>
+              </div>
             ` : ''}
             ${params.type === 'TEST_ASSIGNED' ? `
               <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 16px; border-radius: 6px; margin: 16px 0;">
@@ -452,7 +458,11 @@ export async function sendEmailAPI(params: SendEmailParams) {
                 ${params.details?.accessCode ? `<p style="margin: 4px 0; color: #166534;"><strong>Access Code:</strong> <code style="background: #dcfce7; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${params.details.accessCode}</code></p>` : ''}
               </div>
               <div style="text-align: center; margin: 24px 0;">
-                <a href="${attemptLink}" style="background-color: #16a34a; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">Start Assessment Now</a>
+                <a href="${attemptLink}" target="_blank" style="background-color: #16a34a; color: #ffffff !important; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 16px;">🚀 Start Assessment Now</a>
+              </div>
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px; text-align: center; margin-top: 10px;">
+                <p style="margin: 0 0 4px 0; font-size: 11px; color: #64748b; font-weight: bold;">Direct Attempt Link:</p>
+                <a href="${attemptLink}" target="_blank" style="color: #16a34a; font-size: 11px; word-break: break-all;">${attemptLink}</a>
               </div>
             ` : `
               <p style="margin-top: 16px;">Log in at: <a href="${window.location.origin}" style="color: #0284c7;">${window.location.origin}</a></p>

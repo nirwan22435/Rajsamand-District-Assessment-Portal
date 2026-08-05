@@ -194,9 +194,10 @@ ${rawText || 'N/A'}`;
       let htmlContent = '';
 
       const requestOrigin = req.headers.origin || (req.headers.host ? `${req.protocol || 'http'}://${req.headers.host}` : '');
-      const portalUrl = process.env.APP_URL || requestOrigin || 'https://rajsamand.gov.in/assessment';
+      const portalUrl = details?.portalUrl || process.env.APP_URL || requestOrigin || 'https://rajsamand.gov.in/assessment';
 
       if (type === 'CREDENTIALS') {
+        const portalLoginUrl = details?.portalLoginUrl || `${portalUrl}/?login=true&regId=${encodeURIComponent(details?.registrationId || candidateEmail)}`;
         subject = `🔐 Account Login Credentials - Rajsamand District Assessment Portal`;
         htmlContent = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; background-color: #ffffff;">
@@ -210,13 +211,18 @@ ${rawText || 'N/A'}`;
             
             <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; border-radius: 4px; margin: 20px 0;">
               <p style="margin: 0 0 8px 0; color: #1e293b; font-weight: bold;">Login Credentials:</p>
-              <p style="margin: 4px 0; color: #334155;"><strong>Registration ID / Email:</strong> ${candidateEmail}</p>
+              <p style="margin: 4px 0; color: #334155;"><strong>Registration ID / Email:</strong> ${details?.registrationId || candidateEmail}</p>
               <p style="margin: 4px 0; color: #334155;"><strong>Temporary Password:</strong> <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${details?.password || 'Pass@1234'}</code></p>
               <p style="margin: 4px 0; color: #334155;"><strong>Assigned Block/Tehsil:</strong> ${details?.block || 'Rajsamand'}</p>
             </div>
 
             <div style="text-align: center; margin: 28px 0;">
-              <a href="${portalUrl}" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">Access Assessment Portal</a>
+              <a href="${portalLoginUrl}" target="_blank" style="background-color: #2563eb; color: #ffffff !important; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; font-size: 16px;">🔑 Log In to Candidate Portal</a>
+            </div>
+
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px; text-align: center; margin-top: 12px;">
+              <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b; font-weight: bold;">Direct Login Link:</p>
+              <a href="${portalLoginUrl}" target="_blank" style="color: #2563eb; font-size: 12px; word-break: break-all; font-family: monospace;">${portalLoginUrl}</a>
             </div>
 
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
@@ -229,7 +235,7 @@ ${rawText || 'N/A'}`;
         const testIdParam = details?.testId ? `&testId=${encodeURIComponent(details.testId)}` : '';
         const codeParam = details?.accessCode ? `&code=${encodeURIComponent(details.accessCode)}` : '';
         const emailParam = candidateEmail ? `&email=${encodeURIComponent(candidateEmail)}` : '';
-        const testAttemptUrl = `${portalUrl}/?attempt=true${testIdParam}${codeParam}${emailParam}`;
+        const testAttemptUrl = details?.attemptUrl || `${portalUrl}/?attempt=true${testIdParam}${codeParam}${emailParam}`;
 
         htmlContent = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; background-color: #ffffff;">
@@ -251,10 +257,13 @@ ${rawText || 'N/A'}`;
             </div>
 
             <div style="text-align: center; margin: 28px 0;">
-              <a href="${testAttemptUrl}" style="background-color: #16a34a; color: #ffffff; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; font-size: 15px;">🚀 Start Assessment Now</a>
+              <a href="${testAttemptUrl}" target="_blank" style="background-color: #16a34a; color: #ffffff !important; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(22, 163, 74, 0.3);">🚀 Click Here to Start Assessment Now</a>
             </div>
 
-            <p style="text-align: center; font-size: 12px; color: #64748b; margin-top: -10px;">Direct Link: <a href="${testAttemptUrl}" style="color: #16a34a; word-break: break-all;">${testAttemptUrl}</a></p>
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px; text-align: center; margin-top: 12px;">
+              <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b; font-weight: bold;">Direct Candidate Attempt Link:</p>
+              <a href="${testAttemptUrl}" target="_blank" style="color: #16a34a; font-size: 12px; word-break: break-all; font-family: monospace;">${testAttemptUrl}</a>
+            </div>
 
             <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
             <p style="color: #94a3b8; font-size: 12px; text-align: center; margin: 0;">Rajsamand District Education Evaluation Cell</p>

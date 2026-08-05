@@ -177,7 +177,8 @@ export default function App() {
             subject: testToSave.subject,
             duration: testToSave.timeLimitMinutes,
             totalQuestions: testToSave.questions.length,
-            totalMarks: testToSave.totalMarks,
+            portalUrl: window.location.origin,
+            attemptUrl: `${window.location.origin}/?attempt=true&testId=${encodeURIComponent(testToSave.id)}&code=${encodeURIComponent(testToSave.accessCode)}&email=${encodeURIComponent(cand.email)}`,
           },
         });
 
