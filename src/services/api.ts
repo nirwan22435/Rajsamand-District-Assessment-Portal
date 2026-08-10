@@ -11,7 +11,7 @@ export interface ParseTestPaperParams {
 }
 
 export interface SendEmailParams {
-  type: 'CREDENTIALS' | 'TEST_ASSIGNED' | 'TEST_RESULT_NOTIFICATION';
+  type: 'CREDENTIALS' | 'TEST_ASSIGNED' | 'TEST_RESULT_NOTIFICATION' | 'ADMIN_RESET_OTP';
   candidateEmail: string;
   candidateName: string;
   details?: {
@@ -35,6 +35,7 @@ export interface SendEmailParams {
     portalUrl?: string;
     attemptUrl?: string;
     portalLoginUrl?: string;
+    otpCode?: string;
     questions?: MCQQuestion[];
     answers?: QuestionAnswer[];
   };

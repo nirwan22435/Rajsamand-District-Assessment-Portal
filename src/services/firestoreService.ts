@@ -221,3 +221,28 @@ export async function seedInitialDataIfEmpty(
     console.warn('Firestore seeding notice:', err);
   }
 }
+
+// Admin Password Storage Helpers
+export function getStoredAdminPassword(): string {
+  try {
+    const stored = localStorage.getItem('rajsamand_admin_password');
+    if (stored && stored.trim()) return stored.trim();
+  } catch (e) {
+    // Ignore localStorage errors
+  }
+  return 'admin123';
+}
+
+export async function saveStoredAdminPassword(newPassword: string): Promise<void> {
+  try {
+    localStorage.setItem('rajsamand_admin_password', newPassword);
+  } catch (e) {
+    // Ignore localStorage errors
+  }
+  try {
+    const docRef = doc(db, 'settings', 'admin_config');
+    await setDoc(docRef, { password: newPassword, updatedAt: new Date().toISOString() }, { merge: true });
+  } catch (e) {
+    console.warn('Firestore admin config sync notice:', e);
+  }
+}

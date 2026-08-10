@@ -128,7 +128,14 @@ export const handler = async function (event, context) {
                      <p style="margin: 0 0 4px 0; font-size: 12px; color: #64748b; font-weight: bold;">Direct Candidate Attempt Link:</p>
                      <a href="${attemptUrl}" target="_blank" style="color: #16a34a; font-size: 13px; word-break: break-all; font-family: monospace;">${attemptUrl}</a>
                    </div>`
-                : `<p>Your test submission report for <strong>${details.testTitle || 'District Assessment'}</strong> has been processed:</p>
+                : type === 'ADMIN_RESET_OTP'
+                 ? `<p>You requested a password reset for your District Administrator account (<strong>${candidateEmail}</strong>) on the Rajsamand District Portal.</p>
+                    <p style="font-weight: bold; margin-top: 16px; color: #334155;">Your 6-Digit Verification Code (OTP):</p>
+                    <div style="background-color: #f0f9ff; border: 2px dashed #0284c7; padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center;">
+                      <div style="font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #0369a1; font-family: monospace;">${details.otpCode || '482910'}</div>
+                      <p style="margin: 8px 0 0 0; font-size: 12px; color: #0284c7; font-weight: 600;">Valid for 15 minutes • Confidential OTP</p>
+                    </div>`
+                 : `<p>Your test submission report for <strong>${details.testTitle || 'District Assessment'}</strong> has been processed:</p>
                    <div class="cred-box">
                      <div class="cred-row"><strong>Score Obtained:</strong> <span style="font-weight: bold; color: #16a34a;">${details.scoreObtained || 0} / ${details.totalMarks || 100} (${details.scorePercentage || 0}%)</span></div>
                      <div class="cred-row"><strong>Correct Answers:</strong> ${details.correctCount || 0}</div>
@@ -150,7 +157,7 @@ export const handler = async function (event, context) {
           </div>
           <div class="footer">
             <p>This is an automated administrative notification. Please do not reply to this email.</p>
-            <p>&copy; ${new Date().getFullYear()} Office of the District Collector, Rajsamand, Rajasthan.</p>
+            <p>&copy; ${new Date().getFullYear()} Office of District Collector, Rajsamand, Rajasthan.</p>
           </div>
         </div>
       </body>

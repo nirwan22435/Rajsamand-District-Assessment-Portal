@@ -348,6 +348,7 @@ export default function App() {
         onCandidateLogin={(cand) => handleCandidateLogin(cand)}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
+        onLogEmail={(log) => setEmailLogs((prev) => [log, ...prev])}
       />
     );
   }
@@ -535,6 +536,7 @@ export default function App() {
           }}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
+          onLogEmail={(log) => setEmailLogs((prev) => [log, ...prev])}
         />
       )}
     </div>

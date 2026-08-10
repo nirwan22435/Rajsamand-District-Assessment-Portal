@@ -312,6 +312,36 @@ ${rawText || 'N/A'}`;
             <p style="color: #94a3b8; font-size: 12px; text-align: center; margin: 0;">Rajsamand District Assessment & Evaluation Authority</p>
           </div>
         `;
+      } else if (type === 'ADMIN_RESET_OTP') {
+        const otpCode = details?.otpCode || '482910';
+        subject = `🔐 Admin Password Reset OTP: ${otpCode} - Rajsamand District Portal`;
+        htmlContent = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; background-color: #ffffff;">
+            <div style="background-color: #0f172a; padding: 16px; border-radius: 6px; text-align: center; color: #ffffff; margin-bottom: 20px;">
+              <h2 style="margin: 0; font-size: 20px;">Rajsamand District Assessment Portal</h2>
+              <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">Administrator Account Security Verification</p>
+            </div>
+            
+            <p style="color: #334155; font-size: 16px;">Dear <strong>Administrator</strong>,</p>
+            <p style="color: #475569; line-height: 1.5;">You requested a password reset for your District Administrator account (<strong>${candidateEmail}</strong>) on the Rajsamand District Assessment Portal.</p>
+            
+            <p style="color: #475569; font-weight: bold; margin-top: 16px;">Your 6-Digit Email Verification Code (OTP) is:</p>
+            
+            <div style="background-color: #f0f9ff; border: 2px dashed #0284c7; padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center;">
+              <div style="font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #0369a1; font-family: monospace;">${otpCode}</div>
+              <p style="margin: 8px 0 0 0; font-size: 12px; color: #0284c7; font-weight: 600;">Valid for 15 minutes • Do not share this code with anyone</p>
+            </div>
+
+            <p style="color: #64748b; font-size: 13px; line-height: 1.5;">Enter this verification code on the portal reset screen to verify your email identity and set a new password for your Administrator account.</p>
+
+            <div style="text-align: center; margin: 24px 0;">
+              <a href="${portalUrl}/?login=true&role=ADMIN" target="_blank" style="background-color: #0284c7; color: #ffffff !important; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; font-size: 15px;">🔑 Open Admin Portal Reset Screen</a>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+            <p style="color: #94a3b8; font-size: 12px; text-align: center; margin: 0;">Rajsamand District Administration • Department of Information Technology & Communication</p>
+          </div>
+        `;
       }
 
       const adminEmail = 'devkarannirwan01@gmail.com';

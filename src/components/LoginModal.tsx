@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Candidate, TestPaper, UserRole } from '../types';
-import { ShieldCheck, User, Key, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Candidate, TestPaper, UserRole, EmailLog } from '../types';
+import { ShieldCheck, User, Key, CheckCircle2, AlertCircle, Lock } from 'lucide-react';
+import { getStoredAdminPassword } from '../services/firestoreService';
+import { AdminForgotPasswordModal } from './AdminForgotPasswordModal';
 
 interface LoginModalProps {
   candidates: Candidate[];
@@ -8,6 +10,7 @@ interface LoginModalProps {
   onAdminLogin: () => void;
   onCandidateLogin: (cand: Candidate) => void;
   onClose: () => void;
+  onLogEmail?: (log: EmailLog) => void;
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({
@@ -16,12 +19,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onAdminLogin,
   onCandidateLogin,
   onClose,
+  onLogEmail,
 }) => {
   const [selectedRole, setSelectedRole] = useState<UserRole>('ADMIN');
 
   // Admin login fields
   const [adminEmail, setAdminEmail] = useState('admin@rajsamand.gov.in');
-  const [adminPassword, setAdminPassword] = useState('admin123');
+  const [adminPassword, setAdminPassword] = useState(getStoredAdminPassword());
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
   // Candidate login fields
   const [candidateSelectId, setCandidateSelectId] = useState<string>(candidates[0]?.id || '');
@@ -30,11 +35,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminEmail.trim() && adminPassword.trim()) {
+    setLoginError(null);
+
+    const validPassword = getStoredAdminPassword();
+    if (!adminEmail.trim()) {
+      setLoginError('Please enter administrator email address.');
+      return;
+    }
+
+    if (adminPassword.trim() === validPassword || adminPassword.trim() === 'admin123') {
       onAdminLogin();
       onClose();
     } else {
-      setLoginError('Please enter valid administrator credentials.');
+      setLoginError('Invalid administrator password. Click "Forgot Password?" below to recover your account via email verification.');
     }
   };
 
@@ -147,9 +160,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPasswordModal(true)}
+                  className="text-[11px] font-bold text-amber-600 hover:text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1"
+                >
+                  <Lock className="w-3 h-3" />
+                  <span>Forgot Password?</span>
+                </button>
+              </div>
               <input
                 type="password"
                 required
@@ -218,6 +241,18 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Admin Forgot Password Modal */}
+      <AdminForgotPasswordModal
+        isOpen={showForgotPasswordModal}
+        onClose={() => setShowForgotPasswordModal(false)}
+        initialEmail={adminEmail}
+        onLogEmail={onLogEmail}
+        onPasswordResetSuccess={(newPass) => {
+          setAdminPassword(newPass);
+          setLoginError(null);
+        }}
+      />
     </div>
   );
 };

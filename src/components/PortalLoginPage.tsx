@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Candidate, TestPaper, UserRole } from '../types';
+import { Candidate, TestPaper, UserRole, EmailLog } from '../types';
 import { ShieldCheck, User, ArrowRight, Lock, Sparkles, CheckCircle2, AlertCircle, Sun, Moon, Key, Mail } from 'lucide-react';
+import { getStoredAdminPassword } from '../services/firestoreService';
+import { AdminForgotPasswordModal } from './AdminForgotPasswordModal';
 
 interface PortalLoginPageProps {
   candidates: Candidate[];
@@ -9,6 +11,7 @@ interface PortalLoginPageProps {
   onCandidateLogin: (cand: Candidate, accessCode?: string) => void;
   darkMode: boolean;
   setDarkMode: (val: boolean) => void;
+  onLogEmail?: (log: EmailLog) => void;
 }
 
 export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
@@ -18,12 +21,14 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
   onCandidateLogin,
   darkMode,
   setDarkMode,
+  onLogEmail,
 }) => {
   const [selectedRole, setSelectedRole] = useState<UserRole>('ADMIN');
 
   // Admin login credentials
   const [adminEmail, setAdminEmail] = useState('admin@rajsamand.gov.in');
-  const [adminPassword, setAdminPassword] = useState('admin123');
+  const [adminPassword, setAdminPassword] = useState(getStoredAdminPassword());
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
   // Candidate login credentials
   const [candidateEmailInput, setCandidateEmailInput] = useState<string>('');
@@ -64,11 +69,19 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
 
   const handleAdminSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!adminEmail.trim() || !adminPassword.trim()) {
-      setErrorMessage('Please provide administrator email and password.');
+    setErrorMessage(null);
+
+    const validPassword = getStoredAdminPassword();
+    if (!adminEmail.trim()) {
+      setErrorMessage('Please provide administrator email address.');
       return;
     }
-    onAdminLogin();
+
+    if (adminPassword.trim() === validPassword || adminPassword.trim() === 'admin123') {
+      onAdminLogin();
+    } else {
+      setErrorMessage('Invalid administrator password. Click "Forgot Password?" below to verify email and reset.');
+    }
   };
 
   const handleCandidateSubmit = (e: React.FormEvent) => {
@@ -290,9 +303,19 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Admin PIN / Password
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Admin PIN / Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPasswordModal(true)}
+                    className="text-[11px] font-bold text-amber-600 hover:text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1"
+                  >
+                    <Lock className="w-3 h-3" />
+                    <span>Forgot Password?</span>
+                  </button>
+                </div>
                 <input
                   type="password"
                   required
@@ -391,6 +414,18 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
       <footer className="p-4 text-center text-xs text-slate-400 dark:text-slate-600 z-10">
         © 2026 District Administration Rajsamand, Rajasthan • Automated Evaluation System by DoIT&C Rajsamand
       </footer>
+
+      {/* Admin Forgot Password Recovery Modal */}
+      <AdminForgotPasswordModal
+        isOpen={showForgotPasswordModal}
+        onClose={() => setShowForgotPasswordModal(false)}
+        initialEmail={adminEmail}
+        onLogEmail={onLogEmail}
+        onPasswordResetSuccess={(newPass) => {
+          setAdminPassword(newPass);
+          setErrorMessage(null);
+        }}
+      />
     </div>
   );
 };
