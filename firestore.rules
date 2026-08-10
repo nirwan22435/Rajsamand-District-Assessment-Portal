@@ -38,5 +38,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    // Settings collection (for admin configuration and password sync)
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

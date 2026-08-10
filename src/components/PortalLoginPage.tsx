@@ -26,8 +26,8 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
   const [selectedRole, setSelectedRole] = useState<UserRole>('ADMIN');
 
   // Admin login credentials
-  const [adminEmail, setAdminEmail] = useState('admin@rajsamand.gov.in');
-  const [adminPassword, setAdminPassword] = useState(getStoredAdminPassword());
+  const [adminEmail, setAdminEmail] = useState('devkarannirwan01@gmail.com');
+  const [adminPassword, setAdminPassword] = useState('');
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
   // Candidate login credentials
@@ -77,7 +77,7 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
       return;
     }
 
-    if (adminPassword.trim() === validPassword || adminPassword.trim() === 'admin123') {
+    if (adminPassword.trim() === validPassword) {
       onAdminLogin();
     } else {
       setErrorMessage('Invalid administrator password. Click "Forgot Password?" below to verify email and reset.');
@@ -335,7 +335,7 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
               </button>
 
               <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 text-center">
-                Demo Credentials: <strong>admin@rajsamand.gov.in</strong> / <strong>admin123</strong>
+                Administrator Email: <strong>devkarannirwan01@gmail.com</strong>
               </div>
             </form>
           ) : (

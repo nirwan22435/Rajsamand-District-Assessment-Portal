@@ -24,8 +24,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [selectedRole, setSelectedRole] = useState<UserRole>('ADMIN');
 
   // Admin login fields
-  const [adminEmail, setAdminEmail] = useState('admin@rajsamand.gov.in');
-  const [adminPassword, setAdminPassword] = useState(getStoredAdminPassword());
+  const [adminEmail, setAdminEmail] = useState('devkarannirwan01@gmail.com');
+  const [adminPassword, setAdminPassword] = useState('');
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
   // Candidate login fields
@@ -43,7 +43,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
-    if (adminPassword.trim() === validPassword || adminPassword.trim() === 'admin123') {
+    if (adminPassword.trim() === validPassword) {
       onAdminLogin();
       onClose();
     } else {

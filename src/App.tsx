@@ -24,6 +24,7 @@ import {
   subscribeTests,
   subscribeAttempts,
   subscribeEmailLogs,
+  subscribeAdminPassword,
   saveCandidateToFirestore,
   toggleCandidateStatusInFirestore,
   saveTestToFirestore,
@@ -85,11 +86,16 @@ export default function App() {
       if (data.length > 0) setEmailLogs(data);
     });
 
+    const unsubAdmin = subscribeAdminPassword(() => {
+      // Sync admin password in real-time
+    });
+
     return () => {
       unsubCand();
       unsubTests();
       unsubAttempts();
       unsubLogs();
+      unsubAdmin();
     };
   }, []);
 

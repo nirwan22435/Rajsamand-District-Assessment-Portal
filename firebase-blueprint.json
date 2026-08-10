@@ -70,6 +70,15 @@
         "status": { "type": "string", "maxLength": 32 }
       },
       "required": ["toEmail", "type", "sentAt"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "System settings and administrator configuration",
+      "type": "object",
+      "properties": {
+        "password": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      }
     }
   },
   "firestore": {
@@ -88,6 +97,10 @@
     "/email_logs/{logId}": {
       "schema": "EmailLog",
       "description": "Collection of audit logs for email notifications"
+    },
+    "/settings/{settingId}": {
+      "schema": "Setting",
+      "description": "Collection of system configuration settings"
     }
   }
 }

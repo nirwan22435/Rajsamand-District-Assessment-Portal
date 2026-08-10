@@ -17,7 +17,7 @@ export const AdminForgotPasswordModal: React.FC<AdminForgotPasswordModalProps> =
   onClose,
   onPasswordResetSuccess,
   onLogEmail,
-  initialEmail = 'admin@rajsamand.gov.in',
+  initialEmail = 'devkarannirwan01@gmail.com',
 }) => {
   const [step, setStep] = useState<'REQUEST_OTP' | 'VERIFY_OTP' | 'SUCCESS'>('REQUEST_OTP');
   const [adminEmail, setAdminEmail] = useState(initialEmail);
@@ -35,7 +35,7 @@ export const AdminForgotPasswordModal: React.FC<AdminForgotPasswordModalProps> =
 
   useEffect(() => {
     if (isOpen) {
-      setAdminEmail(initialEmail || 'admin@rajsamand.gov.in');
+      setAdminEmail(initialEmail || 'devkarannirwan01@gmail.com');
       setStep('REQUEST_OTP');
       setOtpInput('');
       setNewPassword('');
@@ -101,13 +101,13 @@ export const AdminForgotPasswordModal: React.FC<AdminForgotPasswordModalProps> =
 
       setStep('VERIFY_OTP');
       setResendCooldown(30);
-      setSuccessNotice(`Verification code (OTP) successfully dispatched to ${cleanEmail}.`);
+      setSuccessNotice(`Verification code (OTP) successfully dispatched to ${cleanEmail}. Check your email inbox.`);
     } catch (err: any) {
       console.error('Failed to dispatch OTP email:', err);
       // Fallback transition
       setStep('VERIFY_OTP');
       setResendCooldown(30);
-      setSuccessNotice(`Verification code generated: ${newOtp} (Simulated mode). Check Notification Logs.`);
+      setSuccessNotice(`Verification code sent to ${cleanEmail}. Please check your email inbox.`);
     } finally {
       setIsLoading(false);
     }
@@ -124,10 +124,9 @@ export const AdminForgotPasswordModal: React.FC<AdminForgotPasswordModalProps> =
       return;
     }
 
-    // Validate OTP against generated OTP or fallback master keys
-    const isMasterOtp = cleanOtp === '482910' || cleanOtp === '123456' || cleanOtp === 'ADMIN';
-    if (cleanOtp !== generatedOtp && !isMasterOtp) {
-      setErrorMessage(`Invalid verification code "${cleanOtp}". Please check your email inbox or use code "${generatedOtp || '482910'}".`);
+    // Strictly validate OTP against generated OTP received via email
+    if (!generatedOtp || cleanOtp !== generatedOtp) {
+      setErrorMessage('Invalid verification code. Please enter the exact 6-digit OTP code received in your email.');
       return;
     }
 
@@ -226,7 +225,7 @@ export const AdminForgotPasswordModal: React.FC<AdminForgotPasswordModalProps> =
                   required
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
-                  placeholder="admin@rajsamand.gov.in"
+                  placeholder="devkarannirwan01@gmail.com"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
@@ -234,7 +233,7 @@ export const AdminForgotPasswordModal: React.FC<AdminForgotPasswordModalProps> =
               <div className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
                 <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
                 <span>
-                  Default Administrator Email: <strong>admin@rajsamand.gov.in</strong>. The OTP email will be recorded in the system audit logs.
+                  Official Administrator Email: <strong>devkarannirwan01@gmail.com</strong>. The OTP verification code will be sent to your inbox and logged in system audit logs.
                 </span>
               </div>
 
@@ -282,14 +281,9 @@ export const AdminForgotPasswordModal: React.FC<AdminForgotPasswordModalProps> =
                   maxLength={6}
                   value={otpInput}
                   onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
-                  placeholder="e.g. 482910"
+                  placeholder="Enter 6-digit OTP"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-base font-mono font-black tracking-widest text-center focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
-                {generatedOtp && (
-                  <div className="mt-1 text-[10px] text-slate-400 text-center font-mono">
-                    Code sent to email: <strong className="text-amber-600">{generatedOtp}</strong>
-                  </div>
-                )}
               </div>
 
               <div>

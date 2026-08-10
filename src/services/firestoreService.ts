@@ -222,11 +222,19 @@ export async function seedInitialDataIfEmpty(
   }
 }
 
-// Admin Password Storage Helpers
+// Admin Password Storage Helpers & Realtime Sync
+let inMemoryAdminPassword: string | null = null;
+
 export function getStoredAdminPassword(): string {
+  if (inMemoryAdminPassword && inMemoryAdminPassword.trim()) {
+    return inMemoryAdminPassword.trim();
+  }
   try {
     const stored = localStorage.getItem('rajsamand_admin_password');
-    if (stored && stored.trim()) return stored.trim();
+    if (stored && stored.trim()) {
+      inMemoryAdminPassword = stored.trim();
+      return stored.trim();
+    }
   } catch (e) {
     // Ignore localStorage errors
   }
@@ -234,15 +242,42 @@ export function getStoredAdminPassword(): string {
 }
 
 export async function saveStoredAdminPassword(newPassword: string): Promise<void> {
+  const cleanPass = newPassword.trim();
+  inMemoryAdminPassword = cleanPass;
   try {
-    localStorage.setItem('rajsamand_admin_password', newPassword);
+    localStorage.setItem('rajsamand_admin_password', cleanPass);
   } catch (e) {
     // Ignore localStorage errors
   }
   try {
     const docRef = doc(db, 'settings', 'admin_config');
-    await setDoc(docRef, { password: newPassword, updatedAt: new Date().toISOString() }, { merge: true });
+    await setDoc(docRef, { password: cleanPass, updatedAt: new Date().toISOString() }, { merge: true });
   } catch (e) {
     console.warn('Firestore admin config sync notice:', e);
   }
+}
+
+export function subscribeAdminPassword(onPasswordChange: (password: string) => void) {
+  const docRef = doc(db, 'settings', 'admin_config');
+  return onSnapshot(
+    docRef,
+    (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data && data.password && typeof data.password === 'string') {
+          const pass = data.password.trim();
+          inMemoryAdminPassword = pass;
+          try {
+            localStorage.setItem('rajsamand_admin_password', pass);
+          } catch (e) {
+            // Ignore
+          }
+          onPasswordChange(pass);
+        }
+      }
+    },
+    (err) => {
+      console.warn('Firestore admin config listener notice:', err);
+    }
+  );
 }
