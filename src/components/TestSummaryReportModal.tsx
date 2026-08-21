@@ -251,7 +251,6 @@ export const TestSummaryReportModal: React.FC<TestSummaryReportModalProps> = ({
                       <th className="px-4 py-3 text-center">Rank</th>
                       <th className="px-4 py-3">Candidate Name</th>
                       <th className="px-4 py-3">Registration ID</th>
-                      <th className="px-4 py-3">Block / Tehsil</th>
                       <th className="px-4 py-3 text-center">Score</th>
                       <th className="px-4 py-3 text-center">Percentage</th>
                       <th className="px-4 py-3 text-center">Time Spent</th>
@@ -264,7 +263,6 @@ export const TestSummaryReportModal: React.FC<TestSummaryReportModalProps> = ({
                       const rank = index + 1;
                       const matchedCandidate = candidates.find((c) => c.id === att.candidateId);
                       const regId = matchedCandidate?.registrationId || 'RJ-2026';
-                      const blockName = att.block || matchedCandidate?.block || 'District-Wide';
 
                       let rankBadge = (
                         <span className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold flex items-center justify-center mx-auto text-[11px]">
@@ -301,9 +299,6 @@ export const TestSummaryReportModal: React.FC<TestSummaryReportModalProps> = ({
                           <td className="px-4 py-3 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
                             {regId}
                           </td>
-                          <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-300">
-                            {blockName}
-                          </td>
                           <td className="px-4 py-3 text-center font-bold text-slate-900 dark:text-white">
                             {att.scoreObtained} / {att.totalMarks}
                           </td>
@@ -334,7 +329,6 @@ export const TestSummaryReportModal: React.FC<TestSummaryReportModalProps> = ({
                                   candidateName: att.candidateName,
                                   candidateEmail: att.candidateEmail,
                                   registrationId: regId,
-                                  block: blockName,
                                   testTitle: test.title,
                                   subject: test.subject,
                                   scoreObtained: att.scoreObtained,

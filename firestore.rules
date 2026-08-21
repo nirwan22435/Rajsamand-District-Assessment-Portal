@@ -44,5 +44,17 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    // Typing tests collection
+    match /typing_tests/{testId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Typing attempts collection
+    match /typing_attempts/{attemptId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

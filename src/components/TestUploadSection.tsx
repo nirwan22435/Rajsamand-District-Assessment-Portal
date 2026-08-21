@@ -73,7 +73,6 @@ export const TestUploadSection: React.FC<TestUploadSectionProps> = ({
       : []
   );
   const [assignSearchTerm, setAssignSearchTerm] = useState<string>('');
-  const [assignBlockFilter, setAssignBlockFilter] = useState<string>('ALL');
 
   // Candidate assignment helpers
   const handleToggleCandidateAssignment = (candId: string) => {
@@ -96,8 +95,7 @@ export const TestUploadSection: React.FC<TestUploadSectionProps> = ({
       c.name.toLowerCase().includes(assignSearchTerm.toLowerCase()) ||
       c.email.toLowerCase().includes(assignSearchTerm.toLowerCase()) ||
       c.registrationId.toLowerCase().includes(assignSearchTerm.toLowerCase());
-    const matchesBlock = assignBlockFilter === 'ALL' || c.block === assignBlockFilter;
-    return matchesSearch && matchesBlock;
+    return matchesSearch;
   });
   
   // Parsing State
@@ -446,7 +444,7 @@ Correct Answer: A`);
     const calcCount = assignmentScope === 'SELECTED'
       ? selectedCandidateIds.length
       : candidates && candidates.length > 0
-        ? candidates.filter(c => c.activeStatus && (targetBlock === 'District-Wide' || c.block === targetBlock)).length
+        ? candidates.filter(c => c.activeStatus).length
         : 'All';
 
     setPublishedModalData({
@@ -464,107 +462,93 @@ Correct Answer: A`);
   };
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Title & Mode Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+    <div className="space-y-6 pb-12">
+      {/* Header Banner Card */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 p-6 sm:p-8 rounded-2xl text-white shadow-xl">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-            {editingTest ? `Edit Assessment: ${editingTest.title}` : 'Create New Test Paper'}
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Create or edit test papers manually or convert PDF / Image documents using AI.
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-semibold uppercase tracking-wider mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            AI Assessment Generator & Multimodal OCR
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            {editingTest ? `Edit Assessment: ${editingTest.title}` : 'Create New Assessment Paper'}
+          </h1>
+          <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
+            Upload PDF/scanned question papers for instant AI extraction or build customized MCQ assessments manually.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 self-start sm:self-auto">
           {editingTest && onCancelEdit && (
             <button
               type="button"
               onClick={onCancelEdit}
-              className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all"
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer backdrop-blur-xs border border-white/10"
             >
               Cancel Editing
             </button>
           )}
 
-          <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold">
+          <div className="inline-flex p-1 rounded-xl bg-black/30 border border-white/10 text-xs font-bold backdrop-blur-xs">
             <button
               type="button"
               onClick={() => setCreationMode('AI')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                 creationMode === 'AI'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400'
+                  ? 'bg-emerald-500 text-slate-950 font-extrabold shadow-sm'
+                  : 'text-white/80 hover:text-white'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5" /> Create New Test (AI)
+              <Sparkles className="w-3.5 h-3.5" /> <span>AI Multimodal Paper</span>
             </button>
             <button
               type="button"
               onClick={handleSwitchToManual}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                 creationMode === 'MANUAL'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400'
+                  ? 'bg-emerald-500 text-slate-950 font-extrabold shadow-sm'
+                  : 'text-white/80 hover:text-white'
               }`}
             >
-              <Edit3 className="w-3.5 h-3.5" /> Manual Entry
+              <Edit3 className="w-3.5 h-3.5" /> <span>Manual Entry</span>
             </button>
           </div>
         </div>
       </div>
 
       {notificationMsg && (
-        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 flex items-center gap-3">
-          <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm font-medium">{notificationMsg}</span>
+        <div className="p-4 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+            <span className="text-xs font-bold">{notificationMsg}</span>
+          </div>
+          <button onClick={() => setNotificationMsg(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold">✕</button>
         </div>
       )}
 
-      {/* Step 1: Upload & Configuration Panel */}
+      {/* Step 1 & 2: Upload & Configuration Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Config Inputs */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-          <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+        {/* Config Inputs Card */}
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
+          <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <BookOpen className="w-4 h-4 text-emerald-600" />
-            1. Test Metadata Settings
+            <span>1. Test Metadata Settings</span>
           </h3>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               Subject Name
             </label>
             <input
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Target Tehsil / District Block
-            </label>
-            <select
-              value={targetBlock}
-              onChange={(e) => setTargetBlock(e.target.value as DistrictBlock)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            >
-              <option value="District-Wide">District-Wide (All Rajsamand Tehsils)</option>
-              <option value="Nathdwara">Nathdwara Tehsil</option>
-              <option value="Kumbhalgarh">Kumbhalgarh Tehsil</option>
-              <option value="Bhim">Bhim Tehsil</option>
-              <option value="Rajsamand">Rajsamand Tehsil</option>
-              <option value="Amet">Amet Tehsil</option>
-              <option value="Deogarh">Deogarh Tehsil</option>
-              <option value="Railmagra">Railmagra Tehsil</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               Test Duration (Minutes)
             </label>
             <input
@@ -577,13 +561,13 @@ Correct Answer: A`);
                 setTimeLimit(val);
                 if (parsedTest) setParsedTest({ ...parsedTest, timeLimitMinutes: val });
               }}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                 Total Marks
               </label>
               <input
@@ -596,12 +580,12 @@ Correct Answer: A`);
                   setTotalMarks(val);
                   if (parsedTest) setParsedTest({ ...parsedTest, totalMarks: val });
                 }}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                 Passing Marks
               </label>
               <input
@@ -614,20 +598,20 @@ Correct Answer: A`);
                   setPassingMarks(val);
                   if (parsedTest) setParsedTest({ ...parsedTest, passingMarks: val });
                 }}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold text-emerald-700 dark:text-emerald-400 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold text-emerald-700 dark:text-emerald-400 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                 Test Access Code (For Candidates)
               </label>
               <button
                 type="button"
                 onClick={() => setAccessCode(`RJ-${Math.floor(1000 + Math.random() * 9000)}`)}
-                className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+                className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold hover:underline cursor-pointer"
               >
                 Auto-Generate
               </button>
@@ -636,38 +620,38 @@ Correct Answer: A`);
               type="text"
               value={accessCode}
               onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
-              placeholder="e.g. RJ-8829 or custom code"
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none tracking-wide"
+              placeholder="e.g. RJ-8829"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none tracking-wider"
             />
             <p className="text-[10px] text-slate-400 mt-1">
-              Candidates enter this code along with their Email ID during login to unlock & attempt this test.
+              Candidates enter this code along with their credentials to access the test.
             </p>
           </div>
 
           {/* Quick Preset Samples */}
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-2">
-              Load Preset Sample Test Papers:
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-2">
+              Preset Sample Test Papers:
             </span>
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
                 onClick={() => handleLoadSamplePaper('GK')}
-                className="px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-medium hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors"
+                className="px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors cursor-pointer"
               >
                 Rajsamand GK
               </button>
               <button
                 type="button"
                 onClick={() => handleLoadSamplePaper('SCIENCE')}
-                className="px-2.5 py-1 rounded-md bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 text-xs font-medium hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors"
+                className="px-2.5 py-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 text-xs font-bold hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors cursor-pointer"
               >
                 Science
               </button>
               <button
                 type="button"
                 onClick={() => handleLoadSamplePaper('MATH')}
-                className="px-2.5 py-1 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 text-xs font-medium hover:bg-purple-100 dark:hover:bg-purple-900 transition-colors"
+                className="px-2.5 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold hover:bg-purple-100 dark:hover:bg-purple-900 transition-colors cursor-pointer"
               >
                 Mathematics
               </button>
@@ -675,32 +659,32 @@ Correct Answer: A`);
           </div>
         </div>
 
-        {/* File Upload / Text Area */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+        {/* File Upload / Text Area Card */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4 border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
                 <Upload className="w-4 h-4 text-emerald-600" />
-                2. Test Paper Source File
+                <span>2. Test Paper Source File</span>
               </h3>
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-medium">
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700/50 text-xs font-bold">
                 <button
                   type="button"
                   onClick={() => setUploadMethod('FILE')}
-                  className={`px-3 py-1 rounded-md transition-all ${
+                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                     uploadMethod === 'FILE'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-bold shadow-sm'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-black shadow-xs'
                       : 'text-slate-500'
                   }`}
                 >
-                  Upload File (PDF / JPG / DOCX)
+                  Upload File
                 </button>
                 <button
                   type="button"
                   onClick={() => setUploadMethod('TEXT')}
-                  className={`px-3 py-1 rounded-md transition-all ${
+                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                     uploadMethod === 'TEXT'
-                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-bold shadow-sm'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-black shadow-xs'
                       : 'text-slate-500'
                   }`}
                 >
@@ -710,18 +694,20 @@ Correct Answer: A`);
             </div>
 
             {uploadMethod === 'FILE' ? (
-              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-8 text-center bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-100/50 dark:hover:bg-slate-800/60 transition-all cursor-pointer relative">
+              <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-100/50 dark:hover:bg-slate-800/60 transition-all cursor-pointer relative">
                 <input
                   type="file"
                   accept="image/*,application/pdf,.doc,.docx,text/plain"
                   onChange={handleFileChange}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
-                <Upload className="w-10 h-10 text-emerald-600 dark:text-emerald-400 mx-auto mb-2" />
-                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                  <Upload className="w-6 h-6" />
+                </div>
+                <p className="text-sm font-black text-slate-800 dark:text-slate-200">
                   {selectedFile ? selectedFile.name : 'Click or Drag Test Paper File Here'}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
                   Supports scanned PDF, question paper photos (JPG/PNG), DOCX or TXT files
                 </p>
               </div>
@@ -732,7 +718,7 @@ Correct Answer: A`);
                   placeholder="Paste question paper text here (Questions, Choices A/B/C/D, Answer Key)..."
                   value={pastedText}
                   onChange={(e) => setPastedText(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-mono focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
               </div>
             )}
@@ -751,7 +737,7 @@ Correct Answer: A`);
                         setParseError(null);
                         handleLoadSamplePaper('GK');
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1"
+                      className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1 cursor-pointer"
                     >
                       <Sparkles className="w-3.5 h-3.5" /> Load Sample Paper Text
                     </button>
@@ -763,7 +749,7 @@ Correct Answer: A`);
                         setUploadMethod('TEXT');
                         handleLoadSamplePaper('GK');
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1"
+                      className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1 cursor-pointer"
                     >
                       <Sparkles className="w-3.5 h-3.5" /> Use Sample Text Instead
                     </button>
@@ -774,8 +760,8 @@ Correct Answer: A`);
           </div>
 
           <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <span className="text-xs text-slate-500 dark:text-slate-400">
-              Powered by Gemini 3.6 Flash Server-Side Multimodal AI
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Multimodal Question Extraction Engine
             </span>
 
             <button
@@ -783,11 +769,11 @@ Correct Answer: A`);
               type="button"
               onClick={handleParseWithAI}
               disabled={isParsing}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-sm shadow-md transition-all flex items-center space-x-2 disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs shadow-md transition-all flex items-center space-x-2 disabled:opacity-50 cursor-pointer active:scale-95"
             >
               {isParsing ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                   <span>Converting Paper to MCQs...</span>
                 </>
               ) : (
@@ -802,40 +788,40 @@ Correct Answer: A`);
       </div>
 
       {/* Step 3: Candidate Assignment & Notification Scope */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Users className="w-5 h-5 text-emerald-600" />
-              3. Candidate Assignment & Notification Scope
+            <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+              <Users className="w-4 h-4 text-emerald-600" />
+              <span>3. Candidate Assignment & Notification Scope</span>
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Select whether this test is open to all candidates in the block or assigned strictly to specific candidates.
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+              Select whether this assessment is open to all candidates in the block or assigned strictly to specific candidates.
             </p>
           </div>
 
-          <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold">
+          <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 text-xs font-bold">
             <button
               type="button"
               onClick={() => setAssignmentScope('ALL')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                 assignmentScope === 'ALL'
-                  ? 'bg-emerald-600 text-white shadow-sm font-extrabold'
+                  ? 'bg-emerald-600 text-white shadow-xs font-extrabold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <Globe className="w-3.5 h-3.5" /> All Candidates
+              <Globe className="w-3.5 h-3.5" /> <span>All Candidates</span>
             </button>
             <button
               type="button"
               onClick={() => setAssignmentScope('SELECTED')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                 assignmentScope === 'SELECTED'
-                  ? 'bg-emerald-600 text-white shadow-sm font-extrabold'
+                  ? 'bg-emerald-600 text-white shadow-xs font-extrabold'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <UserCheck className="w-3.5 h-3.5" /> Selected Candidates Only ({selectedCandidateIds.length})
+              <UserCheck className="w-3.5 h-3.5" /> <span>Selected Candidates ({selectedCandidateIds.length})</span>
             </button>
           </div>
         </div>
@@ -844,14 +830,14 @@ Correct Answer: A`);
           <div className="p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs flex items-center gap-3">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
             <div>
-              <p className="font-bold">Broadcast Mode (All Block Candidates)</p>
-              <p className="text-[11px] opacity-90">
-                This test will be available to <strong>all candidates</strong> registered in the selected Tehsil (<em>"{targetBlock}"</em>). Notification emails will be sent to all active candidates in this block.
+              <p className="font-bold">Broadcast Mode (All Registered Candidates)</p>
+              <p className="text-[11px] opacity-90 mt-0.5">
+                This assessment will be accessible to <strong>all registered candidates</strong>. Notification emails will be dispatched to all active accounts upon publication.
               </p>
             </div>
           </div>
         ) : (
-          <div className="space-y-4 pt-1">
+          <div className="space-y-3 pt-1">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-2 flex-1 max-w-md">
                 <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
@@ -860,39 +846,24 @@ Correct Answer: A`);
                   placeholder="Search candidates by name, email, or Reg ID..."
                   value={assignSearchTerm}
                   onChange={(e) => setAssignSearchTerm(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-white dark:bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                 />
               </div>
 
               <div className="flex items-center gap-2">
-                <select
-                  value={assignBlockFilter}
-                  onChange={(e) => setAssignBlockFilter(e.target.value)}
-                  className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-medium"
-                >
-                  <option value="ALL">All Tehsils / Blocks</option>
-                  <option value="Nathdwara">Nathdwara</option>
-                  <option value="Kumbhalgarh">Kumbhalgarh</option>
-                  <option value="Bhim">Bhim</option>
-                  <option value="Rajsamand">Rajsamand</option>
-                  <option value="Amet">Amet</option>
-                  <option value="Deogarh">Deogarh</option>
-                  <option value="Railmagra">Railmagra</option>
-                </select>
-
                 <button
                   type="button"
                   onClick={() => handleSelectAllFilteredCandidates(assignFilteredCandidates)}
-                  className="px-2.5 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-200 transition-colors"
+                  className="px-3 py-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-200 transition-colors cursor-pointer"
                 >
                   Select All
                 </button>
                 <button
                   type="button"
                   onClick={handleClearCandidateAssignments}
-                  className="px-2.5 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-300 transition-colors"
+                  className="px-3 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-300 transition-colors cursor-pointer"
                 >
-                  Clear Selection
+                  Clear
                 </button>
               </div>
             </div>
@@ -922,25 +893,25 @@ Correct Answer: A`);
                               {cand.registrationId}
                             </span>
                           </div>
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400">{cand.email} • {cand.block} Tehsil</span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{cand.email}</span>
                         </div>
                       </div>
 
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cand.activeStatus ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}`}>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cand.activeStatus ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
                         {cand.activeStatus ? 'Active' : 'Disabled'}
                       </span>
                     </label>
                   );
                 })
               ) : (
-                <div className="p-6 text-center text-xs text-slate-400">No registered candidates found matching search.</div>
+                <div className="p-6 text-center text-xs text-slate-400 font-medium">No registered candidates found matching search.</div>
               )}
             </div>
 
             <div className="p-3 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 text-sky-900 dark:text-sky-200 text-xs flex items-center gap-2">
               <Mail className="w-4 h-4 text-sky-600 flex-shrink-0" />
               <span>
-                <strong>Targeted Dispatch:</strong> Only the <strong>{selectedCandidateIds.length} candidate(s)</strong> selected above will receive email notifications and be granted portal access to this assessment.
+                <strong>Targeted Dispatch:</strong> Only the <strong>{selectedCandidateIds.length} candidate(s)</strong> selected above will receive email notifications and be granted access.
               </span>
             </div>
           </div>
@@ -949,17 +920,17 @@ Correct Answer: A`);
 
       {/* Step 4: Interactive MCQ Review & Editor */}
       {parsedTest && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md space-y-6">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-semibold mb-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold mb-1">
                 Extracted & Editable MCQ Draft
               </div>
               <input
                 type="text"
                 value={parsedTest.testTitle}
                 onChange={(e) => setParsedTest({ ...parsedTest, testTitle: e.target.value })}
-                className="text-xl font-extrabold text-slate-900 dark:text-white bg-transparent border-b border-dashed border-slate-300 dark:border-slate-700 focus:outline-none focus:border-emerald-500 w-full"
+                className="text-xl font-black text-slate-900 dark:text-white bg-transparent border-b border-dashed border-slate-300 dark:border-slate-700 focus:outline-none focus:border-emerald-500 w-full"
               />
             </div>
 
@@ -967,33 +938,33 @@ Correct Answer: A`);
               <button
                 type="button"
                 onClick={handleAddQuestion}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1"
+                className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" /> Add Question
+                <Plus className="w-3.5 h-3.5" /> <span>Add Question</span>
               </button>
 
               <button
                 id="publish-test-btn"
                 type="button"
                 onClick={handlePublishTest}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md transition-all flex items-center space-x-2"
+                className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs sm:text-sm shadow-md transition-all flex items-center space-x-2 cursor-pointer active:scale-95"
               >
                 <Send className="w-4 h-4" />
-                <span>Publish Test & Notify Candidates</span>
+                <span>Publish Test & Notify</span>
               </button>
             </div>
           </div>
 
-          {/* Test Parameters Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-xs items-center">
+          {/* Test Parameters Bar Card */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-4 rounded-xl bg-slate-50/80 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 text-xs items-center">
             <div>
-              <span className="text-slate-500 dark:text-slate-400 block font-medium">Total Questions:</span>
-              <span className="font-bold text-slate-900 dark:text-white text-sm">{parsedTest.questions.length} MCQs</span>
+              <span className="text-slate-500 dark:text-slate-400 block font-semibold">Total Questions:</span>
+              <span className="font-black text-slate-900 dark:text-white text-sm mt-0.5 block">{parsedTest.questions.length} MCQs</span>
             </div>
             <div>
-              <label htmlFor="marks-per-question-input" className="text-slate-500 dark:text-slate-400 block font-medium flex items-center gap-1">
+              <label htmlFor="marks-per-question-input" className="text-slate-500 dark:text-slate-400 block font-semibold flex items-center gap-1">
                 <Award className="w-3.5 h-3.5 text-amber-500" />
-                Marks Per Question:
+                <span>Marks Per Question:</span>
               </label>
               <div className="flex items-center gap-1.5 mt-1">
                 <input
@@ -1003,34 +974,34 @@ Correct Answer: A`);
                   max={100}
                   value={parsedTest.questions[0]?.marks ?? 4}
                   onChange={(e) => handleUpdateMarksPerQuestion(parseInt(e.target.value, 10) || 1)}
-                  className="w-16 px-2.5 py-1 text-xs font-extrabold text-center text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs"
+                  className="w-16 px-2 py-1 text-xs font-black text-center text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs"
                 />
-                <span className="text-slate-500 font-semibold">Marks</span>
+                <span className="text-slate-500 font-bold">Marks</span>
               </div>
             </div>
             <div>
-              <span className="text-slate-500 dark:text-slate-400 block font-medium">Total Marks:</span>
-              <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">{parsedTest.totalMarks} Marks</span>
+              <span className="text-slate-500 dark:text-slate-400 block font-semibold">Total Marks:</span>
+              <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm mt-0.5 block">{parsedTest.totalMarks} Marks</span>
             </div>
             <div>
-              <span className="text-slate-500 dark:text-slate-400 block font-medium">Passing Marks:</span>
-              <span className="font-bold text-slate-900 dark:text-white text-sm">{parsedTest.passingMarks} Marks</span>
+              <span className="text-slate-500 dark:text-slate-400 block font-semibold">Passing Marks:</span>
+              <span className="font-black text-slate-900 dark:text-white text-sm mt-0.5 block">{parsedTest.passingMarks} Marks</span>
             </div>
             <div>
-              <span className="text-slate-500 dark:text-slate-400 block font-medium">Duration:</span>
-              <span className="font-bold text-slate-900 dark:text-white text-sm">{parsedTest.timeLimitMinutes} Mins</span>
+              <span className="text-slate-500 dark:text-slate-400 block font-semibold">Duration:</span>
+              <span className="font-black text-slate-900 dark:text-white text-sm mt-0.5 block">{parsedTest.timeLimitMinutes} Mins</span>
             </div>
           </div>
 
-          {/* Question List */}
-          <div className="space-y-6">
+          {/* Question List Cards */}
+          <div className="space-y-4">
             {parsedTest.questions.map((q, qIndex) => (
               <div
                 key={q.id}
-                className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-4"
+                className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <span className="w-7 h-7 rounded-lg bg-emerald-600 text-white font-bold text-xs flex items-center justify-center flex-shrink-0">
+                  <span className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs flex items-center justify-center flex-shrink-0 shadow-xs">
                     Q{qIndex + 1}
                   </span>
                   <div className="flex-1">
@@ -1038,28 +1009,28 @@ Correct Answer: A`);
                       rows={2}
                       value={q.questionText}
                       onChange={(e) => handleUpdateQuestionText(qIndex, e.target.value)}
-                      className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => handleDeleteQuestion(qIndex)}
-                    className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
+                    className="p-2 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
 
                 {/* Options Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-10">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:pl-11">
                   {q.options.map((optText, optIndex) => {
                     const isCorrect = q.correctOptionIndex === optIndex;
                     return (
                       <div
                         key={optIndex}
-                        className={`flex items-center space-x-2 p-2 rounded-xl border transition-all ${
+                        className={`flex items-center space-x-2 p-2.5 rounded-xl border transition-all ${
                           isCorrect
-                            ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-400 dark:border-emerald-600'
+                            ? 'bg-emerald-50/80 dark:bg-emerald-950/60 border-emerald-400 dark:border-emerald-600 shadow-xs'
                             : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
                         }`}
                       >
@@ -1070,30 +1041,30 @@ Correct Answer: A`);
                           onChange={() => handleSetCorrectOption(qIndex, optIndex)}
                           className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                         />
-                        <span className="font-bold text-slate-500 text-xs w-4">
+                        <span className="font-black text-slate-500 text-xs w-4">
                           {String.fromCharCode(65 + optIndex)}:
                         </span>
                         <input
                           type="text"
                           value={optText}
                           onChange={(e) => handleUpdateOption(qIndex, optIndex, e.target.value)}
-                          className="w-full bg-transparent text-xs text-slate-900 dark:text-white focus:outline-none"
+                          className="w-full bg-transparent text-xs text-slate-900 dark:text-white focus:outline-none font-medium"
                         />
                       </div>
                     );
                   })}
                 </div>
 
-                {/* Explanation Input */}
-                <div className="pl-10">
-                  <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                    AI Solution Explanation:
+                {/* Explanation Input Card */}
+                <div className="sm:pl-11">
+                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
+                    Solution Explanation & Notes:
                   </label>
                   <input
                     type="text"
                     value={q.explanation}
                     onChange={(e) => handleUpdateExplanation(qIndex, e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none font-medium"
                   />
                 </div>
               </div>

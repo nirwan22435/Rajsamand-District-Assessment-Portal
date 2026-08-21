@@ -1,19 +1,5 @@
 export type UserRole = 'ADMIN' | 'CANDIDATE';
 
-export interface Candidate {
-  id: string;
-  registrationId: string; // e.g. RJ-2026-101
-  name: string;
-  email: string;
-  phone: string;
-  block: DistrictBlock; // e.g., Nathdwara, Kumbhalgarh, Bhim, Rajsamand, Amet, Deogarh, Railmagra
-  category: 'General' | 'OBC' | 'SC' | 'ST' | 'EWS';
-  activeStatus: boolean;
-  password: string;
-  createdAt: string;
-  avatarUrl?: string;
-}
-
 export type DistrictBlock =
   | 'Nathdwara'
   | 'Kumbhalgarh'
@@ -23,6 +9,24 @@ export type DistrictBlock =
   | 'Deogarh'
   | 'Railmagra'
   | 'District-Wide';
+
+export type TypingLanguage = 'ENGLISH' | 'HINDI_DEVLYS_010';
+
+export interface Candidate {
+  id: string;
+  registrationId: string; // e.g. RJ-2026-101 or TYP-2026-001
+  name: string;
+  designation?: string; // e.g. LDC / Clerk Grade-II, Jr Assistant, IA, Stenographer, DEO
+  officeName?: string; // e.g. District Collectorate Rajsamand, SDM Office, Tehsil Office
+  typingMedium?: TypingLanguage; // Medium of typing: ENGLISH or HINDI_DEVLYS_010
+  email: string;
+  phone: string;
+  block?: DistrictBlock;
+  activeStatus: boolean;
+  password: string;
+  createdAt: string;
+  avatarUrl?: string;
+}
 
 export interface MCQQuestion {
   id: string;
@@ -37,7 +41,7 @@ export interface TestPaper {
   id: string;
   title: string;
   subject: string;
-  targetBlock: DistrictBlock;
+  targetBlock?: DistrictBlock;
   timeLimitMinutes: number;
   totalMarks: number;
   passingMarks: number;
@@ -64,7 +68,7 @@ export interface TestAttempt {
   candidateId: string;
   candidateName: string;
   candidateEmail: string;
-  block: DistrictBlock;
+  block?: DistrictBlock;
   scoreObtained: number;
   totalMarks: number;
   scorePercentage: number;
@@ -94,3 +98,49 @@ export interface EmailLog {
   details?: Record<string, any>;
   previewUrl?: string;
 }
+
+export interface TypingTest {
+  id: string;
+  title: string;
+  heading?: string;
+  examDate?: string; // YYYY-MM-DD
+  language: TypingLanguage;
+  durationMinutes: number; // 10 minutes default
+  passageText: string;
+  targetBlock?: DistrictBlock;
+  minPassingWpm: number; // Default 30 for English, 25 for Hindi
+  minCorrectWords?: number; // Minimum correctly typed words in 10 mins for qualification
+  assignedCandidateIds?: string[]; // Candidate IDs assigned to this test (or empty for all)
+  instructions?: string;
+  status: 'PUBLISHED' | 'DRAFT' | 'REVOKED';
+  createdBy: string;
+  createdAt: string;
+  totalWords: number;
+}
+
+export interface TypingAttempt {
+  id: string;
+  typingTestId: string;
+  testTitle: string;
+  language: TypingLanguage;
+  candidateId: string;
+  candidateName: string;
+  candidateEmail: string;
+  registrationId?: string;
+  block?: DistrictBlock;
+
+  // Report Metrics (as requested)
+  totalWordsInPara: number; // Total words in original paragraph
+  correctWordsCount: number; // Number of correctly typed words
+  incorrectWordsCount: number; // Number of incorrectly typed words
+  untypedWordsCount: number; // Number of words not typed
+  netWpm: number; // Net typing speed per minute
+  grossWpm: number; // Gross typing speed (total typed / minutes)
+  accuracyPercentage: number; // Correct words %
+  timeTakenSeconds: number; // Total time taken in seconds (<= 600s for 10 min test)
+  timeTakenMinutes: number;
+  status: 'QUALIFIED' | 'DISQUALIFIED';
+  typedText: string;
+  submittedAt: string;
+}
+

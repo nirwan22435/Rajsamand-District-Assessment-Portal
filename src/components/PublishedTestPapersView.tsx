@@ -75,11 +75,7 @@ export const PublishedTestPapersView: React.FC<PublishedTestPapersViewProps> = (
     if (modalAssignScope === 'SELECTED') {
       newlyAssigned = candidates.filter((c) => c.activeStatus && modalAssignSelectedIds.includes(c.id));
     } else {
-      newlyAssigned = candidates.filter(
-        (c) =>
-          c.activeStatus &&
-          (assigningTest.targetBlock === 'District-Wide' || c.block === assigningTest.targetBlock)
-      );
+      newlyAssigned = candidates.filter((c) => c.activeStatus);
     }
 
     // Dispatch emails to assigned candidates
@@ -117,13 +113,11 @@ export const PublishedTestPapersView: React.FC<PublishedTestPapersViewProps> = (
   };
 
   const filteredTests = tests.filter((t) => {
-    const matchesBlock = selectedBlockFilter === 'ALL' || t.targetBlock === selectedBlockFilter;
     const matchesSearch =
       t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.targetBlock.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (t.accessCode && t.accessCode.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchesBlock && matchesSearch;
+    return matchesSearch;
   });
 
   return (
@@ -151,35 +145,16 @@ export const PublishedTestPapersView: React.FC<PublishedTestPapersViewProps> = (
       </div>
 
       {/* Filters & Controls */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="relative flex-1">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="relative">
           <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
           <input
             type="text"
-            placeholder="Search test papers by title, subject, block, or access code..."
+            placeholder="Search test papers by title, subject, or access code..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
           />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-400 hidden sm:inline" />
-          <select
-            value={selectedBlockFilter}
-            onChange={(e) => setSelectedBlockFilter(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-slate-900 dark:text-white text-xs font-semibold focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          >
-            <option value="ALL">All District Blocks</option>
-            <option value="District-Wide">District-Wide</option>
-            <option value="Nathdwara">Nathdwara</option>
-            <option value="Kumbhalgarh">Kumbhalgarh</option>
-            <option value="Bhim">Bhim</option>
-            <option value="Rajsamand">Rajsamand</option>
-            <option value="Amet">Amet</option>
-            <option value="Deogarh">Deogarh</option>
-            <option value="Railmagra">Railmagra</option>
-          </select>
         </div>
       </div>
 
@@ -202,9 +177,6 @@ export const PublishedTestPapersView: React.FC<PublishedTestPapersViewProps> = (
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
                       {test.subject}
-                    </span>
-                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                      {test.targetBlock}
                     </span>
                   </div>
 
@@ -247,7 +219,7 @@ export const PublishedTestPapersView: React.FC<PublishedTestPapersViewProps> = (
                       <span>
                         {test.assignedCandidateIds && test.assignedCandidateIds.length > 0 && !test.assignedCandidateIds.includes('ALL')
                           ? `Targeted: ${test.assignedCandidateIds.length} Candidate(s)`
-                          : `Open to All (${test.targetBlock})`}
+                          : `Open to All Candidates`}
                       </span>
                     </div>
                     <button
@@ -430,7 +402,7 @@ export const PublishedTestPapersView: React.FC<PublishedTestPapersViewProps> = (
                         : 'text-slate-600 dark:text-slate-400'
                     }`}
                   >
-                    Open to All ({assigningTest.targetBlock})
+                    Open to All Candidates
                   </button>
                   <button
                     type="button"

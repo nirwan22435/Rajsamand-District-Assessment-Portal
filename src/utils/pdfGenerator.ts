@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { TestAttempt, TestPaper, MCQQuestion, Candidate } from '../types';
+import { TestAttempt, TestPaper, MCQQuestion, Candidate, TypingAttempt } from '../types';
 
 export interface SubmissionPdfData {
   candidateName: string;
@@ -79,8 +79,7 @@ export function createSubmissionPdfDocument(data: SubmissionPdfData): jsPDF {
   doc.text(`Name: ${data.candidateName}`, 16, y + 14);
   doc.text(`Email: ${data.candidateEmail}`, 16, y + 20);
   doc.text(`Reg. ID: ${data.registrationId || 'RJ-CAND-2026'}`, 16, y + 26);
-  doc.text(`Tehsil / Block: ${data.block || 'Rajsamand'}`, 16, y + 32);
-  doc.text(`Submitted On: ${submittedDateStr}`, 16, y + 38);
+  doc.text(`Submitted On: ${submittedDateStr}`, 16, y + 32);
 
   // Performance Summary Box
   doc.setDrawColor(226, 232, 240);
@@ -414,8 +413,7 @@ export function createTestSummaryPdfDocument(data: TestSummaryPdfData): jsPDF {
   doc.setFontSize(8.5);
   doc.setTextColor(51, 65, 85);
   doc.text(`Subject: ${test.subject}`, 16, y + 14);
-  doc.text(`Target Block: ${test.targetBlock}`, 16, y + 20);
-  doc.text(`Total MCQs: ${test.questions.length}`, 16, y + 26);
+  doc.text(`Total MCQs: ${test.questions.length}`, 16, y + 20);
 
   doc.text(`Total Marks: ${test.totalMarks}`, 108, y + 14);
   doc.text(`Passing Marks: ${test.passingMarks}`, 108, y + 20);
@@ -472,12 +470,10 @@ export function createTestSummaryPdfDocument(data: TestSummaryPdfData): jsPDF {
   const rankedRows = rankedAttempts.map((att, idx) => {
     const matchedCandidate = candidates.find((c) => c.id === att.candidateId);
     const regId = matchedCandidate?.registrationId || 'RJ-2026';
-    const blockName = att.block || matchedCandidate?.block || 'District-Wide';
     return [
       `#${idx + 1}`,
       att.candidateName,
       regId,
-      blockName,
       `${att.scoreObtained} / ${att.totalMarks}`,
       `${att.scorePercentage}%`,
       `${att.timeTakenMinutes} Mins`,
@@ -488,8 +484,8 @@ export function createTestSummaryPdfDocument(data: TestSummaryPdfData): jsPDF {
   autoTable(doc, {
     startY: y,
     margin: { left: 12, right: 12 },
-    head: [['Rank', 'Candidate Name', 'Registration ID', 'Block / Tehsil', 'Score', 'Percentage', 'Time Taken', 'Result']],
-    body: rankedRows.length > 0 ? rankedRows : [['-', 'No submissions recorded yet', '-', '-', '-', '-', '-', '-']],
+    head: [['Rank', 'Candidate Name', 'Registration ID', 'Score', 'Percentage', 'Time Taken', 'Result']],
+    body: rankedRows.length > 0 ? rankedRows : [['-', 'No submissions recorded yet', '-', '-', '-', '-', '-']],
     theme: 'striped',
     headStyles: {
       fillColor: [30, 41, 59],
@@ -591,3 +587,372 @@ export function generateAndDownloadTestPaperSummaryPdf(data: TestSummaryPdfData)
   const cleanTitle = (data.test.title || 'Test_Paper').replace(/[^a-zA-Z0-9]/g, '_');
   doc.save(`Test_Summary_Report_${cleanTitle}.pdf`);
 }
+
+// -------------------------------------------------------------
+// Official Typing Test Merit List & Scorecard PDF Generation
+// -------------------------------------------------------------
+
+export interface TypingMeritReportPdfData {
+  attempts: TypingAttempt[];
+  testTitle?: string;
+  examDateStr?: string;
+  filterBlock?: string;
+  filterLanguage?: string;
+}
+
+export function downloadTypingMeritReportPdf(data: TypingMeritReportPdfData) {
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  const formattedExamDate = data.examDateStr
+    ? data.examDateStr
+    : data.attempts.length > 0 && data.attempts[0].submittedAt
+    ? new Date(data.attempts[0].submittedAt).toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      })
+    : new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+
+  // Top National Header Ribbon
+  doc.setFillColor(255, 153, 51); // Saffron
+  doc.rect(0, 0, pageWidth / 3, 2.5, 'F');
+  doc.setFillColor(255, 255, 255); // White
+  doc.rect(pageWidth / 3, 0, pageWidth / 3, 2.5, 'F');
+  doc.setFillColor(19, 136, 8); // Green
+  doc.rect((pageWidth * 2) / 3, 0, pageWidth / 3, 2.5, 'F');
+
+  // Main Header Banner
+  doc.setFillColor(15, 23, 42); // Slate-900
+  doc.rect(0, 2.5, pageWidth, 28, 'F');
+
+  doc.setTextColor(245, 158, 11); // Amber
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('GOVERNMENT OF RAJASTHAN • DISTRICT ADMINISTRATION RAJSAMAND', pageWidth / 2, 10, {
+    align: 'center',
+  });
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(11);
+  doc.text('TYPING SPEED ASSESSMENT & MERIT EVALUATION REPORT', pageWidth / 2, 17, {
+    align: 'center',
+  });
+
+  // EXAM DATE IN HEADING
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(253, 224, 71); // Yellow-300
+  doc.text(`EXAM DATE: ${formattedExamDate} • EVALUATION CELL, RAJSAMAND`, pageWidth / 2, 24, {
+    align: 'center',
+  });
+
+  // Sub-header stats row
+  let y = 35;
+  const totalAttempts = data.attempts.length;
+  const qualifiedCount = data.attempts.filter((a) => a.status === 'QUALIFIED').length;
+  const avgSpeed =
+    totalAttempts > 0
+      ? Math.round((data.attempts.reduce((sum, a) => sum + (a.netWpm || 0), 0) / totalAttempts) * 10) / 10
+      : 0;
+  const topSpeed = totalAttempts > 0 ? Math.max(...data.attempts.map((a) => a.netWpm || 0)) : 0;
+
+  // Stats Card in PDF
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(12, y, pageWidth - 24, 13, 2, 2, 'FD');
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 41, 59);
+  doc.text(
+    `Assessment Title: ${data.testTitle || 'All Typing Tests'}   |   Total Candidates: ${totalAttempts}   |   Qualified: ${qualifiedCount} (${totalAttempts > 0 ? Math.round((qualifiedCount / totalAttempts) * 100) : 0}%)   |   Avg Net Speed: ${avgSpeed} WPM   |   Highest Speed: ${topSpeed} WPM`,
+    16,
+    y + 8
+  );
+
+  y += 18;
+
+  // Candidate Data Table
+  const tableRows = data.attempts.map((att, idx) => {
+    const isQual = att.status === 'QUALIFIED';
+    const langLabel = att.language === 'HINDI_DEVLYS_010' ? 'Hindi (DevLys 010)' : 'English';
+    const dateStr = att.submittedAt
+      ? new Date(att.submittedAt).toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        })
+      : formattedExamDate;
+
+    return [
+      idx + 1,
+      att.registrationId || att.candidateId || '-',
+      att.candidateName || 'Candidate',
+      langLabel,
+      dateStr,
+      att.totalWordsInPara || 0,
+      att.correctWordsCount || 0,
+      att.incorrectWordsCount || 0,
+      att.untypedWordsCount || 0,
+      `${att.netWpm || 0} WPM`,
+      `${att.accuracyPercentage || 0}%`,
+      isQual ? 'QUALIFIED' : 'DISQUALIFIED',
+    ];
+  });
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 12, right: 12 },
+    head: [
+      [
+        'S.No.',
+        'Roll No.',
+        'Candidate Name',
+        'Medium',
+        'Exam Date',
+        'Total Words',
+        'Correct',
+        'Incorrect',
+        'Untyped',
+        'Net Speed',
+        'Accuracy',
+        'Merit Status',
+      ],
+    ],
+    body: tableRows,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [15, 23, 42],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8,
+      halign: 'center',
+    },
+    columnStyles: {
+      0: { cellWidth: 10, halign: 'center' },
+      1: { cellWidth: 24, halign: 'center' },
+      2: { cellWidth: 48 },
+      3: { cellWidth: 26, halign: 'center' },
+      4: { cellWidth: 22, halign: 'center' },
+      5: { cellWidth: 20, halign: 'center' },
+      6: { cellWidth: 18, halign: 'center' },
+      7: { cellWidth: 18, halign: 'center' },
+      8: { cellWidth: 18, halign: 'center' },
+      9: { cellWidth: 24, halign: 'center', fontStyle: 'bold' },
+      10: { cellWidth: 20, halign: 'center' },
+      11: { cellWidth: 26, halign: 'center', fontStyle: 'bold' },
+    },
+    bodyStyles: {
+      textColor: [30, 41, 59],
+      fontSize: 7.5,
+    },
+    didParseCell: function (data) {
+      if (data.column.index === 11 && data.cell.section === 'body') {
+        if (data.cell.raw === 'QUALIFIED') {
+          data.cell.styles.textColor = [16, 185, 129]; // Emerald green
+        } else {
+          data.cell.styles.textColor = [225, 29, 72]; // Rose red
+        }
+      }
+    },
+  });
+
+  // Footer & Page Numbers
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(12, pageHeight - 12, pageWidth - 12, pageHeight - 12);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `District Administration Rajsamand, Rajasthan • Official Typing Speed Assessment Evaluation Report (Exam Date: ${formattedExamDate}) • Page ${i} of ${pageCount}`,
+      pageWidth / 2,
+      pageHeight - 6,
+      { align: 'center' }
+    );
+  }
+
+  const cleanFileDate = formattedExamDate.replace(/[^a-zA-Z0-9]/g, '_');
+  doc.save(`Rajsamand_Typing_Merit_Report_ExamDate_${cleanFileDate}.pdf`);
+}
+
+export function downloadCandidateTypingScorecardPdf(attempt: TypingAttempt, referencePassage?: string) {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const isQualified = attempt.status === 'QUALIFIED';
+
+  const examDateFormatted = attempt.submittedAt
+    ? new Date(attempt.submittedAt).toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      })
+    : new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+
+  const examTimeFormatted = attempt.submittedAt
+    ? new Date(attempt.submittedAt).toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '';
+
+  // Top National Header Ribbon
+  doc.setFillColor(255, 153, 51); // Saffron
+  doc.rect(0, 0, pageWidth / 3, 2, 'F');
+  doc.setFillColor(255, 255, 255); // White
+  doc.rect(pageWidth / 3, 0, pageWidth / 3, 2, 'F');
+  doc.setFillColor(19, 136, 8); // Green
+  doc.rect((pageWidth * 2) / 3, 0, pageWidth / 3, 2, 'F');
+
+  // Main Header Banner
+  doc.setFillColor(15, 23, 42); // Slate-900
+  doc.rect(0, 2, pageWidth, 28, 'F');
+
+  doc.setTextColor(245, 158, 11);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('GOVERNMENT OF RAJASTHAN • DISTRICT ADMINISTRATION RAJSAMAND', pageWidth / 2, 10, {
+    align: 'center',
+  });
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(10.5);
+  doc.text('OFFICIAL TYPING SPEED ASSESSMENT SCORECARD', pageWidth / 2, 17, {
+    align: 'center',
+  });
+
+  // Prominent Exam Date in Heading
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(253, 224, 71);
+  doc.text(`EXAM DATE: ${examDateFormatted} ${examTimeFormatted ? `at ${examTimeFormatted}` : ''} • EVALUATION CELL`, pageWidth / 2, 23, {
+    align: 'center',
+  });
+
+  let y = 35;
+
+  // Candidate Box (Left)
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(12, y, 90, 44, 3, 3, 'FD');
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.text('CANDIDATE CREDENTIALS', 16, y + 7);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(51, 65, 85);
+  doc.text(`Name: ${attempt.candidateName || 'Candidate'}`, 16, y + 14);
+  doc.text(`Roll / Reg No: ${attempt.registrationId || attempt.candidateId || 'N/A'}`, 16, y + 20);
+  doc.text(`Email: ${attempt.candidateEmail || 'N/A'}`, 16, y + 26);
+  doc.text(`Exam Date: ${examDateFormatted}`, 16, y + 32);
+
+  // Performance Box (Right)
+  doc.setFillColor(isQualified ? 240 : 254, isQualified ? 253 : 242, isQualified ? 244 : 242);
+  doc.setDrawColor(isQualified ? 187 : 254, isQualified ? 247 : 202, isQualified ? 208 : 202);
+  doc.roundedRect(108, y, 90, 44, 3, 3, 'FD');
+
+  doc.setTextColor(isQualified ? 21 : 225, isQualified ? 128 : 29, isQualified ? 61 : 72);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.text(`RESULT: ${attempt.status || 'EVALUATED'}`, 112, y + 7);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(51, 65, 85);
+  doc.text(`Test Paper: ${attempt.testTitle || 'Typing Assessment'}`, 112, y + 14);
+  doc.text(`Medium: ${attempt.language === 'HINDI_DEVLYS_010' ? 'Hindi (DevLys 010)' : 'English'}`, 112, y + 20);
+  doc.text(`Net Speed: ${attempt.netWpm || 0} WPM (Gross: ${attempt.grossWpm || 0} WPM)`, 112, y + 26);
+  doc.text(`Accuracy Rate: ${attempt.accuracyPercentage || 0}%`, 112, y + 32);
+  doc.text(`Duration: ${Math.floor((attempt.timeTakenSeconds || 0) / 60)}m ${(attempt.timeTakenSeconds || 0) % 60}s / 10m`, 112, y + 38);
+
+  y += 50;
+
+  // Breakdown Table
+  const breakdownRows = [
+    ['Total Words in Reference Paragraph', `${attempt.totalWordsInPara || 0} words`],
+    ['Correctly Typed Words', `${attempt.correctWordsCount || 0} words`],
+    ['Incorrectly Typed Words', `${attempt.incorrectWordsCount || 0} words`],
+    ['Untyped / Remaining Words', `${attempt.untypedWordsCount || 0} words`],
+    ['Gross Typing Speed', `${attempt.grossWpm || 0} Words Per Minute (WPM)`],
+    ['Net Typing Speed', `${attempt.netWpm || 0} Words Per Minute (WPM)`],
+    ['Calculated Accuracy Percentage', `${attempt.accuracyPercentage || 0}%`],
+    ['Qualifying Criteria', 'Based on No. of correctly typed words in 10 mins only'],
+    ['Official Assessment Result', attempt.status || 'EVALUATED'],
+  ];
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 12, right: 12 },
+    head: [['Evaluation Parameter', 'Candidate Performance']],
+    body: breakdownRows,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [15, 23, 42],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8.5,
+    },
+    columnStyles: {
+      0: { cellWidth: 100, fontStyle: 'bold' },
+      1: { cellWidth: 86, halign: 'center' },
+    },
+    bodyStyles: {
+      textColor: [30, 41, 59],
+      fontSize: 8,
+    },
+  });
+
+  // Footer & Official Signatures
+  const finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 15 : y + 60;
+  if (finalY < pageHeight - 30) {
+    doc.setDrawColor(203, 213, 225);
+    doc.line(130, finalY + 12, 195, finalY + 12);
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Authorized Signatory / Evaluation Officer', 132, finalY + 16);
+    doc.text('District Evaluation Cell, Rajsamand', 132, finalY + 20);
+  }
+
+  doc.setDrawColor(226, 232, 240);
+  doc.line(12, pageHeight - 12, pageWidth - 12, pageHeight - 12);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(
+    `District Administration Rajsamand • Official Candidate Typing Assessment Scorecard (Exam Date: ${examDateFormatted})`,
+    pageWidth / 2,
+    pageHeight - 6,
+    { align: 'center' }
+  );
+
+  const cleanCandidateName = (attempt.candidateName || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_');
+  doc.save(`Typing_Scorecard_${cleanCandidateName}_ExamDate_${examDateFormatted.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+}
+

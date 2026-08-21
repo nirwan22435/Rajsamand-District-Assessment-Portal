@@ -40,7 +40,6 @@ export const TestResultView: React.FC<TestResultViewProps> = ({
           wrongCount: attempt.wrongCount,
           unattemptedCount: attempt.unattemptedCount,
           timeTakenMinutes: attempt.timeTakenMinutes,
-          block: attempt.block,
           submittedAt: attempt.submittedAt,
           questions: test?.questions,
           answers: attempt.answers,
@@ -137,7 +136,7 @@ export const TestResultView: React.FC<TestResultViewProps> = ({
           </div>
           <h1 className="text-2xl sm:text-3xl font-black">{attempt.testTitle}</h1>
           <p className="text-xs text-white/80 mt-1">
-            Candidate: <strong>{attempt.candidateName}</strong> • Block: {attempt.block} Tehsil
+            Candidate: <strong>{attempt.candidateName}</strong>
           </p>
         </div>
 

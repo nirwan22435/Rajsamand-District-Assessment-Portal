@@ -1,0 +1,34 @@
+{
+  "name": "Rajsamand District Assessment Portal",
+  "short_name": "Rajsamand Portal",
+  "description": "Official Assessment & Typing Examination System - DoIT&C Rajsamand, Government of Rajasthan",
+  "start_url": "/",
+  "id": "rajsamand-assessment-portal",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#d97706",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity", "government"],
+  "shortcuts": [
+    {
+      "name": "Typing Test",
+      "short_name": "Typing",
+      "url": "/?tab=typing-test",
+      "description": "DevLys 010 & English Typing Speed Assessment"
+    },
+    {
+      "name": "District Analytics",
+      "short_name": "Analytics",
+      "url": "/?tab=analytics",
+      "description": "View District Assessment Analytics"
+    }
+  ]
+}

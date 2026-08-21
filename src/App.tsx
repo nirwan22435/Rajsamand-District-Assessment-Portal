@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Candidate, TestPaper, TestAttempt, EmailLog, UserRole } from './types';
+import { Candidate, TestPaper, TestAttempt, EmailLog, UserRole, TypingTest, TypingAttempt } from './types';
 import {
   INITIAL_CANDIDATES,
   INITIAL_TESTS,
   INITIAL_ATTEMPTS,
   INITIAL_EMAIL_LOGS,
 } from './data/mockData';
+import { INITIAL_TYPING_TESTS, INITIAL_TYPING_ATTEMPTS } from './data/defaultTypingData';
 import { Navbar } from './components/Navbar';
 import { AdminDashboard } from './components/AdminDashboard';
 import { TestUploadSection } from './components/TestUploadSection';
@@ -18,19 +19,31 @@ import { LoginModal } from './components/LoginModal';
 import { PortalLoginPage } from './components/PortalLoginPage';
 import { EmailLogView } from './components/EmailLogView';
 import { PublishedTestPapersView } from './components/PublishedTestPapersView';
+import { TypingTestSection } from './components/typing/TypingTestSection';
+import { ThemePreviewModal, APP_THEMES } from './components/ThemePreviewModal';
+import { DesktopSetupModal } from './components/DesktopSetupModal';
+import { applyThemeToDOM } from './utils/themeManager';
+import { Monitor } from 'lucide-react';
 import { sendEmailAPI } from './services/api';
 import {
   subscribeCandidates,
   subscribeTests,
   subscribeAttempts,
   subscribeEmailLogs,
+  subscribeTypingTests,
+  subscribeTypingAttempts,
   subscribeAdminPassword,
   saveCandidateToFirestore,
+  deleteCandidateFromFirestore,
   toggleCandidateStatusInFirestore,
   saveTestToFirestore,
   deleteTestFromFirestore,
   saveAttemptToFirestore,
   saveEmailLogToFirestore,
+  saveTypingTestToFirestore,
+  deleteTypingTestFromFirestore,
+  saveTypingAttemptToFirestore,
+  deleteTypingAttemptFromFirestore,
   seedInitialDataIfEmpty,
 } from './services/firestoreService';
 
@@ -41,14 +54,150 @@ export default function App() {
     return saved !== null ? JSON.parse(saved) : false;
   });
 
+  // Active Visual Theme State (1-12 Minimalist Themes)
+  const [themeId, setThemeId] = useState<string>(() => {
+    return localStorage.getItem('rajsamand_theme_id') || 'nordic-arctic';
+  });
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState<boolean>(false);
+  const [isDesktopModalOpen, setIsDesktopModalOpen] = useState<boolean>(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
   useEffect(() => {
+    const promptHandler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', promptHandler);
+    return () => window.removeEventListener('beforeinstallprompt', promptHandler);
+  }, []);
+
+  // Direct 1-Click Install Trigger Handler
+  const handleTriggerDesktopInstall = async () => {
+    // 1. If native PWA browser install prompt is available, trigger it immediately!
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setDeferredPrompt(null);
+          return;
+        }
+      } catch (err) {
+        console.warn('Native install prompt error:', err);
+      }
+    }
+
+    // 2. Automatically trigger download of the full Windows Desktop Setup Installer (.BAT)
+    try {
+      const currentUrl = typeof window !== 'undefined' ? window.location.origin : 'https://ais-dev-ipslj2ssag6j65tfrompqs-957343451703.asia-east1.run.app';
+      const batchSetupScript = `@echo off
+setlocal EnableDelayedExpansion
+:: ============================================================================
+:: Rajsamand District Assessment Portal - Official Windows Desktop Installer
+:: Department of Information Technology & Communication (DoIT&C) Rajsamand
+:: ============================================================================
+title Rajsamand District Assessment Portal - Windows Setup
+color 0b
+
+echo ============================================================================
+echo   Rajsamand District Assessment & Typing Examination Portal
+echo   Government of Rajasthan - DoIT&C Rajsamand
+echo ============================================================================
+echo.
+echo [*] Initializing Windows Desktop Application Setup...
+echo.
+
+set "PORTAL_URL=${currentUrl}"
+set "APP_NAME=Rajsamand District Assessment Portal"
+set "INSTALL_DIR=%LOCALAPPDATA%\\RajsamandDistrictPortal"
+
+:: 1. Create App Folder in Local AppData
+if not exist "%INSTALL_DIR%" (
+    echo [+] Creating application directory: %INSTALL_DIR%
+    mkdir "%INSTALL_DIR%"
+)
+
+:: 2. Create the App Launcher Runner
+echo [+] Configuring Desktop Application Launcher...
+(
+echo @echo off
+echo set "PORTAL_URL=%PORTAL_URL%"
+echo title Rajsamand District Assessment Portal
+echo :: Check for Microsoft Edge App Mode
+echo if exist "%%ProgramFiles(x86)%%\Microsoft\Edge\Application\msedge.exe" ^(
+echo     start "" "%%ProgramFiles(x86)%%\Microsoft\Edge\Application\msedge.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
+echo     exit /b 0
+echo ^)
+echo if exist "%%ProgramFiles%%\Microsoft\Edge\Application\msedge.exe" ^(
+echo     start "" "%%ProgramFiles%%\Microsoft\Edge\Application\msedge.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
+echo     exit /b 0
+echo ^)
+echo :: Check for Google Chrome App Mode
+echo if exist "%%ProgramFiles%%\Google\Chrome\Application\chrome.exe" ^(
+echo     start "" "%%ProgramFiles%%\Google\Chrome\Application\chrome.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
+echo     exit /b 0
+echo ^)
+echo if exist "%%ProgramFiles(x86)%%\Google\Chrome\Application\chrome.exe" ^(
+echo     start "" "%%ProgramFiles(x86)%%\Google\Chrome\Application\chrome.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
+echo     exit /b 0
+echo ^)
+echo :: Check for Mozilla Firefox
+echo if exist "%%ProgramFiles%%\Mozilla Firefox\firefox.exe" ^(
+echo     start "" "%%ProgramFiles%%\Mozilla Firefox\firefox.exe" -new-window "%%PORTAL_URL%%"
+echo     exit /b 0
+echo ^)
+echo :: Fallback default
+echo start "" "%%PORTAL_URL%%"
+) > "%INSTALL_DIR%\\launch.bat"
+
+:: 3. Create Desktop Shortcut (.lnk)
+echo [+] Creating Desktop Shortcut on Windows Desktop...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $desktop = [System.Environment]::GetFolderPath('Desktop'); $s = $ws.CreateShortcut((Join-Path $desktop '%APP_NAME%.lnk')); $s.TargetPath = '%INSTALL_DIR%\\launch.bat'; $s.WorkingDirectory = '%INSTALL_DIR%'; $s.Description = 'Official Rajsamand District Assessment Portal'; $s.Save()"
+
+:: 4. Create Windows Start Menu Shortcut
+echo [+] Creating Windows Start Menu entry...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $startMenu = Join-Path ([System.Environment]::GetFolderPath('StartMenu')) 'Programs'; $s = $ws.CreateShortcut((Join-Path $startMenu '%APP_NAME%.lnk')); $s.TargetPath = '%INSTALL_DIR%\\launch.bat'; $s.WorkingDirectory = '%INSTALL_DIR%'; $s.Description = 'Official Rajsamand District Assessment Portal'; $s.Save()"
+
+echo.
+echo ============================================================================
+echo   [SUCCESS] INSTALLATION COMPLETE!
+echo   1. Desktop shortcut created: '%APP_NAME%' on your Windows Desktop.
+echo   2. Start Menu program added.
+echo ============================================================================
+echo.
+echo [*] Launching application now...
+start "" "%INSTALL_DIR%\\launch.bat"
+timeout /t 3 >nul
+exit /b 0`;
+
+      const blob = new Blob([batchSetupScript], { type: 'application/x-bat' });
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = 'Rajsamand_Portal_Windows_Setup.bat';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.warn('Batch installer download failed:', err);
+    }
+
+    // 3. Open the setup dialogue with full instructions & electron exe builder
+    setIsDesktopModalOpen(true);
+  };
+
+  useEffect(() => {
+    localStorage.setItem('rajsamand_theme_id', themeId);
     localStorage.setItem('rajsamand_dark_mode', JSON.stringify(darkMode));
     if (darkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [darkMode]);
+    // Apply dynamic colors, backgrounds, borders & accents
+    applyThemeToDOM(themeId, darkMode);
+  }, [themeId, darkMode]);
 
   // Auth State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -65,10 +214,18 @@ export default function App() {
   const [tests, setTests] = useState<TestPaper[]>(INITIAL_TESTS);
   const [attempts, setAttempts] = useState<TestAttempt[]>(INITIAL_ATTEMPTS);
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>(INITIAL_EMAIL_LOGS);
+  const [typingTests, setTypingTests] = useState<TypingTest[]>(INITIAL_TYPING_TESTS);
+  const [typingAttempts, setTypingAttempts] = useState<TypingAttempt[]>(INITIAL_TYPING_ATTEMPTS);
 
   // Firestore Real-time subscriptions & seed init
   useEffect(() => {
-    seedInitialDataIfEmpty(INITIAL_CANDIDATES, INITIAL_TESTS, INITIAL_ATTEMPTS, INITIAL_EMAIL_LOGS);
+    seedInitialDataIfEmpty(
+      INITIAL_CANDIDATES,
+      INITIAL_TESTS,
+      INITIAL_ATTEMPTS,
+      INITIAL_EMAIL_LOGS,
+      INITIAL_TYPING_TESTS
+    );
 
     const unsubCand = subscribeCandidates((data) => {
       if (data.length > 0) setCandidates(data);
@@ -86,6 +243,14 @@ export default function App() {
       if (data.length > 0) setEmailLogs(data);
     });
 
+    const unsubTypingTests = subscribeTypingTests((data) => {
+      if (data.length > 0) setTypingTests(data);
+    });
+
+    const unsubTypingAttempts = subscribeTypingAttempts((data) => {
+      setTypingAttempts(data);
+    });
+
     const unsubAdmin = subscribeAdminPassword(() => {
       // Sync admin password in real-time
     });
@@ -95,6 +260,8 @@ export default function App() {
       unsubTests();
       unsubAttempts();
       unsubLogs();
+      unsubTypingTests();
+      unsubTypingAttempts();
       unsubAdmin();
     };
   }, []);
@@ -105,7 +272,36 @@ export default function App() {
       setTests([]);
       setAttempts([]);
       setEmailLogs([]);
+      setTypingTests([]);
+      setTypingAttempts([]);
     }
+  };
+
+  // Typing Assessment Handlers
+  const handleSaveTypingTest = async (testToSave: TypingTest) => {
+    setTypingTests((prev) => {
+      const exists = prev.some((t) => t.id === testToSave.id);
+      if (exists) {
+        return prev.map((t) => (t.id === testToSave.id ? testToSave : t));
+      }
+      return [testToSave, ...prev];
+    });
+    await saveTypingTestToFirestore(testToSave);
+  };
+
+  const handleDeleteTypingTest = async (testId: string) => {
+    setTypingTests((prev) => prev.filter((t) => t.id !== testId));
+    await deleteTypingTestFromFirestore(testId);
+  };
+
+  const handleSaveTypingAttempt = async (attemptToSave: TypingAttempt) => {
+    setTypingAttempts((prev) => [attemptToSave, ...prev]);
+    await saveTypingAttemptToFirestore(attemptToSave);
+  };
+
+  const handleDeleteTypingAttempt = async (attemptId: string) => {
+    setTypingAttempts((prev) => prev.filter((a) => a.id !== attemptId));
+    await deleteTypingAttemptFromFirestore(attemptId);
   };
 
   // Active Flow Screens
@@ -118,13 +314,24 @@ export default function App() {
 
   // Handlers for Candidate Actions
   const handleAddCandidate = async (newCand: Candidate) => {
-    setCandidates((prev) => [newCand, ...prev]);
+    setCandidates((prev) => {
+      const exists = prev.some((c) => c.id === newCand.id);
+      if (exists) {
+        return prev.map((c) => (c.id === newCand.id ? newCand : c));
+      }
+      return [newCand, ...prev];
+    });
     await saveCandidateToFirestore(newCand);
   };
 
   const handleUpdateCandidate = async (updatedCand: Candidate) => {
     setCandidates((prev) => prev.map((c) => (c.id === updatedCand.id ? updatedCand : c)));
     await saveCandidateToFirestore(updatedCand);
+  };
+
+  const handleDeleteCandidate = async (candidateId: string) => {
+    setCandidates((prev) => prev.filter((c) => c.id !== candidateId));
+    await deleteCandidateFromFirestore(candidateId);
   };
 
   const handleToggleCandidateStatus = async (id: string) => {
@@ -161,12 +368,8 @@ export default function App() {
         (cand) => cand.activeStatus && testToSave.assignedCandidateIds!.includes(cand.id)
       );
     } else {
-      // All active candidates in target block
-      candidatesToNotify = candidates.filter(
-        (cand) =>
-          cand.activeStatus &&
-          (testToSave.targetBlock === 'District-Wide' || cand.block === testToSave.targetBlock)
-      );
+      // All active candidates
+      candidatesToNotify = candidates.filter((cand) => cand.activeStatus);
     }
 
     // Notify assigned candidates via Resend
@@ -244,7 +447,6 @@ export default function App() {
           wrongCount: newAttempt.wrongCount,
           unattemptedCount: newAttempt.unattemptedCount,
           timeTakenMinutes: newAttempt.timeTakenMinutes,
-          block: newAttempt.block,
           submittedAt: newAttempt.submittedAt,
           registrationId: activeCandidate?.registrationId || 'RJ-CAND-2026',
           questions: testPaper?.questions,
@@ -283,7 +485,8 @@ export default function App() {
     setRole('CANDIDATE');
     setActiveCandidate(cand);
     setIsAuthenticated(true);
-    setActiveTab('my-tests');
+    // If registered under typing test module, navigate strictly to typing-test
+    setActiveTab(cand.typingMedium ? 'typing-test' : 'my-tests');
     setActiveTakingTest(null);
     setActiveViewingResult(null);
   };
@@ -347,15 +550,36 @@ export default function App() {
 
   if (!isAuthenticated) {
     return (
-      <PortalLoginPage
-        candidates={candidates}
-        tests={tests}
-        onAdminLogin={handleAdminLogin}
-        onCandidateLogin={(cand) => handleCandidateLogin(cand)}
-        darkMode={darkMode}
-        setDarkMode={setDarkMode}
-        onLogEmail={(log) => setEmailLogs((prev) => [log, ...prev])}
-      />
+      <>
+        <PortalLoginPage
+          candidates={candidates}
+          tests={tests}
+          onAdminLogin={handleAdminLogin}
+          onCandidateLogin={(cand) => handleCandidateLogin(cand)}
+          darkMode={darkMode}
+          setDarkMode={setDarkMode}
+          onLogEmail={(log) => setEmailLogs((prev) => [log, ...prev])}
+          onOpenThemeModal={() => setIsThemeModalOpen(true)}
+          onOpenDesktopModal={handleTriggerDesktopInstall}
+        />
+        {/* Theme Selection & Style Gallery Modal */}
+        <ThemePreviewModal
+          isOpen={isThemeModalOpen}
+          onClose={() => setIsThemeModalOpen(false)}
+          currentThemeId={themeId}
+          onSelectTheme={(newThemeId) => {
+            setThemeId(newThemeId);
+          }}
+          darkMode={darkMode}
+        />
+        {/* Windows Desktop & .EXE Setup Modal */}
+        <DesktopSetupModal
+          isOpen={isDesktopModalOpen}
+          onClose={() => setIsDesktopModalOpen(false)}
+          deferredPrompt={deferredPrompt}
+          setDeferredPrompt={setDeferredPrompt}
+        />
+      </>
     );
   }
 
@@ -375,6 +599,8 @@ export default function App() {
         }}
         onLogout={handleLogout}
         onOpenLogin={() => setShowLoginModal(true)}
+        onOpenThemeModal={() => setIsThemeModalOpen(true)}
+        onOpenDesktopModal={handleTriggerDesktopInstall}
       />
 
       {/* Main Container Area */}
@@ -478,6 +704,7 @@ export default function App() {
                 candidates={candidates}
                 onAddCandidate={handleAddCandidate}
                 onUpdateCandidate={handleUpdateCandidate}
+                onDeleteCandidate={handleDeleteCandidate}
                 onToggleStatus={handleToggleCandidateStatus}
                 onSelectCandidateForReport={(cand) => setSelectedReportCandidate(cand)}
                 onLogEmailSent={async (log) => {
@@ -488,20 +715,56 @@ export default function App() {
             )}
 
             {activeTab === 'email-logs' && <EmailLogView logs={emailLogs} candidates={candidates} />}
+
+            {activeTab === 'typing-test' && (
+              <TypingTestSection
+                role={role}
+                activeCandidate={activeCandidate}
+                candidates={candidates}
+                tests={typingTests}
+                attempts={typingAttempts}
+                onSaveTest={handleSaveTypingTest}
+                onDeleteTest={handleDeleteTypingTest}
+                onSaveAttempt={handleSaveTypingAttempt}
+                onDeleteAttempt={handleDeleteTypingAttempt}
+                onSaveCandidate={handleAddCandidate}
+                onDeleteCandidate={handleDeleteCandidate}
+                onToggleCandidateStatus={handleToggleCandidateStatus}
+              />
+            )}
           </>
         ) : (
           /* Candidate Portal View */
           activeCandidate && (
-            <CandidatePortal
-              candidate={activeCandidate}
-              tests={tests}
-              attempts={attempts}
-              onStartTest={(test) => setActiveTakingTest(test)}
-              onReviewAttempt={handleReviewAttempt}
-              onRequestEmailResult={handleRequestEmailResult}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-            />
+            activeTab === 'typing-test' ? (
+              <TypingTestSection
+                role={role}
+                activeCandidate={activeCandidate}
+                candidates={candidates}
+                tests={typingTests}
+                attempts={typingAttempts}
+                onSaveTest={handleSaveTypingTest}
+                onDeleteTest={handleDeleteTypingTest}
+                onSaveAttempt={handleSaveTypingAttempt}
+                onDeleteAttempt={handleDeleteTypingAttempt}
+                onSaveCandidate={handleAddCandidate}
+                onDeleteCandidate={handleDeleteCandidate}
+                onToggleCandidateStatus={handleToggleCandidateStatus}
+              />
+            ) : (
+              <CandidatePortal
+                candidate={activeCandidate}
+                tests={tests}
+                attempts={attempts}
+                typingTests={typingTests}
+                typingAttempts={typingAttempts}
+                onStartTest={(test) => setActiveTakingTest(test)}
+                onReviewAttempt={handleReviewAttempt}
+                onRequestEmailResult={handleRequestEmailResult}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+              />
+            )
           )
         )}
       </main>
@@ -543,8 +806,26 @@ export default function App() {
           darkMode={darkMode}
           setDarkMode={setDarkMode}
           onLogEmail={(log) => setEmailLogs((prev) => [log, ...prev])}
+          onOpenThemeModal={() => setIsThemeModalOpen(true)}
         />
       )}
+      {/* Theme Selection & Style Gallery Modal */}
+      <ThemePreviewModal
+        isOpen={isThemeModalOpen}
+        onClose={() => setIsThemeModalOpen(false)}
+        currentThemeId={themeId}
+        onSelectTheme={(newThemeId) => {
+          setThemeId(newThemeId);
+        }}
+        darkMode={darkMode}
+      />
+      {/* Windows Desktop & .EXE Setup Modal */}
+      <DesktopSetupModal
+        isOpen={isDesktopModalOpen}
+        onClose={() => setIsDesktopModalOpen(false)}
+        deferredPrompt={deferredPrompt}
+        setDeferredPrompt={setDeferredPrompt}
+      />
     </div>
   );
 }

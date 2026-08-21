@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { Candidate, DistrictBlock, EmailLog } from '../types';
 import { sendEmailAPI } from '../services/api';
 import { CandidateSuccessModal } from './CandidateSuccessModal';
-import { Users, UserPlus, Search, Filter, Mail, Shield, CheckCircle2, XCircle, Key, RefreshCw, Send, AlertCircle, Edit3, Eye, EyeOff } from 'lucide-react';
+import { Users, UserPlus, Search, Filter, Mail, Shield, CheckCircle2, XCircle, Key, RefreshCw, Send, AlertCircle, Edit3, Eye, EyeOff, Trash2 } from 'lucide-react';
 
 interface CandidateManagementProps {
   candidates: Candidate[];
   onAddCandidate: (newCand: Candidate) => void;
   onUpdateCandidate?: (updatedCand: Candidate) => void;
+  onDeleteCandidate?: (id: string) => void;
   onToggleStatus: (id: string) => void;
   onSelectCandidateForReport: (cand: Candidate) => void;
   onLogEmailSent: (log: EmailLog) => void;
@@ -17,21 +18,20 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
   candidates,
   onAddCandidate,
   onUpdateCandidate,
+  onDeleteCandidate,
   onToggleStatus,
   onSelectCandidateForReport,
   onLogEmailSent,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedBlock, setSelectedBlock] = useState<string>('ALL');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
+  const [deletingCandidateId, setDeletingCandidateId] = useState<string | null>(null);
 
   // New Candidate Form State
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [block, setBlock] = useState<DistrictBlock>('Nathdwara');
-  const [category, setCategory] = useState<'General' | 'OBC' | 'SC' | 'ST' | 'EWS'>('General');
   const [password, setPassword] = useState('Pass@1234');
   const [sendCredentialsEmail, setSendCredentialsEmail] = useState(true);
 
@@ -40,8 +40,6 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
   const [editRegId, setEditRegId] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
-  const [editBlock, setEditBlock] = useState<DistrictBlock>('Nathdwara');
-  const [editCategory, setEditCategory] = useState<'General' | 'OBC' | 'SC' | 'ST' | 'EWS'>('General');
   const [editPassword, setEditPassword] = useState('');
   const [editActiveStatus, setEditActiveStatus] = useState(true);
   const [showEditPassword, setShowEditPassword] = useState(false);
@@ -66,8 +64,6 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
     setEditRegId(cand.registrationId);
     setEditEmail(cand.email);
     setEditPhone(cand.phone || '');
-    setEditBlock(cand.block);
-    setEditCategory(cand.category);
     setEditPassword(cand.password || 'Pass@1234');
     setEditActiveStatus(cand.activeStatus);
     setShowEditPassword(false);
@@ -87,8 +83,6 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
       registrationId: editRegId || editingCandidate.registrationId,
       email: editEmail,
       phone: editPhone,
-      block: editBlock,
-      category: editCategory,
       password: editPassword,
       activeStatus: editActiveStatus,
     };
@@ -106,7 +100,6 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
           details: {
             registrationId: editRegId || editingCandidate.registrationId,
             password: editPassword,
-            block: editBlock,
           },
         });
 
@@ -122,7 +115,6 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
           details: {
             registrationId: editRegId || editingCandidate.registrationId,
             password: editPassword,
-            block: editBlock,
           },
         });
 
@@ -144,8 +136,7 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.registrationId.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesBlock = selectedBlock === 'ALL' || c.block === selectedBlock;
-    return matchesSearch && matchesBlock;
+    return matchesSearch;
   });
 
   // Create New Candidate Handler
@@ -164,8 +155,6 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
       name,
       email,
       phone: phone || '+91 98000 00000',
-      block,
-      category,
       activeStatus: true,
       password,
       createdAt: new Date().toISOString(),
@@ -183,7 +172,6 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
           details: {
             registrationId: newRegistrationId,
             password,
-            block,
             portalUrl: window.location.origin,
             portalLoginUrl: `${window.location.origin}/?login=true&regId=${encodeURIComponent(newRegistrationId)}`,
           },
@@ -201,7 +189,6 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
           details: {
             registrationId: newRegistrationId,
             password,
-            block,
           },
         });
 
@@ -238,7 +225,6 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
         details: {
           registrationId: cand.registrationId || cand.id,
           password: cand.password,
-          block: cand.block,
           portalUrl: window.location.origin,
           portalLoginUrl: `${window.location.origin}/?login=true&regId=${encodeURIComponent(cand.registrationId || cand.id)}`,
         },
@@ -256,7 +242,6 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
         details: {
           registrationId: cand.registrationId || cand.id,
           password: cand.password,
-          block: cand.block,
         },
       });
 
@@ -266,88 +251,114 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
     }
   };
 
+  // Statistics
+  const activeCount = candidates.filter((c) => c.activeStatus).length;
+  const disabledCount = candidates.filter((c) => !c.activeStatus).length;
+  const withEmailCount = candidates.filter((c) => c.email && c.email.includes('@')).length;
+
   return (
     <div className="space-y-6 pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header Banner Card */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 p-6 sm:p-8 rounded-2xl text-white shadow-xl">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Users className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
-            Candidate Account Management
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Create login credentials for each candidate, manage block allocations, and dispatch welcome emails via Resend.
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-semibold uppercase tracking-wider mb-2">
+            <Users className="w-3.5 h-3.5" />
+            District Candidate Directory & Accounts
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Candidate Directory & Access Control</h1>
+          <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
+            Create login credentials, manage candidate accounts, and dispatch automated notification emails.
           </p>
         </div>
 
         <button
           id="open-create-candidate-btn"
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-md transition-all flex items-center space-x-2"
+          className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition-all flex items-center space-x-2 self-start sm:self-auto hover:scale-[1.02] active:scale-[0.98] cursor-pointer shrink-0"
         >
           <UserPlus className="w-4 h-4" />
-          <span>Create Candidate Account</span>
+          <span>+ Register New Candidate</span>
         </button>
       </div>
 
+      {/* Metric Cards Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Total Candidates
+          </p>
+          <p className="text-2xl font-black text-slate-900 dark:text-white mt-1 tabular-nums">
+            {candidates.length}
+          </p>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <p className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+            Active Accounts
+          </p>
+          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">
+            {activeCount}
+          </p>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Disabled Accounts
+          </p>
+          <p className="text-2xl font-black text-slate-700 dark:text-slate-300 mt-1 tabular-nums">
+            {disabledCount}
+          </p>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <p className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+            Email Ready
+          </p>
+          <p className="text-2xl font-black text-slate-900 dark:text-white mt-1 tabular-nums">
+            {withEmailCount}
+          </p>
+        </div>
+      </div>
+
       {actionFeedback && (
-        <div className="p-4 rounded-xl bg-sky-50 dark:bg-sky-950/80 border border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-300 text-xs font-medium flex items-center justify-between">
+        <div className="p-4 rounded-xl bg-sky-50/90 dark:bg-sky-950/70 border border-sky-200 dark:border-sky-800 text-sky-900 dark:text-sky-200 text-xs font-bold flex items-center justify-between shadow-xs">
           <span>{actionFeedback}</span>
-          <button onClick={() => setActionFeedback(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+          <button onClick={() => setActionFeedback(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold">✕</button>
         </div>
       )}
 
-      {/* Filter and Table Container */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        {/* Table Filters */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Filter and Table Card */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+        {/* Table Filters Toolbar */}
+        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/40 dark:bg-slate-800/20">
           <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
             <input
               type="text"
               placeholder="Search by Name, Registration ID, or Email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             />
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <select
-              value={selectedBlock}
-              onChange={(e) => setSelectedBlock(e.target.value)}
-              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            >
-              <option value="ALL">All Tehsil / District Blocks</option>
-              <option value="Nathdwara">Nathdwara</option>
-              <option value="Kumbhalgarh">Kumbhalgarh</option>
-              <option value="Bhim">Bhim</option>
-              <option value="Rajsamand">Rajsamand</option>
-              <option value="Amet">Amet</option>
-              <option value="Deogarh">Deogarh</option>
-              <option value="Railmagra">Railmagra</option>
-            </select>
           </div>
         </div>
 
         {/* Candidates Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-semibold border-b border-slate-200 dark:border-slate-800">
+            <thead className="bg-slate-50/80 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-black tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800">
               <tr>
-                <th className="px-5 py-3">Reg ID</th>
-                <th className="px-5 py-3">Candidate Name</th>
-                <th className="px-5 py-3">Contact & Email</th>
-                <th className="px-5 py-3">Tehsil / Block</th>
-                <th className="px-5 py-3">Category</th>
-                <th className="px-5 py-3 text-center">Account Status</th>
-                <th className="px-5 py-3 text-right">Actions</th>
+                <th className="px-5 py-3.5">Reg ID</th>
+                <th className="px-5 py-3.5">Candidate Name</th>
+                <th className="px-5 py-3.5">Contact & Email</th>
+                <th className="px-5 py-3.5 text-center">Account Status</th>
+                <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filteredCandidates.length > 0 ? (
                 filteredCandidates.map((cand) => (
-                  <tr key={cand.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                  <tr key={cand.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="px-5 py-4 font-mono font-bold text-emerald-700 dark:text-emerald-400">
                       {cand.registrationId}
                     </td>
@@ -355,61 +366,88 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
                       {cand.name}
                     </td>
                     <td className="px-5 py-4 text-slate-600 dark:text-slate-300">
-                      <div>{cand.email}</div>
-                      <div className="text-[10px] text-slate-400">{cand.phone}</div>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
-                        {cand.block}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-slate-500 dark:text-slate-400 font-medium">
-                      {cand.category}
+                      <div className="font-medium">{cand.email}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">{cand.phone || 'No phone added'}</div>
                     </td>
                     <td className="px-5 py-4 text-center">
                       <button
                         type="button"
                         onClick={() => onToggleStatus(cand.id)}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-all ${
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black cursor-pointer transition-all ${
                           cand.activeStatus
-                            ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
-                            : 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300'
+                            ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                            : 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
                         }`}
                       >
                         {cand.activeStatus ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                        {cand.activeStatus ? 'Active' : 'Disabled'}
+                        <span>{cand.activeStatus ? 'Active' : 'Disabled'}</span>
                       </button>
                     </td>
-                    <td className="px-5 py-4 text-right space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditModal(cand)}
-                        title="Manage / Edit Candidate Details & Password"
-                        className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors inline-flex items-center gap-1 font-semibold text-[11px]"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" /> Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleResendCredentials(cand)}
-                        title="Resend Credentials via Email"
-                        className="p-1.5 rounded-lg text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/50 transition-colors inline-flex items-center gap-1 font-semibold text-[11px]"
-                      >
-                        <Mail className="w-3.5 h-3.5" /> Resend
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onSelectCandidateForReport(cand)}
-                        className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-[11px] transition-colors"
-                      >
-                        Report Card
-                      </button>
+                    <td className="px-5 py-4 text-right space-x-1.5 whitespace-nowrap">
+                      {deletingCandidateId === cand.id ? (
+                        <span className="inline-flex items-center gap-1 bg-rose-50 dark:bg-rose-950/60 p-1 rounded-lg border border-rose-200 dark:border-rose-800">
+                          <span className="text-[10px] font-bold text-rose-700 dark:text-rose-300">Delete?</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onDeleteCandidate) onDeleteCandidate(cand.id);
+                              setDeletingCandidateId(null);
+                            }}
+                            className="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white font-bold text-[10px] cursor-pointer"
+                          >
+                            Yes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingCandidateId(null)}
+                            className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-[10px] cursor-pointer"
+                          >
+                            No
+                          </button>
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditModal(cand)}
+                            title="Manage / Edit Candidate Details & Password"
+                            className="p-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors inline-flex items-center gap-1 font-bold text-[11px] cursor-pointer"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" /> <span>Edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleResendCredentials(cand)}
+                            title="Resend Credentials via Email"
+                            className="p-1.5 rounded-lg text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/50 transition-colors inline-flex items-center gap-1 font-bold text-[11px] cursor-pointer"
+                          >
+                            <Mail className="w-3.5 h-3.5" /> <span>Resend</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onSelectCandidateForReport(cand)}
+                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-[11px] transition-colors cursor-pointer border border-slate-200/60 dark:border-slate-700/60"
+                          >
+                            Report
+                          </button>
+                          {onDeleteCandidate && (
+                            <button
+                              type="button"
+                              onClick={() => setDeletingCandidateId(cand.id)}
+                              title="Delete Candidate"
+                              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors inline-flex items-center font-semibold text-[11px] cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-5 py-8 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan={5} className="px-5 py-8 text-center text-slate-500 dark:text-slate-400 font-medium">
                     No candidates found matching the query.
                   </td>
                 </tr>
@@ -476,44 +514,6 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
                   💡 <strong>Direct Email Delivery:</strong> Notifications and test scorecards are dispatched directly to the candidate's specified email address with admin reply-to set to <code>devkarannirwan01@gmail.com</code>.
                 </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Tehsil / Block
-                  </label>
-                  <select
-                    value={block}
-                    onChange={(e) => setBlock(e.target.value as DistrictBlock)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  >
-                    <option value="Nathdwara">Nathdwara</option>
-                    <option value="Kumbhalgarh">Kumbhalgarh</option>
-                    <option value="Bhim">Bhim</option>
-                    <option value="Rajsamand">Rajsamand</option>
-                    <option value="Amet">Amet</option>
-                    <option value="Deogarh">Deogarh</option>
-                    <option value="Railmagra">Railmagra</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  >
-                    <option value="General">General</option>
-                    <option value="OBC">OBC</option>
-                    <option value="SC">SC</option>
-                    <option value="ST">ST</option>
-                    <option value="EWS">EWS</option>
-                  </select>
-                </div>
               </div>
 
               <div>
@@ -651,44 +651,6 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
                   onChange={(e) => setEditPhone(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Tehsil / Block
-                  </label>
-                  <select
-                    value={editBlock}
-                    onChange={(e) => setEditBlock(e.target.value as DistrictBlock)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  >
-                    <option value="Nathdwara">Nathdwara</option>
-                    <option value="Kumbhalgarh">Kumbhalgarh</option>
-                    <option value="Bhim">Bhim</option>
-                    <option value="Rajsamand">Rajsamand</option>
-                    <option value="Amet">Amet</option>
-                    <option value="Deogarh">Deogarh</option>
-                    <option value="Railmagra">Railmagra</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={editCategory}
-                    onChange={(e) => setEditCategory(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  >
-                    <option value="General">General</option>
-                    <option value="OBC">OBC</option>
-                    <option value="SC">SC</option>
-                    <option value="ST">ST</option>
-                    <option value="EWS">EWS</option>
-                  </select>
-                </div>
               </div>
 
               {/* Password Management */}

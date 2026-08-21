@@ -118,12 +118,6 @@ export const CandidateSuccessModal: React.FC<CandidateSuccessModalProps> = ({
               <h2 className="text-xl font-extrabold tracking-tight text-white leading-tight">
                 {candidate.name}
               </h2>
-              <p className="text-xs text-emerald-100/90 mt-1 font-medium flex items-center justify-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5" />
-                <span>{candidate.block} Tehsil Block</span>
-                <span className="opacity-60">•</span>
-                <span>{candidate.category} Category</span>
-              </p>
             </motion.div>
           </div>
 

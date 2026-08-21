@@ -79,6 +79,52 @@
         "password": { "type": "string", "maxLength": 128 },
         "updatedAt": { "type": "string", "maxLength": 64 }
       }
+    },
+    "TypingTest": {
+      "title": "TypingTest",
+      "description": "Typing assessment paragraph in English or Hindi (DevLys 010)",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "language": { "type": "string", "maxLength": 32 },
+        "durationMinutes": { "type": "number" },
+        "passageText": { "type": "string", "maxLength": 5000 },
+        "targetBlock": { "type": "string", "maxLength": 64 },
+        "minPassingWpm": { "type": "number" },
+        "instructions": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "maxLength": 32 },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "totalWords": { "type": "number" }
+      },
+      "required": ["title", "language", "passageText", "status"]
+    },
+    "TypingAttempt": {
+      "title": "TypingAttempt",
+      "description": "Candidate typing test attempt with speed and accuracy metrics",
+      "type": "object",
+      "properties": {
+        "typingTestId": { "type": "string", "maxLength": 128 },
+        "testTitle": { "type": "string", "maxLength": 200 },
+        "language": { "type": "string", "maxLength": 32 },
+        "candidateId": { "type": "string", "maxLength": 128 },
+        "candidateName": { "type": "string", "maxLength": 128 },
+        "candidateEmail": { "type": "string", "maxLength": 128 },
+        "block": { "type": "string", "maxLength": 64 },
+        "totalWordsInPara": { "type": "number" },
+        "correctWordsCount": { "type": "number" },
+        "incorrectWordsCount": { "type": "number" },
+        "untypedWordsCount": { "type": "number" },
+        "netWpm": { "type": "number" },
+        "grossWpm": { "type": "number" },
+        "accuracyPercentage": { "type": "number" },
+        "timeTakenSeconds": { "type": "number" },
+        "timeTakenMinutes": { "type": "number" },
+        "status": { "type": "string", "maxLength": 32 },
+        "typedText": { "type": "string", "maxLength": 10000 },
+        "submittedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["typingTestId", "candidateId", "netWpm", "status"]
     }
   },
   "firestore": {
@@ -101,6 +147,14 @@
     "/settings/{settingId}": {
       "schema": "Setting",
       "description": "Collection of system configuration settings"
+    },
+    "/typing_tests/{testId}": {
+      "schema": "TypingTest",
+      "description": "Collection of typing test papers and passages"
+    },
+    "/typing_attempts/{attemptId}": {
+      "schema": "TypingAttempt",
+      "description": "Collection of candidate typing test attempts and performance metrics"
     }
   }
 }

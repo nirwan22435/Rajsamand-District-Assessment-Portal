@@ -68,7 +68,7 @@ export const ProgressReportModal: React.FC<ProgressReportModalProps> = ({ candid
           </div>
 
           {/* Particulars Grid */}
-          <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <span className="text-slate-500 dark:text-slate-400 block">Candidate Name:</span>
               <span className="font-bold text-slate-900 dark:text-white text-sm">{candidate.name}</span>
@@ -78,20 +78,8 @@ export const ProgressReportModal: React.FC<ProgressReportModalProps> = ({ candid
               <span className="font-bold text-emerald-700 dark:text-emerald-400 font-mono text-sm">{candidate.registrationId}</span>
             </div>
             <div>
-              <span className="text-slate-500 dark:text-slate-400 block">Assigned Tehsil/Block:</span>
-              <span className="font-bold text-slate-900 dark:text-white">{candidate.block}</span>
-            </div>
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 block">Category:</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">{candidate.category}</span>
-            </div>
-            <div>
               <span className="text-slate-500 dark:text-slate-400 block">Contact Email:</span>
               <span className="font-semibold text-slate-800 dark:text-slate-200">{candidate.email}</span>
-            </div>
-            <div>
-              <span className="text-slate-500 dark:text-slate-400 block">Overall Score %:</span>
-              <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{avgPercentage}%</span>
             </div>
           </div>
 
