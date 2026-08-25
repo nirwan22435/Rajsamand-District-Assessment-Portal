@@ -22,6 +22,7 @@ import { PublishedTestPapersView } from './components/PublishedTestPapersView';
 import { TypingTestSection } from './components/typing/TypingTestSection';
 import { ThemePreviewModal, APP_THEMES } from './components/ThemePreviewModal';
 import { DesktopSetupModal } from './components/DesktopSetupModal';
+import { downloadWindowsSetupScript } from './utils/desktopAppDownloader';
 import { applyThemeToDOM } from './utils/themeManager';
 import { Monitor } from 'lucide-react';
 import { sendEmailAPI } from './services/api';
@@ -73,7 +74,7 @@ export default function App() {
 
   // Direct 1-Click Install Trigger Handler
   const handleTriggerDesktopInstall = async () => {
-    // 1. If native PWA browser install prompt is available, trigger it immediately!
+    // 1. If native PWA browser install prompt is available, trigger it
     if (deferredPrompt) {
       try {
         deferredPrompt.prompt();
@@ -87,103 +88,7 @@ export default function App() {
       }
     }
 
-    // 2. Automatically trigger download of the full Windows Desktop Setup Installer (.BAT)
-    try {
-      const currentUrl = typeof window !== 'undefined' ? window.location.origin : 'https://ais-dev-ipslj2ssag6j65tfrompqs-957343451703.asia-east1.run.app';
-      const batchSetupScript = `@echo off
-setlocal EnableDelayedExpansion
-:: ============================================================================
-:: Rajsamand District Assessment Portal - Official Windows Desktop Installer
-:: Department of Information Technology & Communication (DoIT&C) Rajsamand
-:: ============================================================================
-title Rajsamand District Assessment Portal - Windows Setup
-color 0b
-
-echo ============================================================================
-echo   Rajsamand District Assessment & Typing Examination Portal
-echo   Government of Rajasthan - DoIT&C Rajsamand
-echo ============================================================================
-echo.
-echo [*] Initializing Windows Desktop Application Setup...
-echo.
-
-set "PORTAL_URL=${currentUrl}"
-set "APP_NAME=Rajsamand District Assessment Portal"
-set "INSTALL_DIR=%LOCALAPPDATA%\\RajsamandDistrictPortal"
-
-:: 1. Create App Folder in Local AppData
-if not exist "%INSTALL_DIR%" (
-    echo [+] Creating application directory: %INSTALL_DIR%
-    mkdir "%INSTALL_DIR%"
-)
-
-:: 2. Create the App Launcher Runner
-echo [+] Configuring Desktop Application Launcher...
-(
-echo @echo off
-echo set "PORTAL_URL=%PORTAL_URL%"
-echo title Rajsamand District Assessment Portal
-echo :: Check for Microsoft Edge App Mode
-echo if exist "%%ProgramFiles(x86)%%\Microsoft\Edge\Application\msedge.exe" ^(
-echo     start "" "%%ProgramFiles(x86)%%\Microsoft\Edge\Application\msedge.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
-echo     exit /b 0
-echo ^)
-echo if exist "%%ProgramFiles%%\Microsoft\Edge\Application\msedge.exe" ^(
-echo     start "" "%%ProgramFiles%%\Microsoft\Edge\Application\msedge.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
-echo     exit /b 0
-echo ^)
-echo :: Check for Google Chrome App Mode
-echo if exist "%%ProgramFiles%%\Google\Chrome\Application\chrome.exe" ^(
-echo     start "" "%%ProgramFiles%%\Google\Chrome\Application\chrome.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
-echo     exit /b 0
-echo ^)
-echo if exist "%%ProgramFiles(x86)%%\Google\Chrome\Application\chrome.exe" ^(
-echo     start "" "%%ProgramFiles(x86)%%\Google\Chrome\Application\chrome.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
-echo     exit /b 0
-echo ^)
-echo :: Check for Mozilla Firefox
-echo if exist "%%ProgramFiles%%\Mozilla Firefox\firefox.exe" ^(
-echo     start "" "%%ProgramFiles%%\Mozilla Firefox\firefox.exe" -new-window "%%PORTAL_URL%%"
-echo     exit /b 0
-echo ^)
-echo :: Fallback default
-echo start "" "%%PORTAL_URL%%"
-) > "%INSTALL_DIR%\\launch.bat"
-
-:: 3. Create Desktop Shortcut (.lnk)
-echo [+] Creating Desktop Shortcut on Windows Desktop...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $desktop = [System.Environment]::GetFolderPath('Desktop'); $s = $ws.CreateShortcut((Join-Path $desktop '%APP_NAME%.lnk')); $s.TargetPath = '%INSTALL_DIR%\\launch.bat'; $s.WorkingDirectory = '%INSTALL_DIR%'; $s.Description = 'Official Rajsamand District Assessment Portal'; $s.Save()"
-
-:: 4. Create Windows Start Menu Shortcut
-echo [+] Creating Windows Start Menu entry...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $startMenu = Join-Path ([System.Environment]::GetFolderPath('StartMenu')) 'Programs'; $s = $ws.CreateShortcut((Join-Path $startMenu '%APP_NAME%.lnk')); $s.TargetPath = '%INSTALL_DIR%\\launch.bat'; $s.WorkingDirectory = '%INSTALL_DIR%'; $s.Description = 'Official Rajsamand District Assessment Portal'; $s.Save()"
-
-echo.
-echo ============================================================================
-echo   [SUCCESS] INSTALLATION COMPLETE!
-echo   1. Desktop shortcut created: '%APP_NAME%' on your Windows Desktop.
-echo   2. Start Menu program added.
-echo ============================================================================
-echo.
-echo [*] Launching application now...
-start "" "%INSTALL_DIR%\\launch.bat"
-timeout /t 3 >nul
-exit /b 0`;
-
-      const blob = new Blob([batchSetupScript], { type: 'application/x-bat' });
-      const downloadUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = 'Rajsamand_Portal_Windows_Setup.bat';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(downloadUrl);
-    } catch (err) {
-      console.warn('Batch installer download failed:', err);
-    }
-
-    // 3. Open the setup dialogue with full instructions & electron exe builder
+    // 2. Open the desktop setup modal with 1-click Windows installer options
     setIsDesktopModalOpen(true);
   };
 

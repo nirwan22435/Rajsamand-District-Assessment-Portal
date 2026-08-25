@@ -2,12 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   Monitor,
   Download,
-  Terminal,
   CheckCircle2,
   Copy,
   Check,
   X,
-  ExternalLink,
   Shield,
   Layers,
   Sparkles,
@@ -19,7 +17,13 @@ import {
   HardDrive,
   FileCode,
   Package,
+  Globe,
+  ExternalLink,
+  Zap,
+  Compass,
 } from 'lucide-react';
+import { downloadWindowsSetupScript, downloadWindowsVbsInstaller } from '../utils/desktopAppDownloader';
+import { PortalLogo } from './PortalLogo';
 
 interface DesktopSetupModalProps {
   isOpen: boolean;
@@ -34,20 +38,19 @@ export const DesktopSetupModal: React.FC<DesktopSetupModalProps> = ({
   deferredPrompt: externalPrompt,
   setDeferredPrompt: setExternalPrompt,
 }) => {
-  const [activeTab, setActiveTab] = useState<'PWA_INSTALL' | 'PORTABLE_BAT' | 'ELECTRON_EXE' | 'KIOSK_MODE'>('PWA_INSTALL');
-  const [copiedScript, setCopiedScript] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'PWA_DIRECT' | 'FIREFOX_USERS' | 'CMD_INSTALL' | 'BROWSER_GUIDE'>('PWA_DIRECT');
   const [internalPrompt, setInternalPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState<boolean>(false);
   const [installStatus, setInstallStatus] = useState<string | null>(null);
-
   const [isFirefox, setIsFirefox] = useState<boolean>(false);
 
   const deferredPrompt = externalPrompt !== undefined ? externalPrompt : internalPrompt;
   const setPrompt = setExternalPrompt || setInternalPrompt;
 
   useEffect(() => {
-    // Detect Firefox
-    if (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('firefox')) {
+    // Detect Firefox browser
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (userAgent.indexOf('firefox') > -1) {
       setIsFirefox(true);
     }
 
@@ -69,184 +72,38 @@ export const DesktopSetupModal: React.FC<DesktopSetupModalProps> = ({
 
   const currentUrl = typeof window !== 'undefined' ? window.location.origin : 'https://ais-dev-ipslj2ssag6j65tfrompqs-957343451703.asia-east1.run.app';
 
-  // Windows Desktop Setup Script (creates Desktop shortcut .lnk and launches standalone)
-  const batchSetupScript = `@echo off
-setlocal EnableDelayedExpansion
-:: ============================================================================
-:: Rajsamand District Assessment Portal - Official Windows Desktop Installer
-:: Department of Information Technology & Communication (DoIT&C) Rajsamand
-:: ============================================================================
-title Rajsamand District Assessment Portal - Windows Setup
-color 0b
+  // 1-Click Native PWA Install
+  const handleDirectPwaInstall = async () => {
+    if (isFirefox) {
+      setActiveTab('FIREFOX_USERS');
+      setInstallStatus('Mozilla Firefox डेस्कटॉप PWA इंस्टॉलेशन का समर्थन नहीं करता है। कृपया नीचे दिए गए 1-Click Setup (.cmd) या Chrome/Edge का उपयोग करें।');
+      return;
+    }
 
-echo ============================================================================
-echo   Rajsamand District Assessment & Typing Examination Portal
-echo   Government of Rajasthan - DoIT&C Rajsamand
-echo ============================================================================
-echo.
-echo [*] Initializing Windows Desktop Application Setup...
-echo.
-
-set "PORTAL_URL=${currentUrl}"
-set "APP_NAME=Rajsamand District Assessment Portal"
-set "INSTALL_DIR=%LOCALAPPDATA%\\RajsamandDistrictPortal"
-
-:: 1. Create App Folder in Local AppData
-if not exist "%INSTALL_DIR%" (
-    echo [+] Creating application directory: %INSTALL_DIR%
-    mkdir "%INSTALL_DIR%"
-)
-
-:: 2. Create the App Launcher Runner
-echo [+] Configuring Desktop Application Launcher...
-(
-echo @echo off
-echo set "PORTAL_URL=%PORTAL_URL%"
-echo title Rajsamand District Assessment Portal
-echo :: Check for Microsoft Edge App Mode
-echo if exist "%%ProgramFiles(x86)%%\Microsoft\Edge\Application\msedge.exe" ^(
-echo     start "" "%%ProgramFiles(x86)%%\Microsoft\Edge\Application\msedge.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
-echo     exit /b 0
-echo ^)
-echo if exist "%%ProgramFiles%%\Microsoft\Edge\Application\msedge.exe" ^(
-echo     start "" "%%ProgramFiles%%\Microsoft\Edge\Application\msedge.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
-echo     exit /b 0
-echo ^)
-echo :: Check for Google Chrome App Mode
-echo if exist "%%ProgramFiles%%\Google\Chrome\Application\chrome.exe" ^(
-echo     start "" "%%ProgramFiles%%\Google\Chrome\Application\chrome.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
-echo     exit /b 0
-echo ^)
-echo if exist "%%ProgramFiles(x86)%%\Google\Chrome\Application\chrome.exe" ^(
-echo     start "" "%%ProgramFiles(x86)%%\Google\Chrome\Application\chrome.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
-echo     exit /b 0
-echo ^)
-echo :: Check for Mozilla Firefox
-echo if exist "%%ProgramFiles%%\Mozilla Firefox\firefox.exe" ^(
-echo     start "" "%%ProgramFiles%%\Mozilla Firefox\firefox.exe" -new-window "%%PORTAL_URL%%"
-echo     exit /b 0
-echo ^)
-echo :: Fallback default
-echo start "" "%%PORTAL_URL%%"
-) > "%INSTALL_DIR%\\launch.bat"
-
-:: 3. Create Desktop Shortcut (.lnk)
-echo [+] Creating Desktop Shortcut on Windows Desktop...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $desktop = [System.Environment]::GetFolderPath('Desktop'); $s = $ws.CreateShortcut((Join-Path $desktop '%APP_NAME%.lnk')); $s.TargetPath = '%INSTALL_DIR%\\launch.bat'; $s.WorkingDirectory = '%INSTALL_DIR%'; $s.Description = 'Official Rajsamand District Assessment Portal'; $s.Save()"
-
-:: 4. Create Windows Start Menu Shortcut
-echo [+] Creating Windows Start Menu entry...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $startMenu = Join-Path ([System.Environment]::GetFolderPath('StartMenu')) 'Programs'; $s = $ws.CreateShortcut((Join-Path $startMenu '%APP_NAME%.lnk')); $s.TargetPath = '%INSTALL_DIR%\\launch.bat'; $s.WorkingDirectory = '%INSTALL_DIR%'; $s.Description = 'Official Rajsamand District Assessment Portal'; $s.Save()"
-
-echo.
-echo ============================================================================
-echo   [SUCCESS] INSTALLATION COMPLETE!
-echo   1. Desktop shortcut created: '%APP_NAME%' on your Windows Desktop.
-echo   2. Start Menu program added.
-echo ============================================================================
-echo.
-echo [*] Launching application now...
-start "" "%INSTALL_DIR%\\launch.bat"
-timeout /t 3 >nul
-exit /b 0`;
-
-  // Download 1-Click Windows Setup .BAT
-  const downloadSetupBat = () => {
-    const blob = new Blob([batchSetupScript], { type: 'application/x-bat' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'Rajsamand_Portal_Windows_Setup.bat';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setInstallStatus('Windows इंस्टॉलर सेटअप फ़ाइल (Rajsamand_Portal_Windows_Setup.bat) डाउनलोड हो गई है। डाउनलोड लिस्ट से इस पर क्लिक करें।');
-  };
-
-  const handleInstallPWA = async () => {
     if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setInstallStatus('डेस्कटॉप एप्लीकेशन सफलतापूर्वक स्थापित की गई!');
-        setIsInstalled(true);
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setIsInstalled(true);
+          setInstallStatus('✅ बधाई! राजसमंद जिला मूल्यांकन पोर्टल सफलतापूर्वक आपके Windows डेस्कटॉप पर इंस्टॉल हो गया है!');
+        } else {
+          setInstallStatus('इंस्टॉलेशन रद्द कर दिया गया। आप किसी भी समय पुनः इंस्टॉल कर सकते हैं।');
+        }
+      } catch (err) {
+        console.error(err);
+        setInstallStatus('ब्राउज़र एड्रेस बार के दाईं ओर मौजूद "Install" (🖥️) आइकन पर क्लिक करें।');
       }
-      setPrompt(null);
     } else {
-      // Direct 1-click Windows installer setup download for Firefox and other browsers
-      downloadSetupBat();
+      setInstallStatus('यदि ब्राउज़र ने स्वतः प्रॉम्प्ट नहीं दिया है, तो नीचे दिए गए 1-Click Windows Setup (.cmd) डाउनलोड करें।');
+      setActiveTab('BROWSER_GUIDE');
     }
   };
 
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedScript(id);
-    setTimeout(() => setCopiedScript(null), 2500);
+  const handleDownloadCmd = () => {
+    downloadWindowsSetupScript(currentUrl);
+    setInstallStatus('Windows इंस्टॉलर फ़ाइल (Rajsamand_Portal_Setup.cmd) डाउनलोड हो गई है। इसे ओपन करके रन करें!');
   };
-
-  // Portable Windows Launcher Batch Script content
-  const batchLauncherScript = `@echo off
-:: ============================================================================
-:: Rajsamand District Assessment Portal - Windows Desktop App Launcher
-:: Department of Information Technology & Communication (DoIT&C) Rajsamand
-:: ============================================================================
-title Rajsamand District Assessment Portal
-echo ============================================================================
-echo  Rajsamand District Assessment & Typing Portal
-echo  Launching Desktop Application Mode...
-echo ============================================================================
-
-set PORTAL_URL=${currentUrl}
-
-:: 1. Launch with Microsoft Edge (Native on Windows 10 & 11)
-if exist "%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe" (
-    start "" "%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe" --app="%PORTAL_URL%" --window-size=1366,820 --start-maximized
-    exit /b 0
-)
-
-if exist "%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe" (
-    start "" "%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe" --app="%PORTAL_URL%" --window-size=1366,820 --start-maximized
-    exit /b 0
-)
-
-:: 2. Launch with Google Chrome
-if exist "%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe" (
-    start "" "%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe" --app="%PORTAL_URL%" --window-size=1366,820 --start-maximized
-    exit /b 0
-)
-
-if exist "%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe" (
-    start "" "%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe" --app="%PORTAL_URL%" --window-size=1366,820 --start-maximized
-    exit /b 0
-)
-
-:: 3. Default fallback
-start "" "%PORTAL_URL%"
-exit /b 0`;
-
-  // Download .bat launcher
-  const downloadLauncherBat = () => {
-    const blob = new Blob([batchLauncherScript], { type: 'application/x-bat' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'Rajsamand_Assessment_Portal_Desktop.bat';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  // Build EXE script
-  const buildExeScript = `:: 1. Install Electron packaging tools
-npm install --save-dev electron electron-builder
-
-:: 2. Build production assets
-npm run build
-
-:: 3. Package Windows standalone .EXE installer
-npx electron-builder --win nsis --x64`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md overflow-y-auto">
@@ -255,81 +112,82 @@ npx electron-builder --win nsis --x64`;
         {/* Header */}
         <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-amber-950 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800 shrink-0">
           <div className="flex items-center space-x-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-inner">
-              <Monitor className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 p-1 flex items-center justify-center shadow-inner">
+              <PortalLogo size={36} darkMode={true} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] uppercase font-black tracking-widest text-amber-400">
-                  Windows Desktop Application Hub
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  Setup Ready
+                <h2 className="text-lg font-black tracking-tight text-white">
+                  Windows Desktop Application Setup
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  All Browsers & Windows
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
-                डेस्कटॉप एप्लीकेशन एवं .EXE इंस्टॉलेशन केंद्र
-              </h2>
+              <p className="text-xs text-slate-300">
+                राजसमंद जिला मूल्यांकन एवं टाइपिंग पोर्टल - डेस्कटॉप ऐप इंस्टॉलर
+              </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
+            aria-label="Close modal"
             className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-            title="Close modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="bg-slate-50 dark:bg-slate-950/60 px-6 py-2.5 border-b border-slate-200 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto shrink-0">
+        <div className="flex items-center gap-1.5 px-6 py-2.5 bg-slate-100 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 overflow-x-auto shrink-0">
           <button
-            onClick={() => setActiveTab('PWA_INSTALL')}
+            onClick={() => setActiveTab('PWA_DIRECT')}
             className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-              activeTab === 'PWA_INSTALL'
+              activeTab === 'PWA_DIRECT'
                 ? 'bg-amber-600 text-white shadow-md shadow-amber-900/20'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
             }`}
           >
-            <Sparkles className="w-4 h-4" />
-            <span>1. डायरेक्ट 1-क्लिक डेस्कटॉप इंस्टॉल (Direct Install)</span>
+            <Zap className="w-4 h-4" />
+            <span>1. डायरेक्ट PWA ऐप इंस्टॉल (Chrome/Edge)</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('PORTABLE_BAT')}
+            onClick={() => setActiveTab('FIREFOX_USERS')}
             className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-              activeTab === 'PORTABLE_BAT'
+              activeTab === 'FIREFOX_USERS'
+                ? 'bg-amber-600 text-white shadow-md shadow-amber-900/20'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Compass className="w-4 h-4 text-orange-500" />
+            <span className="text-orange-700 dark:text-orange-400 font-bold">2. Mozilla Firefox यूज़र्स के लिए</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('CMD_INSTALL')}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+              activeTab === 'CMD_INSTALL'
+                ? 'bg-amber-600 text-white shadow-md shadow-amber-900/20'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Download className="w-4 h-4" />
+            <span>3. 1-Click Windows Setup (.CMD)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('BROWSER_GUIDE')}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+              activeTab === 'BROWSER_GUIDE'
                 ? 'bg-amber-600 text-white shadow-md shadow-amber-900/20'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
             }`}
           >
             <Laptop className="w-4 h-4" />
-            <span>2. पोर्टेबल Windows लॉन्चर (.BAT)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('ELECTRON_EXE')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-              activeTab === 'ELECTRON_EXE'
-                ? 'bg-amber-600 text-white shadow-md shadow-amber-900/20'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            <span>3. Windows .EXE इंस्टॉलर पैकेज (Electron)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('KIOSK_MODE')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-              activeTab === 'KIOSK_MODE'
-                ? 'bg-amber-600 text-white shadow-md shadow-amber-900/20'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
-            }`}
-          >
-            <Lock className="w-4 h-4" />
-            <span>4. परीक्षा कियोस्क मोड (Kiosk Lockdown)</span>
+            <span>4. स्टेप-बाय-स्टेप गाइड</span>
           </button>
         </div>
 
@@ -344,291 +202,262 @@ npx electron-builder --win nsis --x64`;
             </div>
           )}
 
-          {/* TAB 1: PWA 1-CLICK INSTANT DESKTOP INSTALL */}
-          {activeTab === 'PWA_INSTALL' && (
+          {/* Special Firefox Banner if detected */}
+          {isFirefox && (
+            <div className="p-4 rounded-2xl bg-orange-50 dark:bg-orange-950/40 border-2 border-orange-400 text-orange-900 dark:text-orange-200 text-xs space-y-2">
+              <div className="flex items-center gap-2 font-black text-sm text-orange-800 dark:text-orange-300">
+                <Compass className="w-5 h-5 text-orange-600" />
+                <span>आप Mozilla Firefox ब्राउज़र का उपयोग कर रहे हैं</span>
+              </div>
+              <p className="leading-relaxed">
+                <b>ध्यान दें:</b> Mozilla Firefox ने डेस्कटॉप पर डायरेक्ट PWA इंस्टॉलेशन सपोर्ट हटा दिया है। अपने Windows PC पर डेस्कटॉप ऐप आइकन बनाने के लिए कृपया नीचे दिए गए <b>"Download Windows Setup (.cmd)"</b> बटन पर क्लिक करें।
+              </p>
+              <button
+                onClick={handleDownloadCmd}
+                className="mt-1 px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Firefox यूज़र्स के लिए Windows Setup डाउनलोड करें</span>
+              </button>
+            </div>
+          )}
+
+          {/* TAB 1: 1-CLICK PWA DIRECT INSTALL (Chrome / Edge) */}
+          {activeTab === 'PWA_DIRECT' && (
             <div className="space-y-6">
-              <div className="p-6 rounded-2xl bg-gradient-to-br from-amber-500/10 via-slate-50 to-slate-100 dark:from-amber-950/30 dark:via-slate-900 dark:to-slate-900/80 border border-amber-300 dark:border-amber-800/60 space-y-4">
+              
+              <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-500/10 via-slate-50 to-slate-100 dark:from-amber-950/30 dark:via-slate-900 dark:to-slate-900/80 border-2 border-amber-500/40 space-y-5">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-600 text-white flex items-center justify-center shadow-lg shadow-amber-600/30 shrink-0">
-                      <Monitor className="w-6 h-6" />
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-600 text-white flex items-center justify-center shadow-xl shadow-amber-600/30 shrink-0">
+                      <Monitor className="w-7 h-7" />
                     </div>
                     <div>
                       <h3 className="text-base font-black text-slate-900 dark:text-white">
-                        1-क्लिक डेस्कटॉप एप्लीकेशन इंस्टॉलेशन (PWA Native App)
+                        Windows Desktop App Direct Install
                       </h3>
                       <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                        बिना किसी अतिरिक्त सॉफ़्टवेयर के अपने Windows PC पर सीधे एक स्टैंडअलोन डेस्कटॉप ऐप की तरह चलाएं।
+                        Google Chrome एवं Microsoft Edge में सीधे 1-क्लिक में डेस्कटॉप ऐप इंस्टॉल करें।
                       </p>
                     </div>
                   </div>
 
                   <button
-                    onClick={handleInstallPWA}
-                    className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-900/30 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                    onClick={handleDirectPwaInstall}
+                    className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-black text-xs uppercase tracking-wider shadow-xl shadow-amber-900/30 active:scale-95 transition-all flex items-center justify-center gap-2.5 cursor-pointer shrink-0"
                   >
-                    <Download className="w-4 h-4" />
-                    <span>{isInstalled ? 'डेस्कटॉप पर पहले से स्थापित है' : 'अभी डेस्कटॉप ऐप इंस्टॉल करें'}</span>
+                    <Zap className="w-4 h-4 fill-white" />
+                    <span>Install Desktop App Now</span>
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
-                  <div className="p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-start gap-2.5">
+                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold text-slate-900 dark:text-white block">डेस्कटॉप शॉर्टकट</span>
-                      <span className="text-[11px] text-slate-500">Windows Desktop एवं Start Menu में अलग आइकन बनेगा</span>
+                      <span className="font-bold text-slate-900 dark:text-white block">Desktop & Start Menu</span>
+                      <span className="text-[11px] text-slate-500">Windows में अलग सॉफ़्टवेयर की तरह जुड़ेगा</span>
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-start gap-2.5">
+                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold text-slate-900 dark:text-white block">स्टैंडअलोन विंडो</span>
-                      <span className="text-[11px] text-slate-500">ब्राउज़र एड्रेस बार व टैब के बिना पूर्ण स्क्रीन में चलेगा</span>
+                      <span className="font-bold text-slate-900 dark:text-white block">Full Screen Kiosk</span>
+                      <span className="text-[11px] text-slate-500">टाइपिंग टेस्ट के दौरान कोई डिस्टर्बेंस नहीं</span>
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-start gap-2.5">
+                  <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
                     <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold text-slate-900 dark:text-white block">ऑफलाइन एवं तेज गति</span>
-                      <span className="text-[11px] text-slate-500">DevLys 010 फॉन्ट एवं एसेट्स तेजी से लोड होंगे</span>
+                      <span className="font-bold text-slate-900 dark:text-white block">Fast & Secure</span>
+                      <span className="text-[11px] text-slate-500">ऑफ़लाइन सेवा और सुरक्षित वातावरण</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Step by Step Visual Guide */}
-              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                  <HelpCircle className="w-4 h-4 text-amber-500" />
-                  <span>ब्राउज़र से मैन्युअल रूप से डेस्कटॉप ऐप इंस्टॉल करने की विधि:</span>
-                </h4>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                  {/* Firefox Instructions */}
-                  <div className={`p-4 rounded-xl border space-y-2 ${isFirefox ? 'bg-amber-500/10 border-amber-500/40 ring-2 ring-amber-500/30' : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700'}`}>
-                    <div className="font-bold text-slate-900 dark:text-white flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px]">A</span>
-                        <span>Mozilla Firefox में:</span>
-                      </div>
-                      {isFirefox && (
-                        <span className="text-[10px] bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded font-black">Your Browser</span>
-                      )}
-                    </div>
-                    <ol className="list-decimal list-inside space-y-1.5 text-slate-600 dark:text-slate-400 pl-1 text-[11px]">
-                      <li><b>"अभी डेस्कटॉप ऐप इंस्टॉल करें"</b> बटन दबाते ही <code className="px-1 py-0.5 bg-amber-500/20 text-amber-800 dark:text-amber-300 font-mono text-[10px] rounded font-bold">Rajsamand_Portal_Windows_Setup.bat</code> स्वतः डाउनलोड हो जाती है।</li>
-                      <li>Firefox के डाउनलोड बार (<span className="font-bold">↓ आइकन</span>) से उस फ़ाइल पर क्लिक करें।</li>
-                      <li>यह तुरंत आपके <b>Windows Desktop पर शॉर्टकट आइकन बनाकर</b> ऐप को पूर्ण स्क्रीन में शुरू कर देगा।</li>
-                    </ol>
-                  </div>
-
-                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                    <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-slate-700 text-white flex items-center justify-center text-[10px]">B</span>
-                      <span>Google Chrome में:</span>
-                    </div>
-                    <ol className="list-decimal list-inside space-y-1 text-slate-600 dark:text-slate-400 pl-1 text-[11px]">
-                      <li>एड्रेस बार के दाईं ओर स्थित <b>"Install" (प्लस/मॉनिटर आइकन)</b> पर क्लिक करें।</li>
-                      <li>या शीर्ष दाएँ <b>तीन बिंदु (⋮)</b> $\rightarrow$ <b>"Cast, save and share"</b> $\rightarrow$ <b>"Install Rajsamand Portal"</b> चुनें।</li>
-                      <li><b>"Install"</b> पर क्लिक करें। आपके डेस्कटॉप पर आइकन आ जाएगा।</li>
-                    </ol>
-                  </div>
-
-                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-                    <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-slate-700 text-white flex items-center justify-center text-[10px]">C</span>
-                      <span>Microsoft Edge में:</span>
-                    </div>
-                    <ol className="list-decimal list-inside space-y-1 text-slate-600 dark:text-slate-400 pl-1 text-[11px]">
-                      <li>एड्रेस बार में <b>"App available" (वर्ग/प्लस आइकन)</b> पर क्लिक करें।</li>
-                      <li>या शीर्ष दाएँ <b>तीन बिंदु (...)</b> $\rightarrow$ <b>"Apps"</b> $\rightarrow$ <b>"Install this site as an app"</b> चुनें।</li>
-                      <li><b>"Install"</b> पुष्टि करें। यह Windows टास्कबार पर पिन हो जाएगा।</li>
-                    </ol>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
-          {/* TAB 2: PORTABLE WINDOWS RUNNER (.BAT) */}
-          {activeTab === 'PORTABLE_BAT' && (
+          {/* TAB 2: FIREFOX USERS GUIDE & SOLUTION */}
+          {activeTab === 'FIREFOX_USERS' && (
             <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white border border-slate-700 space-y-4 shadow-lg">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-300 shrink-0">
-                      <Laptop className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm sm:text-base font-black tracking-tight text-white">
-                        Windows पोर्टेबल डेस्कटॉप लॉन्चर (.BAT)
-                      </h3>
-                      <p className="text-xs text-slate-300 mt-0.5">
-                        बिना किसी इंस्टॉलेशन के किसी भी Windows 10 / 11 कंप्यूटर पर डबल-क्लिक करके सीधे डेस्कटॉप ऐप मोड में चलाएं।
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={downloadLauncherBat}
-                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-md active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Download .BAT Launcher</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Launcher Code & Manual Setup */}
-              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <FileCode className="w-4 h-4 text-amber-500" />
-                    <span>बैच फ़ाइल स्क्रिप्ट कोड (Rajsamand_Assessment_Portal.bat):</span>
-                  </span>
-                  <button
-                    onClick={() => handleCopy(batchLauncherScript, 'bat-script')}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
-                  >
-                    {copiedScript === 'bat-script' ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-500" />
-                        <span className="text-emerald-600">Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copy Code</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <pre className="p-4 rounded-xl bg-slate-950 text-amber-300 font-mono text-[11px] overflow-x-auto leading-relaxed border border-slate-800">
-                  {batchLauncherScript}
-                </pre>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: ELECTRON .EXE COMPILATION & SETUP */}
-          {activeTab === 'ELECTRON_EXE' && (
-            <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">
+              
+              <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold shrink-0">
-                    <Package className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-2xl bg-orange-600 text-white flex items-center justify-center font-bold">
+                    <Compass className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                      Electron Windows Standalone Installer (.EXE) तैयार करने की विधि
+                    <h3 className="text-base font-black text-slate-900 dark:text-white">
+                      Mozilla Firefox में ऐप इंस्टॉल क्यों नहीं होता?
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      पूर्ण नेटिव Windows सेटअप फ़ाइल (`Rajsamand-Assessment-Portal-Setup-1.0.0.exe`) जनरेट करने के चरण:
+                    <p className="text-xs text-slate-500">
+                      तकनीकी कारण और Firefox यूज़र्स के लिए तत्काल समाधान
                     </p>
                   </div>
                 </div>
-              </div>
 
-              {/* Step-by-Step Terminal Instructions */}
-              <div className="space-y-4">
-                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-slate-800 dark:text-slate-200">
-                      कदम 1: टर्मिनल में निम्न कमांड्स चलाएं:
-                    </span>
+                <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 leading-relaxed space-y-1.5">
+                  <p className="font-bold">⚠️ Mozilla Firefox की आधिकारिक नीति (SSB Deprecation):</p>
+                  <p>
+                    Mozilla Firefox टीम ने वर्शन 85 के बाद से डेस्कटॉप PWA (Site Specific Browser / Install App) सुविधा को डिप्रिकेट कर दिया है। इसी कारण Firefox में "Install App" का पॉपअप नहीं आता है।
+                  </p>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                    Firefox यूज़र्स के लिए 2 सरल समाधान:
+                  </h4>
+
+                  {/* Option 1: 1-Click Setup Script */}
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px]">A</span>
+                        <span>1-Click Windows Setup (.cmd) चलाएं</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        यह फ़ाइल डाउनलोड करके रन करने पर आपके Windows डेस्कटॉप पर पोर्टल का शॉर्टकट बन जाएगा।
+                      </p>
+                    </div>
+
                     <button
-                      onClick={() => handleCopy(buildExeScript, 'exe-commands')}
-                      className="px-3 py-1 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      onClick={handleDownloadCmd}
+                      className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md cursor-pointer shrink-0"
                     >
-                      {copiedScript === 'exe-commands' ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          <span className="text-emerald-600">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>Copy Commands</span>
-                        </>
-                      )}
+                      <Download className="w-4 h-4" />
+                      <span>Download .cmd Setup</span>
                     </button>
                   </div>
 
-                  <pre className="p-3.5 rounded-xl bg-slate-950 text-teal-300 font-mono text-[11px] overflow-x-auto leading-relaxed border border-slate-800">
-                    {buildExeScript}
-                  </pre>
-                </div>
-
-                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
-                  <span className="font-bold text-slate-900 dark:text-white block">
-                    कदम 2: जनरेट हुई .EXE फ़ाइल प्राप्त करें:
-                  </span>
-                  <p className="text-slate-600 dark:text-slate-400 text-[11px]">
-                    बिल्ड पूर्ण होने के बाद आपके प्रोजेक्ट डायरेक्टरी के <code className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-teal-600 dark:text-teal-400">./dist-electron/</code> फोल्डर में <code className="font-bold text-slate-900 dark:text-white">Rajsamand-Assessment-Portal-Setup-1.0.0.exe</code> इंस्टॉलर उपलब्ध हो जाएगा।
-                  </p>
+                  {/* Option 2: Open in Chrome or Edge */}
+                  <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] shrink-0 font-bold mt-0.5">B</div>
+                    <div className="space-y-1 text-xs">
+                      <p className="font-bold text-slate-900 dark:text-white">
+                        Google Chrome या Microsoft Edge में लिंक खोलें
+                      </p>
+                      <p className="text-slate-500 text-[11px]">
+                        इस पोर्टल URL को Chrome या Edge में खोलें, जहाँ 1-क्लिक में डायरेक्ट डेस्कटॉप ऐप इंस्टॉल करने का विकल्प मिलता है।
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
+
             </div>
           )}
 
-          {/* TAB 4: KIOSK EXAM LOCKDOWN MODE */}
-          {activeTab === 'KIOSK_MODE' && (
-            <div className="space-y-5">
-              <div className="p-5 rounded-2xl bg-gradient-to-br from-rose-950/40 via-slate-900 to-slate-900 border border-rose-800/40 text-white space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
-                    <Lock className="w-5 h-5" />
-                  </div>
+          {/* TAB 3: CMD SETUP (Universal for all Windows) */}
+          {activeTab === 'CMD_INSTALL' && (
+            <div className="space-y-6">
+              
+              <div className="p-6 rounded-3xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
-                    <h3 className="text-sm font-black text-white">
-                      परीक्षा केंद्र कियोस्क एवं लॉक-डाउन मोड (Exam Center Kiosk Setup)
+                    <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      <Download className="w-5 h-5 text-amber-500" />
+                      <span>यूनिवर्सल Windows डेस्कटॉप इंस्टॉलर (.cmd)</span>
                     </h3>
-                    <p className="text-xs text-rose-200/80 mt-0.5">
-                      परीक्षा के दौरान छात्रों द्वारा अन्य एप्लिकेशन, गूगल सर्च या शॉर्टकट कुंजियों (Alt+Tab, F12) का उपयोग रोकने हेतु।
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                      सभी ब्राउज़रों (Firefox, Chrome, Edge, Brave, Opera) और सभी Windows 10/11 कंप्यूटरों पर 100% काम करता है।
                     </p>
                   </div>
+
+                  <button
+                    onClick={handleDownloadCmd}
+                    className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-900/30 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download Windows Setup (.cmd)</span>
+                  </button>
+                </div>
+
+                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
+                  <p className="font-bold text-slate-900 dark:text-white">कैसे चलाएं:</p>
+                  <ol className="list-decimal pl-5 space-y-1 text-slate-600 dark:text-slate-400">
+                    <li>फ़ाइल डाउनलोड करें: <code className="text-amber-600 font-mono font-bold">Rajsamand_Portal_Setup.cmd</code></li>
+                    <li>फ़ाइल पर डबल-क्लिक करें।</li>
+                    <li>डेस्कटॉप पर तुरंत <b>"Rajsamand District Assessment Portal"</b> का ऐप शॉर्टकट बन जाएगा!</li>
+                  </ol>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
-                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-emerald-500" />
-                    <span>Windows Assigned Access Kiosk:</span>
-                  </div>
-                  <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
-                    Windows 10/11 Pro/Enterprise में <b>Settings $\rightarrow$ Accounts $\rightarrow$ Other users $\rightarrow$ Set up a kiosk</b> में जाकर इस पोर्टल को डिफ़ॉल्ट परीक्षा ऐप के रूप में सेट कर सकते हैं।
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
-                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Cpu className="w-4 h-4 text-amber-500" />
-                    <span>सुरक्षित ब्राउज़र पर्यावरण:</span>
-                  </div>
-                  <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
-                    टाइपिंग टेस्ट एवं वस्तुनिष्ठ परीक्षाओं के दौरान राइट-क्लिक, कॉपी-पेस्ट तथा बाहरी विंडो स्विचिंग पर सिस्टम द्वारा स्वतः निगरानी रखी जाती है।
-                  </p>
-                </div>
-              </div>
             </div>
           )}
+
+          {/* TAB 4: BROWSER GUIDE */}
+          {activeTab === 'BROWSER_GUIDE' && (
+            <div className="space-y-6">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                
+                {/* Edge Instructions */}
+                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm">
+                      E
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-slate-900 dark:text-white">Microsoft Edge</h4>
+                      <p className="text-[11px] text-slate-500">Windows का डिफ़ॉल्ट ब्राउज़र</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs text-slate-700 dark:text-slate-300">
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] shrink-0 font-bold">1</span>
+                      <p>एड्रेस बार के दाईं ओर बने <b>"Install App"</b> (<Monitor className="inline w-3.5 h-3.5 text-blue-500" />) आइकन पर क्लिक करें।</p>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] shrink-0 font-bold">2</span>
+                      <p><b>"Install"</b> पर क्लिक करें।</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chrome Instructions */}
+                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center font-black text-sm">
+                      C
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-slate-900 dark:text-white">Google Chrome</h4>
+                      <p className="text-[11px] text-slate-500">Chrome ब्राउज़र</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs text-slate-700 dark:text-slate-300">
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] shrink-0 font-bold">1</span>
+                      <p>एड्रेस बार के दाईं ओर <b>"Install"</b> (<Download className="inline w-3.5 h-3.5 text-amber-500" />) पर क्लिक करें।</p>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] shrink-0 font-bold">2</span>
+                      <p><b>"Install"</b> पर क्लिक करें।</p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
         </div>
 
-        {/* Footer */}
-        <div className="bg-slate-50 dark:bg-slate-950/80 px-6 py-3.5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <Shield className="w-4 h-4 text-amber-600" />
-            <span>Windows 10, Windows 11 & Cross-Platform Desktop Support</span>
-          </div>
-
+        {/* Modal Footer */}
+        <div className="px-6 py-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
+          <span className="text-[11px] text-slate-500 font-medium">
+            Rajsamand District Assessment Portal • Windows Desktop Setup
+          </span>
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-black bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold cursor-pointer transition-colors"
           >
             बंद करें (Close)
           </button>

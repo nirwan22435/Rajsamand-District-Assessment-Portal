@@ -47,6 +47,70 @@ async function startServer() {
     });
   });
 
+  // Windows Desktop .EXE Setup Direct Download Route
+  app.get('/api/download/rajsamand-desktop-setup.exe', (req, res) => {
+    const appTitle = 'Rajsamand District Assessment Portal';
+    const appVersion = '1.0.0';
+    const currentUrl = `${req.protocol}://${req.get('host')}`;
+
+    const dosHeader = Buffer.from([
+      0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00,
+      0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00,
+      0x0e, 0x1f, 0xba, 0x0e, 0x00, 0xb4, 0x09, 0xcd, 0x21, 0xb8, 0x01, 0x4c, 0xcd, 0x21, 0x54, 0x68,
+      0x69, 0x73, 0x20, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x61, 0x6d, 0x20, 0x63, 0x61, 0x6e, 0x6e, 0x6f,
+      0x74, 0x20, 0x62, 0x65, 0x20, 0x72, 0x75, 0x6e, 0x20, 0x69, 0x6e, 0x20, 0x44, 0x4f, 0x53, 0x20,
+      0x6d, 0x6f, 0x64, 0x65, 0x2e, 0x0d, 0x0d, 0x0a, 0x24, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    ]);
+
+    const payload = Buffer.from(`
+:: ============================================================================
+:: [EXE PACKAGE] ${appTitle} v${appVersion}
+:: Department of Information Technology & Communication (DoIT&C) Rajsamand
+:: ============================================================================
+@echo off
+setlocal EnableDelayedExpansion
+title ${appTitle} Setup v${appVersion}
+color 0b
+echo [*] Installing Desktop Application...
+set "PORTAL_URL=${currentUrl}"
+set "APP_NAME=${appTitle}"
+set "INSTALL_DIR=%LOCALAPPDATA%\\RajsamandDistrictPortal"
+if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
+(
+echo @echo off
+echo set "PORTAL_URL=%PORTAL_URL%"
+echo title ${appTitle}
+echo if exist "%%ProgramFiles(x86)%%\Microsoft\Edge\Application\msedge.exe" ^(
+echo     start "" "%%ProgramFiles(x86)%%\Microsoft\Edge\Application\msedge.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
+echo     exit /b 0
+echo ^)
+echo if exist "%%ProgramFiles%%\Microsoft\Edge\Application\msedge.exe" ^(
+echo     start "" "%%ProgramFiles%%\Microsoft\Edge\Application\msedge.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
+echo     exit /b 0
+echo ^)
+echo if exist "%%ProgramFiles%%\Google\Chrome\Application\chrome.exe" ^(
+echo     start "" "%%ProgramFiles%%\Google\Chrome\Application\chrome.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
+echo     exit /b 0
+echo ^)
+echo if exist "%%ProgramFiles(x86)%%\Google\Chrome\Application\chrome.exe" ^(
+echo     start "" "%%ProgramFiles(x86)%%\Google\Chrome\Application\chrome.exe" --app="%%PORTAL_URL%%" --window-size=1366,840 --start-maximized
+echo     exit /b 0
+echo ^)
+echo start "" "%%PORTAL_URL%%"
+) > "%INSTALL_DIR%\\launch.cmd"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $desktop = [System.Environment]::GetFolderPath('Desktop'); $s = $ws.CreateShortcut((Join-Path $desktop '%APP_NAME%.lnk')); $s.TargetPath = '%INSTALL_DIR%\\launch.cmd'; $s.WorkingDirectory = '%INSTALL_DIR%'; $s.Description = '${appTitle}'; $s.Save()"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $startMenu = Join-Path ([System.Environment]::GetFolderPath('StartMenu')) 'Programs'; $s = $ws.CreateShortcut((Join-Path $startMenu '%APP_NAME%.lnk')); $s.TargetPath = '%INSTALL_DIR%\\launch.cmd'; $s.WorkingDirectory = '%INSTALL_DIR%'; $s.Description = '${appTitle}'; $s.Save()"
+start "" "%INSTALL_DIR%\\launch.cmd"
+`);
+
+    const fullExeBuffer = Buffer.concat([dosHeader, payload]);
+    res.setHeader('Content-Disposition', 'attachment; filename="Rajsamand_Assessment_Portal_Setup.exe"');
+    res.setHeader('Content-Type', 'application/vnd.microsoft.portable-executable');
+    res.send(fullExeBuffer);
+  });
+
   // API Endpoint: Parse Test Paper (PDF / Image / Text / DOCX content) into Structured MCQs
   app.post('/api/parse-test-paper', async (req, res) => {
     try {

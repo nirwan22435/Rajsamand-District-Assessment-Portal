@@ -1,6 +1,7 @@
 import React from 'react';
 import { UserRole, Candidate } from '../types';
 import { Sun, Moon, ShieldCheck, User, LogOut, FileText, BarChart3, Users, Mail, Compass, Building2, PhoneCall, BookOpen, Keyboard, Palette, Monitor } from 'lucide-react';
+import { PortalLogo } from './PortalLogo';
 
 interface NavbarProps {
   darkMode: boolean;
@@ -45,41 +46,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center space-x-3 cursor-pointer group"
             onClick={() => setActiveTab(role === 'ADMIN' ? 'analytics' : candidate?.typingMedium ? 'typing-test' : 'my-tests')}
           >
-            {/* Government Emblem Icon Badge */}
+            {/* Official Portal Logo Badge */}
             <div className="relative flex-shrink-0">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-b from-amber-50 to-amber-100 dark:from-slate-800 dark:to-slate-900 border-2 border-amber-600/80 p-1 flex items-center justify-center shadow-md shadow-amber-900/10">
-                {/* SVG Ashoka Emblem / Government Seal Graphics */}
-                <svg
-                  className="w-10 h-10 text-amber-800 dark:text-amber-400"
-                  viewBox="0 0 100 100"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  {/* Outer Seal Circle */}
-                  <circle cx="50" cy="50" r="46" stroke="currentColor" strokeWidth="2.5" strokeDasharray="3 2" />
-                  <circle cx="50" cy="50" r="42" stroke="currentColor" strokeWidth="1.5" />
-                  
-                  {/* Ashoka Stambha Graphic Silhouette */}
-                  <path
-                    d="M45 22C45 20 55 20 55 22V32C58 32 60 34 60 37V40H40V37C40 34 42 32 45 32V22Z"
-                    fill="currentColor"
-                  />
-                  <path
-                    d="M42 42H58V58C58 60 55 62 50 62C45 62 42 60 42 58V42Z"
-                    fill="currentColor"
-                  />
-                  {/* Chakra Base */}
-                  <circle cx="50" cy="68" r="7" stroke="currentColor" strokeWidth="2" />
-                  <circle cx="50" cy="68" r="2" fill="currentColor" />
-                  <path d="M50 61V75M43 68H57M45 63L55 73M55 63L45 73" stroke="currentColor" strokeWidth="1" />
-
-                  {/* Base pedestal */}
-                  <path d="M35 78H65V82H35V78Z" fill="currentColor" />
-                  <path d="M30 84H70V87H30V84Z" fill="currentColor" />
-                </svg>
-              </div>
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-1.5 py-0.2 bg-amber-700 text-[8px] font-black text-amber-100 uppercase tracking-widest rounded shadow-sm whitespace-nowrap">
-                सत्यमेव जयते
+              <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-800 border-2 border-amber-500/80 p-1 flex items-center justify-center shadow-md shadow-amber-900/10 group-hover:scale-105 transition-transform">
+                <PortalLogo size={46} darkMode={darkMode} />
               </div>
             </div>
 
@@ -110,21 +80,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 text-slate-950 dark:text-white border border-amber-400 dark:border-amber-500 transition-all flex items-center gap-1.5 text-xs font-black shadow-md shadow-amber-500/20 cursor-pointer active:scale-95 whitespace-nowrap"
               >
                 <Monitor className="w-4 h-4" />
-                <span>🖥️ Desktop App / .EXE</span>
+                <span>Desktop App</span>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
-              </button>
-            )}
-
-            {/* Theme Presets Gallery Button */}
-            {onOpenThemeModal && (
-              <button
-                type="button"
-                onClick={onOpenThemeModal}
-                title="Explore 12 Modern & Minimalist Themes"
-                className="px-3 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/60 dark:hover:bg-sky-900/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 transition-all flex items-center gap-1.5 text-xs font-extrabold shadow-sm cursor-pointer active:scale-95 whitespace-nowrap"
-              >
-                <Palette className="w-4 h-4 text-sky-600 dark:text-sky-400" />
-                <span>Themes & Styles</span>
               </button>
             )}
 
