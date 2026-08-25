@@ -1,32 +1,73 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
-  <circle cx="200" cy="200" r="196" fill="#0F172A" />
-  
-  {/* 1. MORTARBOARD / GRADUATION CAP */}
-  <polygon points="200,45 355,90 200,135 45,90" fill="#EA580C" />
-  <path d="M130,115 L270,115 C270,115 276,150 200,155 C124,150 130,115 130,115 Z" fill="#C2410C" />
-  <circle cx="200" cy="90" r="6" fill="#9A3412" />
-  <path d="M200,90 Q140,95 110,130 Q92,155 94,180" stroke="#EA580C" stroke-width="6" stroke-linecap="round" fill="none" />
-  <path d="M94,176 C86,186 64,198 76,218 C84,210 102,204 98,178 Z" fill="#EA580C" />
+<svg width="512" height="512" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="favCapOrange" x1="50" y1="50" x2="350" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FB923C" />
+      <stop offset="50%" stop-color="#EA580C" />
+      <stop offset="100%" stop-color="#C2410C" />
+    </linearGradient>
 
-  {/* 2. OWL SPECTACLES & EYES */}
-  <path d="M172,215 Q200,202 228,215" stroke="#38BDF8" stroke-width="15" stroke-linecap="round" fill="none" />
-  <circle cx="138" cy="216" r="54" fill="#0F172A" stroke="#38BDF8" stroke-width="20" />
-  <circle cx="262" cy="216" r="54" fill="#0F172A" stroke="#38BDF8" stroke-width="20" />
+    <linearGradient id="favNavyWings" x1="120" y1="280" x2="280" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1E3A5F" />
+      <stop offset="100%" stop-color="#0B192C" />
+    </linearGradient>
+  </defs>
 
-  {/* Pupils */}
-  <circle cx="138" cy="216" r="30" fill="#FFFFFF" />
-  <polygon points="138,216 160,194 168,216" fill="#0F172A" />
-  <circle cx="262" cy="216" r="30" fill="#FFFFFF" />
-  <polygon points="262,216 284,194 292,216" fill="#0F172A" />
+  <!-- Clean Rounded Square Background for App Icon / Favicon -->
+  <rect width="400" height="400" rx="80" fill="#0B132B" />
 
-  {/* 3. BOOK PAGES & FOUNTAIN PEN NIB */}
-  <path d="M192,305 C156,282 108,284 88,298 C104,316 150,314 192,328 Z" fill="#F97316" />
-  <path d="M208,305 C244,282 292,284 312,298 C296,316 250,314 208,328 Z" fill="#F97316" />
-  
-  <path d="M194,332 C152,316 100,318 72,338 C94,364 154,352 196,380 Z" fill="#38BDF8" />
-  <path d="M206,332 C248,316 300,318 328,338 C306,364 246,352 204,380 Z" fill="#38BDF8" />
+  <!-- 1. TOP GRADUATION / MORTARBOARD CAP -->
+  <g id="graduation-cap">
+    <!-- Cap Diamond Top -->
+    <polygon points="200,42 355,88 200,134 45,88" fill="url(#favCapOrange)" />
 
-  <path d="M200,282 L212,326 L200,380 L188,326 Z" fill="#FFFFFF" />
-  <circle cx="200" cy="326" r="2.5" fill="#0F172A" />
-  <line x1="200" y1="328" x2="200" y2="378" stroke="#0F172A" stroke-width="2" stroke-linecap="round" />
+    <!-- Cap Headband Base -->
+    <path d="M130,114 L270,114 C270,114 276,148 200,154 C124,148 130,114 130,114 Z" fill="#D95A0B" />
+
+    <!-- Tassel Button / Center Pin -->
+    <circle cx="200" cy="88" r="6" fill="#C2410C" />
+
+    <!-- Hanging Tassel Ribbon & Fringe -->
+    <path d="M200,88 Q140,94 110,130 Q92,154 94,180" stroke="#EA580C" stroke-width="6" stroke-linecap="round" fill="none" />
+    <path d="M94,176 C86,186 64,198 76,218 C84,210 102,204 98,178 Z" fill="#EA580C" />
+  </g>
+
+  <!-- 2. OWLS EYES & SPECTACLES -->
+  <g id="owl-spectacles">
+    <!-- Bridge between the two glasses -->
+    <path d="M172,215 Q200,202 228,215" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" fill="none" />
+
+    <!-- Left Eye Glass Frame Outer -->
+    <circle cx="138" cy="216" r="54" fill="#0B132B" stroke="#FFFFFF" stroke-width="18" />
+
+    <!-- Right Eye Glass Frame Outer -->
+    <circle cx="262" cy="216" r="54" fill="#0B132B" stroke="#FFFFFF" stroke-width="18" />
+
+    <!-- Left Pupil with Signature Wedge Highlight -->
+    <g id="left-pupil">
+      <circle cx="138" cy="216" r="28" fill="#FFFFFF" />
+      <polygon points="138,216 160,194 168,216" fill="#0B132B" />
+    </g>
+
+    <!-- Right Pupil with Signature Wedge Highlight -->
+    <g id="right-pupil">
+      <circle cx="262" cy="216" r="28" fill="#FFFFFF" />
+      <polygon points="262,216 284,194 292,216" fill="#0B132B" />
+    </g>
+  </g>
+
+  <!-- 3. OPEN BOOK & FOUNTAIN PEN NIB -->
+  <g id="open-book-and-beak">
+    <!-- Orange Top Page Layers -->
+    <path d="M192,305 C156,282 108,284 88,298 C104,316 150,314 192,328 Z" fill="url(#favCapOrange)" />
+    <path d="M208,305 C244,282 292,284 312,298 C296,316 250,314 208,328 Z" fill="url(#favCapOrange)" />
+
+    <!-- Wings Base -->
+    <path d="M194,332 C152,316 100,318 72,338 C94,364 154,352 196,380 Z" fill="#38BDF8" />
+    <path d="M206,332 C248,316 300,318 328,338 C306,364 246,352 204,380 Z" fill="#38BDF8" />
+
+    <!-- Center Fountain Pen Nib -->
+    <path d="M200,282 L212,326 L200,380 L188,326 Z" fill="#FFFFFF" />
+    <circle cx="200" cy="326" r="2.5" fill="#0B132B" />
+    <line x1="200" y1="328" x2="200" y2="378" stroke="#0B132B" stroke-width="2" stroke-linecap="round" />
+  </g>
 </svg>
