@@ -201,7 +201,8 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
       finalSeconds,
       test.minPassingWpm || (isHindi ? 25 : 30),
       isHindi,
-      targetQualifyingWords
+      targetQualifyingWords,
+      true // isFinalSubmission
     );
 
     const attempt: TypingAttempt = {
@@ -218,6 +219,11 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
       correctWordsCount: result.correctWordsCount,
       incorrectWordsCount: result.incorrectWordsCount,
       untypedWordsCount: result.untypedWordsCount,
+      skippedWordsCount: result.skippedWordsCount,
+      correctWords: result.correctWords,
+      incorrectWords: result.incorrectWords,
+      skippedWords: result.skippedWords,
+      referencePassage: sanitizedPassage,
       netWpm: result.netWpm,
       grossWpm: result.grossWpm,
       accuracyPercentage: result.accuracyPercentage,

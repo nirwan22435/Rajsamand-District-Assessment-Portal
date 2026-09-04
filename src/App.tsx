@@ -24,6 +24,7 @@ import { ThemePreviewModal, APP_THEMES } from './components/ThemePreviewModal';
 import { DesktopSetupModal } from './components/DesktopSetupModal';
 import { downloadWindowsSetupScript } from './utils/desktopAppDownloader';
 import { applyThemeToDOM } from './utils/themeManager';
+import { safeStorage } from './utils/safeStorage';
 import { Monitor } from 'lucide-react';
 import { sendEmailAPI } from './services/api';
 import {
@@ -51,13 +52,13 @@ import {
 export default function App() {
   // Dark Mode State
   const [darkMode, setDarkMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem('rajsamand_dark_mode');
-    return saved !== null ? JSON.parse(saved) : false;
+    const saved = safeStorage.getItem('rajsamand_dark_mode');
+    return saved !== null ? saved === 'true' : false;
   });
 
   // Active Visual Theme State (1-12 Minimalist Themes)
   const [themeId, setThemeId] = useState<string>(() => {
-    return localStorage.getItem('rajsamand_theme_id') || 'nordic-arctic';
+    return safeStorage.getItem('rajsamand_theme_id', 'nordic-arctic') || 'nordic-arctic';
   });
   const [isThemeModalOpen, setIsThemeModalOpen] = useState<boolean>(false);
   const [isDesktopModalOpen, setIsDesktopModalOpen] = useState<boolean>(false);
@@ -93,15 +94,19 @@ export default function App() {
   };
 
   useEffect(() => {
-    localStorage.setItem('rajsamand_theme_id', themeId);
-    localStorage.setItem('rajsamand_dark_mode', JSON.stringify(darkMode));
+    safeStorage.setItem('rajsamand_theme_id', themeId);
+    safeStorage.setItem('rajsamand_dark_mode', String(darkMode));
     if (darkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-    // Apply dynamic colors, backgrounds, borders & accents
-    applyThemeToDOM(themeId, darkMode);
+    // Apply dynamic colors, backgrounds, borders & accents safely
+    try {
+      applyThemeToDOM(themeId, darkMode);
+    } catch (err) {
+      console.warn('Failed to apply theme to DOM:', err);
+    }
   }, [themeId, darkMode]);
 
   // Auth State
@@ -681,7 +686,7 @@ export default function App() {
             © 2026 District Administration Rajsamand, Rajasthan • Automated Evaluation System by DoIT&C Rajsamand
           </span>
           <span className="text-[11px] text-slate-400 dark:text-slate-500">
-            District Evaluation Cell • Government of Rajasthan
+            Government of Rajasthan
           </span>
         </div>
       </footer>

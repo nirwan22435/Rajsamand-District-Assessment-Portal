@@ -13,8 +13,6 @@ import { RegisterTypingCandidateModal } from './RegisterTypingCandidateModal';
 import { AdminTypingCandidatesView } from './AdminTypingCandidatesView';
 import { AssignTypingTestModal } from './AssignTypingTestModal';
 import { PassageSanitizerModal } from './PassageSanitizerModal';
-import { DevlysTokenDoctorModal } from './DevlysTokenDoctorModal';
-import { auditAndRefinePassage } from '../../utils/passageSanitizer';
 import {
   Keyboard,
   Plus,
@@ -43,7 +41,6 @@ import {
   Check,
   AlertTriangle,
   Wand2,
-  Stethoscope,
 } from 'lucide-react';
 
 interface TypingTestSectionProps {
@@ -83,8 +80,6 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
   const [editingTest, setEditingTest] = useState<TypingTest | null>(null);
   const [assigningTest, setAssigningTest] = useState<TypingTest | null>(null);
   const [sanitizingTest, setSanitizingTest] = useState<TypingTest | null>(null);
-  const [isDoctorModalOpen, setIsDoctorModalOpen] = useState<boolean>(false);
-  const [doctorTestId, setDoctorTestId] = useState<string | undefined>(undefined);
   const [deletingTestId, setDeletingTestId] = useState<string | null>(null);
 
   // Candidate Registration Modal State
@@ -189,32 +184,17 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
       {/* 1. Official Header Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-amber-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-amber-500/20 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
         <div className="relative z-10">
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-amber-400 mb-2">
-            <Keyboard className="w-4 h-4" />
-            <span>District Computer Evaluation Cell • Official Module</span>
-          </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
             Typing Speed Assessment & Evaluation
           </h1>
           <p className="text-sm text-slate-300 max-w-2xl mt-1.5 leading-relaxed">
-            Standardized 10-minute typing tests in <strong>English</strong> and{' '}
-            <strong>Hindi (DevLys 010 font)</strong> with automated word-by-word evaluation, gross & net WPM, accuracy %, and official scorecards.
+            Standardized 10-minute speed evaluation in <strong>English</strong> and{' '}
+            <strong>Hindi (DevLys 010)</strong> with gross & net WPM, accuracy %, and official scorecards.
           </p>
         </div>
 
         {role === 'ADMIN' ? (
           <div className="relative z-10 flex flex-col sm:flex-row gap-2.5 flex-shrink-0">
-            <button
-              onClick={() => {
-                setDoctorTestId(tests.length > 0 ? tests[0].id : undefined);
-                setIsDoctorModalOpen(true);
-              }}
-              className="px-4 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-extrabold text-xs uppercase tracking-wider shadow-lg shadow-teal-900/30 active:scale-95 transition-all flex items-center justify-center space-x-2 cursor-pointer border border-teal-400/30"
-              title="DevLys 010 & Unicode Token Doctor / Auto-Healer"
-            >
-              <Stethoscope className="w-4 h-4" />
-              <span>Token Doctor (त्रुटि निवारक)</span>
-            </button>
             <button
               onClick={() => {
                 setEditingCandidate(null);
@@ -432,29 +412,6 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
                               >
                                 <UserCheck className="w-4 h-4" />
                               </button>
-                              {/* DevLys Token Doctor & Audit Button */}
-                              {(() => {
-                                const audit = auditAndRefinePassage(test.passageText, isHindi);
-                                return (
-                                  <button
-                                    onClick={() => {
-                                      setDoctorTestId(test.id);
-                                      setIsDoctorModalOpen(true);
-                                    }}
-                                    title={audit.hasIssues ? `Token Doctor: ${audit.totalIssues} issue(s) detected - Click to diagnose & auto-fix` : 'Token Doctor: 100% Clean'}
-                                    className={`p-1.5 rounded-lg transition-colors relative cursor-pointer ${
-                                      audit.hasIssues
-                                        ? 'text-teal-700 bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 dark:hover:bg-teal-900/80 border border-teal-300 dark:border-teal-800'
-                                        : 'text-slate-500 hover:text-teal-600 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                    }`}
-                                  >
-                                    <Stethoscope className="w-4 h-4" />
-                                    {audit.hasIssues && (
-                                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
-                                    )}
-                                  </button>
-                                );
-                              })()}
                               {/* Preview Paragraph Button */}
                               <button
                                 onClick={() => setPreviewTest(test)}
@@ -616,7 +573,7 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
                 <p className="font-bold text-sm">
                   No active typing test published currently for your profile ({candidateTypingMedium === 'HINDI_DEVLYS_010' ? 'Hindi' : 'English'}).
                 </p>
-                <p className="text-xs text-slate-400">Please contact District Evaluation Cell.</p>
+                <p className="text-xs text-slate-400">Please contact the district administration office.</p>
               </div>
             ) : (
               candidateFilteredTests.map((test) => {
@@ -795,27 +752,13 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
         />
       )}
 
-      {/* DevLys 010 & Unicode Token Doctor Modal */}
-      {isDoctorModalOpen && (
-        <DevlysTokenDoctorModal
-          isOpen={isDoctorModalOpen}
-          onClose={() => {
-            setIsDoctorModalOpen(false);
-            setDoctorTestId(undefined);
-          }}
-          tests={tests}
-          initialSelectedTestId={doctorTestId}
-          onSaveTest={onSaveTest}
-        />
-      )}
-
       {/* Completed Test / View Scorecard Modal */}
       {lastFinishedAttempt && (
         <TypingResultModal
           isOpen={!!lastFinishedAttempt}
           onClose={() => setLastFinishedAttempt(null)}
           attempt={lastFinishedAttempt}
-          referencePassage={previewTest?.passageText || tests.find((t) => t.id === lastFinishedAttempt.typingTestId)?.passageText}
+          referencePassage={lastFinishedAttempt.referencePassage || previewTest?.passageText || tests.find((t) => t.id === lastFinishedAttempt.typingTestId)?.passageText}
         />
       )}
 

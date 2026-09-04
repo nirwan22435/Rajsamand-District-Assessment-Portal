@@ -1,15 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { TypingTest } from '../../types';
-import { auditAndRefinePassage, PassageAuditResult } from '../../utils/passageSanitizer';
+import { auditAndRefinePassage } from '../../utils/passageSanitizer';
+import { convertDevlysToUnicode } from '../../utils/devlysConverter';
 import {
   Sparkles,
   CheckCircle2,
-  AlertTriangle,
   X,
-  RefreshCw,
-  ArrowRight,
   ShieldCheck,
-  FileCheck,
+  AlignLeft,
+  Eye,
 } from 'lucide-react';
 
 interface PassageSanitizerModalProps {
@@ -30,14 +29,25 @@ export const PassageSanitizerModal: React.FC<PassageSanitizerModalProps> = ({
   const isHindi = test.language === 'HINDI_DEVLYS_010';
   const [currentText, setCurrentText] = useState<string>(test.passageText);
   const [applied, setApplied] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<'DEVLYS' | 'UNICODE'>('DEVLYS');
 
-  const audit: PassageAuditResult = useMemo(() => {
+  const audit = useMemo(() => {
     return auditAndRefinePassage(currentText, isHindi);
   }, [currentText, isHindi]);
 
-  const handleApplyFixes = () => {
-    onApplyRefinedPassage(audit.refinedPassage);
-    setCurrentText(audit.refinedPassage);
+  const unicodeEquivalent = useMemo(() => {
+    if (!isHindi) return currentText;
+    return convertDevlysToUnicode(currentText);
+  }, [currentText, isHindi]);
+
+  const handleApplyCleanSpaces = () => {
+    const cleaned = currentText
+      .replace(/\r\n/g, '\n')
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      .replace(/[ \t]+/g, ' ')
+      .trim();
+    onApplyRefinedPassage(cleaned);
+    setCurrentText(cleaned);
     setApplied(true);
     setTimeout(() => {
       onClose();
@@ -55,10 +65,10 @@ export const PassageSanitizerModal: React.FC<PassageSanitizerModalProps> = ({
             </div>
             <div>
               <div className="text-[10px] uppercase font-black tracking-widest text-amber-400">
-                Passage Quality & Refinement Engine
+                Passage Inspector & Preview
               </div>
               <h2 className="text-base font-black tracking-tight">
-                Reference Passage Health & Anomaly Audit
+                {isHindi ? 'DevLys 010 Reference Passage Preview' : 'English Reference Passage Preview'}
               </h2>
             </div>
           </div>
@@ -76,26 +86,9 @@ export const PassageSanitizerModal: React.FC<PassageSanitizerModalProps> = ({
             <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 flex items-center gap-3 text-emerald-800 dark:text-emerald-300">
               <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
               <div>
-                <h4 className="font-bold text-sm">Passage Successfully Refined & Updated!</h4>
+                <h4 className="font-bold text-sm">Passage Cleaned & Updated!</h4>
                 <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                  All rogue characters, nuktas, attached periods, and formatting bugs have been cleaned.
-                </p>
-              </div>
-            </div>
-          ) : audit.hasIssues ? (
-            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-black text-sm text-amber-900 dark:text-amber-300">
-                    {audit.totalIssues} Potential Passage Formatting Issue{audit.totalIssues > 1 ? 's' : ''} Detected
-                  </h4>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200">
-                    Needs Refinement
-                  </span>
-                </div>
-                <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
-                  Issues like rogue nuktas (e.g. <span className="font-bold">ह़</span>), attached dots (e.g. <span className="font-bold">पेड़.</span>), or unspaced dandas (e.g. <span className="font-bold">है।</span>) can cause false incorrect word evaluations for candidates.
+                  Extra spaces and non-printing formatting have been normalized cleanly.
                 </p>
               </div>
             </div>
@@ -103,70 +96,58 @@ export const PassageSanitizerModal: React.FC<PassageSanitizerModalProps> = ({
             <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 flex items-center gap-3 text-emerald-800 dark:text-emerald-300">
               <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
               <div>
-                <h4 className="font-bold text-sm">Passage is 100% Clean & Verified</h4>
+                <h4 className="font-bold text-sm">
+                  {isHindi ? 'DevLys 010 Passage 100% Valid & Ready' : 'Passage 100% Valid & Ready'}
+                </h4>
                 <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                  No rogue nuktas, invalid punctuation, or encoding glitches detected. Ready for typing assessment.
+                  No token errors or font anomalies detected. All words and punctuation are ready for examination.
                 </p>
               </div>
             </div>
           )}
 
-          {/* List of Detected Word Anomalies */}
-          {audit.anomalies.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                <span>Detected Words Requiring Refinement ({audit.anomalies.length})</span>
-              </h3>
-
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 max-h-60 overflow-y-auto">
-                {audit.anomalies.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 bg-white dark:bg-slate-900 flex items-center justify-between gap-4 text-xs"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 font-mono text-[10px] font-bold flex items-center justify-center text-slate-600 dark:text-slate-400">
-                        {item.index}
-                      </span>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-900 line-through">
-                            {item.originalWord}
-                          </span>
-                          <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-900">
-                            {item.refinedWord}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-slate-500 mt-0.5">{item.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          {/* View Mode Selector for Hindi */}
+          {isHindi && (
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3">
+              <button
+                type="button"
+                onClick={() => setActiveTab('DEVLYS')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'DEVLYS'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                }`}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>DevLys 010 Font View</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('UNICODE')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === 'UNICODE'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Unicode Devanagari Translation View</span>
+              </button>
             </div>
           )}
 
-          {/* Side-by-Side Comparison Preview */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                <span>Current Passage</span>
-              </label>
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 h-40 overflow-y-auto leading-relaxed whitespace-pre-wrap">
-                {currentText}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span>Refined & Sanitized Passage</span>
-              </label>
-              <div className="p-3 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/80 text-xs text-slate-800 dark:text-slate-200 h-40 overflow-y-auto leading-relaxed whitespace-pre-wrap">
-                {audit.refinedPassage}
-              </div>
+          {/* Passage Display */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+              <span>{isHindi && activeTab === 'UNICODE' ? 'Devanagari Meaning' : 'Exam Reference Paragraph'}</span>
+              <span className="text-[11px] font-mono text-slate-500">{audit.refinedWordCount} words</span>
+            </label>
+            <div
+              className={`p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 min-h-48 max-h-72 overflow-y-auto leading-relaxed whitespace-pre-wrap ${
+                isHindi && activeTab === 'DEVLYS' ? 'font-devlys text-lg' : 'font-sans text-sm'
+              }`}
+            >
+              {isHindi && activeTab === 'UNICODE' ? unicodeEquivalent : currentText}
             </div>
           </div>
         </div>
@@ -181,14 +162,14 @@ export const PassageSanitizerModal: React.FC<PassageSanitizerModalProps> = ({
             Close
           </button>
 
-          {audit.hasIssues && !applied && (
+          {!applied && (
             <button
               type="button"
-              onClick={handleApplyFixes}
-              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all cursor-pointer"
+              onClick={handleApplyCleanSpaces}
+              className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-md shadow-amber-600/20 flex items-center gap-2 transition-all cursor-pointer"
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Apply Refined Passage & Save ({audit.totalIssues} Fixes)</span>
+              <AlignLeft className="w-4 h-4" />
+              <span>Normalize Spacing & Save</span>
             </button>
           )}
         </div>

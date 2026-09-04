@@ -125,13 +125,9 @@ export const PublishedTestPapersView: React.FC<PublishedTestPapersViewProps> = (
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 p-6 sm:p-8 rounded-2xl text-white shadow-xl">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-semibold uppercase tracking-wider mb-2">
-            <BookOpen className="w-3.5 h-3.5" />
-            District Evaluation Library & Reports
-          </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Published Test Papers & Reports</h1>
           <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
-            Access, manage, and download comprehensive PDF summary reports for all published district assessment papers.
+            Access, manage, and download evaluation summary reports for all published assessment papers.
           </p>
         </div>
 

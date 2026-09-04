@@ -143,7 +143,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
             Portal Authentication
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            District Evaluation Cell, Rajsamand (Rajasthan)
+            District Administration, Rajsamand (Rajasthan)
           </p>
         </div>
 

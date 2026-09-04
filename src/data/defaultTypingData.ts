@@ -10,11 +10,11 @@ export const INITIAL_TYPING_TESTS: TypingTest[] = [
     targetBlock: 'District-Wide',
     instructions: 'Type the passage exactly as displayed. Punctuation, capitalization, and spacing will be strictly evaluated. The assessment will automatically finish after 10 minutes.',
     status: 'PUBLISHED',
-    createdBy: 'District Evaluation Cell',
+    createdBy: 'District Administration',
     createdAt: new Date().toISOString(),
     totalWords: 312,
     passageText:
-      'The District Administration of Rajsamand is committed to ensuring prompt, transparent, and accountable delivery of public services to all citizens. Under the visionary governance model of the Government of Rajasthan, various administrative reforms and e-governance initiatives have been successfully implemented across all seven tehsils, including Nathdwara, Kumbhalgarh, Bhim, Rajsamand, Amet, Deogarh, and Railmagra. The objective of this official speed assessment is to evaluate the computer typing proficiency, accuracy, and operational agility of ministerial candidates. Efficient document drafting and rapid data entry play a vital role in government offices, particularly in citizen-centric portals such as e-Mitra, Jan Soochna Portal, and the Rajasthan Sampark grievance redressal portal. All participating candidates must maintain consistent rhythm, sharp concentration, and strict adherence to orthographic rules throughout the allotted duration of ten minutes. Errors in spelling, punctuation marks, or omissions will impact the net speed calculation according to state evaluation guidelines. Candidates are advised to review each paragraph diligently and manage their time effectively to secure qualifying merit.',
+      'The District Administration of Rajsamand is committed to ensuring prompt, transparent, and accountable delivery of public services to all citizens. Under the visionary governance model of the Government of Rajasthan, various administrative reforms and e-governance initiatives have been successfully implemented across all seven tehsils, including Nathdwara, Kumbhalgarh, Bhim, Rajsamand, Amet, Deogarh, and Railmagra. The objective of this official speed assessment is to evaluate the computer typing proficiency, accuracy, and operational agility of candidate personnel. Efficient document drafting and rapid data entry play a vital role in government offices, particularly in citizen-centric portals such as e-Mitra, Jan Soochna Portal, and the Rajasthan Sampark grievance redressal portal. All participating candidates must maintain consistent rhythm, sharp concentration, and strict adherence to orthographic rules throughout the allotted duration of ten minutes. Errors in spelling, punctuation marks, or omissions will impact the net speed calculation according to state evaluation guidelines. Candidates are advised to review each paragraph diligently and manage their time effectively to secure qualifying merit.',
   },
   {
     id: 'tt-hindi-devlys-01',
@@ -25,7 +25,7 @@ export const INITIAL_TYPING_TESTS: TypingTest[] = [
     targetBlock: 'District-Wide',
     instructions: 'दिए गए गद्यांश को DevLys 010 फॉन्ट (Remington लेआउट) में टाइप करें। 10 मिनट की समयावधि पूर्ण होते ही टेस्ट स्वतः सबमिट हो जाएगा।',
     status: 'PUBLISHED',
-    createdBy: 'District Evaluation Cell',
+    createdBy: 'District Administration',
     createdAt: new Date().toISOString(),
     totalWords: 245,
     passageText:

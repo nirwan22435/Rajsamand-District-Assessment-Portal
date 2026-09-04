@@ -7,6 +7,7 @@ interface RegisterTypingCandidateModalProps {
   onClose: () => void;
   onSaveCandidate: (candidate: Candidate) => Promise<void> | void;
   candidateToEdit?: Candidate | null;
+  editingCandidate?: Candidate | null;
   existingCount?: number;
 }
 
@@ -53,8 +54,10 @@ export const RegisterTypingCandidateModal: React.FC<RegisterTypingCandidateModal
   onClose,
   onSaveCandidate,
   candidateToEdit,
+  editingCandidate,
   existingCount = 0,
 }) => {
+  const activeEditCandidate = candidateToEdit || editingCandidate;
   const [name, setName] = useState('');
   const [designation, setDesignation] = useState('Junior Assistant (LDC / Clerk Gr-II)');
   const [customDesignation, setCustomDesignation] = useState('');
@@ -71,17 +74,17 @@ export const RegisterTypingCandidateModal: React.FC<RegisterTypingCandidateModal
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (candidateToEdit) {
-      setName(candidateToEdit.name);
-      setDesignation(candidateToEdit.designation || 'Junior Assistant (LDC / Clerk Gr-II)');
-      setOfficeName(candidateToEdit.officeName || 'District Collectorate, Rajsamand');
-      setTypingMedium(candidateToEdit.typingMedium || 'HINDI_DEVLYS_010');
-      setEmail(candidateToEdit.email);
-      setPhone(candidateToEdit.phone);
-      setBlock(candidateToEdit.block);
-      setRegistrationId(candidateToEdit.registrationId);
-      setPassword(candidateToEdit.password || 'Typing@123');
-      setActiveStatus(candidateToEdit.activeStatus);
+    if (activeEditCandidate) {
+      setName(activeEditCandidate.name);
+      setDesignation(activeEditCandidate.designation || 'Junior Assistant (LDC / Clerk Gr-II)');
+      setOfficeName(activeEditCandidate.officeName || 'District Collectorate, Rajsamand');
+      setTypingMedium(activeEditCandidate.typingMedium || 'HINDI_DEVLYS_010');
+      setEmail(activeEditCandidate.email);
+      setPhone(activeEditCandidate.phone);
+      setBlock(activeEditCandidate.block);
+      setRegistrationId(activeEditCandidate.registrationId);
+      setPassword(activeEditCandidate.password || 'Typing@123');
+      setActiveStatus(activeEditCandidate.activeStatus);
     } else {
       const generatedId = `TYP-2026-${String(existingCount + 1).padStart(3, '0')}`;
       setName('');
@@ -173,7 +176,7 @@ export const RegisterTypingCandidateModal: React.FC<RegisterTypingCandidateModal
             </div>
             <div>
               <div className="text-[10px] uppercase font-black tracking-widest text-amber-400">
-                District Evaluation Cell • Rajsamand
+                District Administration • Rajsamand
               </div>
               <h2 className="text-lg font-black tracking-tight">
                 {candidateToEdit ? 'Edit Typing Candidate Registration' : 'Register Candidate for Typing Test'}

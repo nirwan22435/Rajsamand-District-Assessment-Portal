@@ -1,6 +1,9 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { TestAttempt, TestPaper, MCQQuestion, Candidate, TypingAttempt } from '../types';
+import { getDetailedWordAnalysis } from './typingUtils';
+import { DEVLYS_010_FONT_BASE64 } from './devlysFontBase64';
+import { convertUnicodeToDevlys } from './devlysConverter';
 
 export interface SubmissionPdfData {
   candidateName: string;
@@ -687,6 +690,7 @@ export function downloadTypingMeritReportPdf(data: TypingMeritReportPdfData) {
   const tableRows = data.attempts.map((att, idx) => {
     const isQual = att.status === 'QUALIFIED';
     const langLabel = att.language === 'HINDI_DEVLYS_010' ? 'Hindi (DevLys 010)' : 'English';
+    const analysis = getDetailedWordAnalysis(att);
     const dateStr = att.submittedAt
       ? new Date(att.submittedAt).toLocaleDateString('en-IN', {
           day: '2-digit',
@@ -701,12 +705,12 @@ export function downloadTypingMeritReportPdf(data: TypingMeritReportPdfData) {
       att.candidateName || 'Candidate',
       langLabel,
       dateStr,
-      att.totalWordsInPara || 0,
-      att.correctWordsCount || 0,
-      att.incorrectWordsCount || 0,
-      att.untypedWordsCount || 0,
+      analysis.totalWordsInPara,
+      analysis.correctWordsCount,
+      analysis.incorrectWordsCount,
+      analysis.skippedWordsCount,
       `${att.netWpm || 0} WPM`,
-      `${att.accuracyPercentage || 0}%`,
+      `${analysis.accuracyPercentage}%`,
       isQual ? 'QUALIFIED' : 'DISQUALIFIED',
     ];
   });
@@ -724,7 +728,7 @@ export function downloadTypingMeritReportPdf(data: TypingMeritReportPdfData) {
         'Total Words',
         'Correct',
         'Incorrect',
-        'Untyped',
+        'Skipped',
         'Net Speed',
         'Accuracy',
         'Merit Status',
@@ -800,6 +804,14 @@ export function downloadCandidateTypingScorecardPdf(attempt: TypingAttempt, refe
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const isQualified = attempt.status === 'QUALIFIED';
+  const isHindi = attempt.language === 'HINDI_DEVLYS_010';
+
+  // Embed and register DevLys 010 font for Hindi Typing Assessments
+  if (isHindi) {
+    doc.addFileToVFS('DevLys010.ttf', DEVLYS_010_FONT_BASE64);
+    doc.addFont('DevLys010.ttf', 'DevLys010', 'normal');
+    doc.addFont('DevLys010.ttf', 'DevLys010', 'bold');
+  }
 
   const examDateFormatted = attempt.submittedAt
     ? new Date(attempt.submittedAt).toLocaleDateString('en-IN', {
@@ -873,10 +885,24 @@ export function downloadCandidateTypingScorecardPdf(attempt: TypingAttempt, refe
   doc.text(`Email: ${attempt.candidateEmail || 'N/A'}`, 16, y + 26);
   doc.text(`Exam Date: ${examDateFormatted}`, 16, y + 32);
 
+  const analysis = getDetailedWordAnalysis(attempt, referencePassage);
+
+  const formatWordForPdf = (word: string): string => {
+    if (!word) return '';
+    if (isHindi && /[\u0900-\u097F]/.test(word)) {
+      return convertUnicodeToDevlys(word);
+    }
+    return word;
+  };
+
+  const testPaperLabel = isHindi
+    ? 'Hindi Typing Assessment (DevLys 010)'
+    : (attempt.testTitle || 'Typing Assessment');
+
   // Performance Box (Right)
   doc.setFillColor(isQualified ? 240 : 254, isQualified ? 253 : 242, isQualified ? 244 : 242);
   doc.setDrawColor(isQualified ? 187 : 254, isQualified ? 247 : 202, isQualified ? 208 : 202);
-  doc.roundedRect(108, y, 90, 44, 3, 3, 'FD');
+  doc.roundedRect(108, y, 90, 48, 3, 3, 'FD');
 
   doc.setTextColor(isQualified ? 21 : 225, isQualified ? 128 : 29, isQualified ? 61 : 72);
   doc.setFont('helvetica', 'bold');
@@ -884,25 +910,29 @@ export function downloadCandidateTypingScorecardPdf(attempt: TypingAttempt, refe
   doc.text(`RESULT: ${attempt.status || 'EVALUATED'}`, 112, y + 7);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setTextColor(51, 65, 85);
-  doc.text(`Test Paper: ${attempt.testTitle || 'Typing Assessment'}`, 112, y + 14);
-  doc.text(`Medium: ${attempt.language === 'HINDI_DEVLYS_010' ? 'Hindi (DevLys 010)' : 'English'}`, 112, y + 20);
-  doc.text(`Net Speed: ${attempt.netWpm || 0} WPM (Gross: ${attempt.grossWpm || 0} WPM)`, 112, y + 26);
-  doc.text(`Accuracy Rate: ${attempt.accuracyPercentage || 0}%`, 112, y + 32);
-  doc.text(`Duration: ${Math.floor((attempt.timeTakenSeconds || 0) / 60)}m ${(attempt.timeTakenSeconds || 0) % 60}s / 10m`, 112, y + 38);
+  doc.text(`Test Paper: ${testPaperLabel}`, 112, y + 13);
+  doc.text(`Medium: ${isHindi ? 'Hindi (DevLys 010)' : 'English'}`, 112, y + 19);
+  doc.text(`Net Speed: ${attempt.netWpm || 0} WPM (Gross: ${attempt.grossWpm || 0} WPM)`, 112, y + 25);
+  doc.text(`Accuracy Rate: ${analysis.accuracyPercentage}%  •  Duration: ${Math.floor((attempt.timeTakenSeconds || 0) / 60)}m ${(attempt.timeTakenSeconds || 0) % 60}s / 10m`, 112, y + 31);
+  doc.text(`Correct: ${analysis.correctWordsCount}  •  Incorrect: ${analysis.incorrectWordsCount}  •  Skipped: ${analysis.skippedWordsCount}`, 112, y + 37);
 
-  y += 50;
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(isQualified ? 21 : 180, isQualified ? 128 : 20, isQualified ? 61 : 50);
+  doc.text(`Skipped Word Count: ${analysis.skippedWordsCount} Words (Omitted From Para)`, 112, y + 43);
+
+  y += 54;
 
   // Breakdown Table
   const breakdownRows = [
-    ['Total Words in Reference Paragraph', `${attempt.totalWordsInPara || 0} words`],
-    ['Correctly Typed Words', `${attempt.correctWordsCount || 0} words`],
-    ['Incorrectly Typed Words', `${attempt.incorrectWordsCount || 0} words`],
-    ['Untyped / Remaining Words', `${attempt.untypedWordsCount || 0} words`],
+    ['Total Words in Reference Paragraph', `${analysis.totalWordsInPara} words`],
+    ['Correctly Typed Words', `${analysis.correctWordsCount} words`],
+    ['Incorrectly Typed Words', `${analysis.incorrectWordsCount} words`],
+    ['Skipped Words (Omitted from Paragraph)', `${analysis.skippedWordsCount} words`],
     ['Gross Typing Speed', `${attempt.grossWpm || 0} Words Per Minute (WPM)`],
     ['Net Typing Speed', `${attempt.netWpm || 0} Words Per Minute (WPM)`],
-    ['Calculated Accuracy Percentage', `${attempt.accuracyPercentage || 0}%`],
+    ['Calculated Accuracy Percentage', `${analysis.accuracyPercentage}% (Total Correctly Typed / Reference Words)`],
     ['Qualifying Criteria', 'Based on No. of correctly typed words in 10 mins only'],
     ['Official Assessment Result', attempt.status || 'EVALUATED'],
   ];
@@ -910,7 +940,7 @@ export function downloadCandidateTypingScorecardPdf(attempt: TypingAttempt, refe
   autoTable(doc, {
     startY: y,
     margin: { left: 12, right: 12 },
-    head: [['Evaluation Parameter', 'Candidate Performance']],
+    head: [['Evaluation Parameter', 'Candidate Performance Metric']],
     body: breakdownRows,
     theme: 'grid',
     headStyles: {
@@ -918,39 +948,250 @@ export function downloadCandidateTypingScorecardPdf(attempt: TypingAttempt, refe
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 8.5,
+      font: 'helvetica',
     },
     columnStyles: {
-      0: { cellWidth: 100, fontStyle: 'bold' },
-      1: { cellWidth: 86, halign: 'center' },
+      0: { cellWidth: 96, fontStyle: 'bold' },
+      1: { cellWidth: 90, halign: 'center' },
     },
     bodyStyles: {
       textColor: [30, 41, 59],
       fontSize: 8,
+      font: 'helvetica',
+    },
+  });
+
+  const passageToDisplay = formatWordForPdf(analysis.referencePassage || 'Reference test passage recorded for assessment.');
+  const formattedCorrectWords = analysis.correctWords.map(formatWordForPdf);
+  const formattedIncorrectWords = analysis.incorrectWords.map((item) => ({
+    refWord: item.refWord === '(Extra Word)' ? '(Extra Word)' : formatWordForPdf(item.refWord),
+    typedWord: item.typedWord ? formatWordForPdf(item.typedWord) : '',
+  }));
+  const formattedSkippedWords = analysis.skippedWords.map(formatWordForPdf);
+
+  // Section 1: Reference Test Paragraph (Rendered in DevLys 010 for Hindi)
+  const refParaY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 6 : y + 60;
+  autoTable(doc, {
+    startY: refParaY,
+    margin: { left: 12, right: 12 },
+    head: [[`1. REFERENCE TEST PARAGRAPH (${analysis.totalWordsInPara} Total Words)`]],
+    body: [[passageToDisplay]],
+    theme: 'plain',
+    headStyles: {
+      fillColor: [30, 41, 59],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8.5,
+      font: 'helvetica',
+    },
+    bodyStyles: {
+      fillColor: [248, 250, 252],
+      textColor: [30, 41, 59],
+      font: isHindi ? 'DevLys010' : 'helvetica',
+      fontSize: isHindi ? 10.5 : 7.5,
+      lineColor: [226, 232, 240],
+      lineWidth: 0.2,
+      cellPadding: 4,
+    },
+  });
+
+  // Section 2: Correctly Typed Words (Rendered in DevLys 010 for Hindi)
+  const correctY = (doc as any).lastAutoTable.finalY + 6;
+  const correctWordsText =
+    formattedCorrectWords.length > 0
+      ? formattedCorrectWords.join('   ')
+      : 'No words correctly typed.';
+
+  autoTable(doc, {
+    startY: correctY,
+    margin: { left: 12, right: 12 },
+    head: [[`2. CORRECTLY TYPED WORDS (${analysis.correctWordsCount} Words)`]],
+    body: [
+      [
+        {
+          content: correctWordsText,
+          styles: {
+            font: isHindi && formattedCorrectWords.length > 0 ? 'DevLys010' : 'helvetica',
+            fontSize: isHindi && formattedCorrectWords.length > 0 ? 10.5 : 7.5,
+          },
+        },
+      ],
+    ],
+    theme: 'plain',
+    headStyles: {
+      fillColor: [16, 185, 129],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8.5,
+      font: 'helvetica',
+    },
+    bodyStyles: {
+      fillColor: [240, 253, 244],
+      textColor: [22, 101, 52],
+      lineColor: [187, 247, 208],
+      lineWidth: 0.2,
+      cellPadding: 4,
+    },
+  });
+
+  // Section 3: Incorrectly Typed Words (Rendered in DevLys 010 for Hindi)
+  const incorrectY = (doc as any).lastAutoTable.finalY + 6;
+
+  // Prominent Section 3 Heading Banner
+  autoTable(doc, {
+    startY: incorrectY,
+    margin: { left: 12, right: 12 },
+    head: [[`3. INCORRECTLY TYPED WORDS (${analysis.incorrectWordsCount} Words)`]],
+    body: [],
+    theme: 'plain',
+    headStyles: {
+      fillColor: [225, 29, 72],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8.5,
+      font: 'helvetica',
+    },
+  });
+
+  const incorrectTableY = (doc as any).lastAutoTable.finalY;
+
+  if (formattedIncorrectWords.length > 0) {
+    const incorrectTableRows = formattedIncorrectWords.map((item, idx) => [
+      `#${idx + 1}`,
+      {
+        content: item.refWord,
+        styles: {
+          font: isHindi && item.refWord !== '(Extra Word)' ? 'DevLys010' : 'helvetica',
+          fontSize: isHindi && item.refWord !== '(Extra Word)' ? 10.5 : 7.5,
+          fontStyle: (item.refWord === '(Extra Word)' ? 'italic' : 'bold') as 'italic' | 'bold',
+          textColor: (item.refWord === '(Extra Word)' ? [100, 116, 139] : [30, 41, 59]) as [number, number, number],
+        },
+      },
+      {
+        content: item.typedWord || '(Missing/Unfinished)',
+        styles: {
+          font: isHindi && item.typedWord ? 'DevLys010' : 'helvetica',
+          fontSize: isHindi && item.typedWord ? 10.5 : 7.5,
+          fontStyle: (!item.typedWord ? 'italic' : 'bold') as 'italic' | 'bold',
+          textColor: [225, 29, 72] as [number, number, number],
+        },
+      },
+      item.refWord === '(Extra Word)' ? 'Unsolicited Extra Word' : 'Spelling Mismatch',
+    ]);
+
+    autoTable(doc, {
+      startY: incorrectTableY,
+      margin: { left: 12, right: 12 },
+      head: [['#', 'Expected Reference Word', 'Candidate Typed Token', 'Discrepancy Category']],
+      body: incorrectTableRows,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [244, 63, 94],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 8,
+        font: 'helvetica',
+      },
+      columnStyles: {
+        0: { cellWidth: 14, halign: 'center', font: 'helvetica' },
+        1: { cellWidth: 62 },
+        2: { cellWidth: 62 },
+        3: { cellWidth: 48, halign: 'center', font: 'helvetica' },
+      },
+      bodyStyles: {
+        textColor: [30, 41, 59],
+        fontSize: 7.5,
+        font: 'helvetica',
+      },
+    });
+  } else {
+    autoTable(doc, {
+      startY: incorrectTableY,
+      margin: { left: 12, right: 12 },
+      head: [],
+      body: [['Zero incorrect or mistyped words recorded during the assessment (100% precision).']],
+      theme: 'plain',
+      bodyStyles: {
+        fillColor: [255, 241, 242],
+        textColor: [159, 18, 57],
+        fontSize: 7.5,
+        font: 'helvetica',
+        lineColor: [254, 205, 211],
+        lineWidth: 0.2,
+      },
+    });
+  }
+
+  // Section 4: Skipped Words (Rendered in DevLys 010 for Hindi)
+  const skippedY = (doc as any).lastAutoTable.finalY + 6;
+  const skippedWordsText =
+    formattedSkippedWords.length > 0
+      ? formattedSkippedWords.join('   ')
+      : 'No words skipped in the reference paragraph (All words attempted).';
+
+  autoTable(doc, {
+    startY: skippedY,
+    margin: { left: 12, right: 12 },
+    head: [[`4. SKIPPED WORDS (TOTAL SKIPPED WORDS COUNT: ${analysis.skippedWordsCount} WORDS)`]],
+    body: [
+      [
+        {
+          content: skippedWordsText,
+          styles: {
+            font: isHindi && formattedSkippedWords.length > 0 ? 'DevLys010' : 'helvetica',
+            fontSize: isHindi && formattedSkippedWords.length > 0 ? 10.5 : 7.5,
+          },
+        },
+      ],
+    ],
+    theme: 'plain',
+    headStyles: {
+      fillColor: [217, 119, 6],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8.5,
+      font: 'helvetica',
+    },
+    bodyStyles: {
+      fillColor: [255, 251, 235],
+      textColor: [146, 64, 14],
+      fontSize: 7.5,
+      lineColor: [253, 230, 138],
+      lineWidth: 0.2,
+      cellPadding: 4,
     },
   });
 
   // Footer & Official Signatures
-  const finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 15 : y + 60;
-  if (finalY < pageHeight - 30) {
-    doc.setDrawColor(203, 213, 225);
-    doc.line(130, finalY + 12, 195, finalY + 12);
-    doc.setFontSize(8);
-    doc.setTextColor(71, 85, 105);
-    doc.text('Authorized Signatory / Evaluation Officer', 132, finalY + 16);
-    doc.text('District Evaluation Cell, Rajsamand', 132, finalY + 20);
+  let sigY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 14 : pageHeight - 35;
+  if (sigY > pageHeight - 32) {
+    doc.addPage();
+    sigY = 25;
   }
 
-  doc.setDrawColor(226, 232, 240);
-  doc.line(12, pageHeight - 12, pageWidth - 12, pageHeight - 12);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text(
-    `District Administration Rajsamand • Official Candidate Typing Assessment Scorecard (Exam Date: ${examDateFormatted})`,
-    pageWidth / 2,
-    pageHeight - 6,
-    { align: 'center' }
-  );
+  doc.setDrawColor(203, 213, 225);
+  doc.line(130, sigY + 10, 195, sigY + 10);
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Authorized Signatory / Evaluation Officer', 132, sigY + 14);
+  doc.text('District Administration, Rajsamand', 132, sigY + 18);
+
+  // Footer & Page Numbers across all pages
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(12, pageHeight - 12, pageWidth - 12, pageHeight - 12);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `District Administration Rajsamand • Official Candidate Typing Assessment Scorecard (Exam Date: ${examDateFormatted}) • Page ${i} of ${pageCount}`,
+      pageWidth / 2,
+      pageHeight - 6,
+      { align: 'center' }
+    );
+  }
 
   const cleanCandidateName = (attempt.candidateName || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_');
   doc.save(`Typing_Scorecard_${cleanCandidateName}_ExamDate_${examDateFormatted.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);

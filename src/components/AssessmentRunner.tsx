@@ -145,11 +145,8 @@ export const AssessmentRunner: React.FC<AssessmentRunnerProps> = ({
       {/* Top Header Bar */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
-            Official District Assessment
-          </span>
-          <h2 className="text-base sm:text-lg font-bold mt-1">{test.title}</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">{test.title}</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Candidate: <strong>{candidate.name}</strong> ({candidate.registrationId})
           </p>
         </div>

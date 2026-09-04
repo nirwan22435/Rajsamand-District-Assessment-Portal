@@ -101,7 +101,7 @@ export const TestResultView: React.FC<TestResultViewProps> = ({
             className="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-md transition-all flex items-center space-x-1.5"
           >
             <Mail className="w-3.5 h-3.5" />
-            <span>{isSendingEmail ? 'Sending...' : 'Email Scorecard via Resend'}</span>
+            <span>{isSendingEmail ? 'Sending...' : 'Email Scorecard'}</span>
           </button>
 
           <button
@@ -131,9 +131,6 @@ export const TestResultView: React.FC<TestResultViewProps> = ({
         }`}
       >
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold mb-2">
-            <Award className="w-3.5 h-3.5" /> Automated Evaluation Result
-          </div>
           <h1 className="text-2xl sm:text-3xl font-black">{attempt.testTitle}</h1>
           <p className="text-xs text-white/80 mt-1">
             Candidate: <strong>{attempt.candidateName}</strong>

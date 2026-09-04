@@ -1,5 +1,6 @@
 import { TypingAttempt, TypingTest, Candidate } from '../types';
 import { convertDevlysToUnicode } from './devlysConverter';
+import { INITIAL_TYPING_TESTS } from '../data/defaultTypingData';
 
 /**
  * Splits text into cleaned words array, merging dangling punctuation tokens into the preceding word
@@ -30,7 +31,7 @@ export function countWords(text: string): number {
   return getWordsArray(text).length;
 }
 
-export type WordStatusType = 'CORRECT' | 'INCORRECT' | 'CURRENT' | 'CURRENT_MISMATCH' | 'UNTYPED';
+export type WordStatusType = 'CORRECT' | 'INCORRECT' | 'CURRENT' | 'CURRENT_MISMATCH' | 'UNTYPED' | 'SKIPPED';
 
 export interface WordComparisonItem {
   refWord: string;
@@ -44,6 +45,10 @@ export interface TypingEvaluationResult {
   correctWordsCount: number;
   incorrectWordsCount: number;
   untypedWordsCount: number;
+  skippedWordsCount: number;
+  correctWords: string[];
+  incorrectWords: { refWord: string; typedWord?: string }[];
+  skippedWords: string[];
   netWpm: number;
   grossWpm: number;
   accuracyPercentage: number;
@@ -314,7 +319,8 @@ export function evaluateTyping(
   timeTakenSeconds: number,
   minPassingWpm: number = 30,
   isHindiDevLys: boolean = false,
-  minCorrectWords?: number
+  minCorrectWords?: number,
+  isFinalSubmission: boolean = false
 ): TypingEvaluationResult {
   const refWords = getWordsArray(referencePassage);
   const totalWordsInPara = refWords.length;
@@ -323,13 +329,16 @@ export function evaluateTyping(
   const hasTrailingSpace = /\s$/.test(typedText);
   const rawWords = getWordsArray(typedText);
 
-  const completedTokens = hasTrailingSpace
+  // When test is submitted, even the final word without a trailing space is evaluated
+  const completedTokens = (isFinalSubmission || hasTrailingSpace)
     ? rawWords
     : rawWords.length > 0
     ? rawWords.slice(0, -1)
     : [];
 
-  const currentToken = !hasTrailingSpace && rawWords.length > 0 ? rawWords[rawWords.length - 1] : '';
+  const currentToken = (!isFinalSubmission && !hasTrailingSpace && rawWords.length > 0)
+    ? rawWords[rawWords.length - 1]
+    : '';
 
   // Align completed words with reference passage
   const { refToTypedMap, unmatchedTokens } = alignWordsSequence(
@@ -339,7 +348,19 @@ export function evaluateTyping(
   );
 
   let correctCount = 0;
-  let incorrectCount = unmatchedTokens.size; // Extra inserted words count as errors
+  let incorrectCount = 0;
+  const correctWords: string[] = [];
+  const incorrectWords: { refWord: string; typedWord?: string }[] = [];
+  const skippedWords: string[] = [];
+
+  // Extra inserted typed words count as errors
+  unmatchedTokens.forEach((tokenIdx) => {
+    incorrectCount++;
+    incorrectWords.push({
+      refWord: '(Extra Word)',
+      typedWord: completedTokens[tokenIdx],
+    });
+  });
 
   const wordStatuses: WordComparisonItem[] = [];
 
@@ -363,6 +384,7 @@ export function evaluateTyping(
 
       if (areWordsEquivalent(refNorm, typedNorm, isHindiDevLys)) {
         correctCount++;
+        correctWords.push(ref);
         wordStatuses.push({
           refWord: ref,
           typedWord: typed,
@@ -371,6 +393,10 @@ export function evaluateTyping(
         });
       } else {
         incorrectCount++;
+        incorrectWords.push({
+          refWord: ref,
+          typedWord: typed,
+        });
         wordStatuses.push({
           refWord: ref,
           typedWord: typed,
@@ -379,15 +405,15 @@ export function evaluateTyping(
         });
       }
     } else if (i < nextActiveRefIdx) {
-      // Skipped word in between completed words -> mark as INCORRECT (skipped)
-      incorrectCount++;
+      // Skipped word in between completed words
+      skippedWords.push(ref);
       wordStatuses.push({
         refWord: ref,
-        status: 'INCORRECT',
+        status: 'SKIPPED',
         index: i,
       });
-    } else if (i === nextActiveRefIdx) {
-      // Current active word
+    } else if (!isFinalSubmission && i === nextActiveRefIdx) {
+      // Current active word being typed
       if (currentToken && !isPurePunctuationToken(currentToken)) {
         const tokenNorm = normalizeWordForEvaluation(currentToken, isHindiDevLys);
         const isPrefix = tokenNorm.length > 0 && (refNorm.startsWith(tokenNorm) || areWordsEquivalent(refNorm, tokenNorm, isHindiDevLys));
@@ -405,17 +431,18 @@ export function evaluateTyping(
         });
       }
     } else {
-      // Future untyped words (always UNTYPED, never incorrectly marked)
+      // Future untyped / omitted words from reference paragraph
+      skippedWords.push(ref);
       wordStatuses.push({
         refWord: ref,
-        status: 'UNTYPED',
+        status: isFinalSubmission ? 'SKIPPED' : 'UNTYPED',
         index: i,
       });
     }
   }
 
-  const totalAttempted = correctCount + incorrectCount;
-  const untypedCount = Math.max(0, totalWordsInPara - totalAttempted);
+  const skippedWordsCount = skippedWords.length;
+  const untypedCount = Math.max(0, totalWordsInPara - (correctCount + incorrectCount));
 
   // Safe time calculation in minutes
   const effectiveSeconds = Math.max(1, timeTakenSeconds);
@@ -429,9 +456,12 @@ export function evaluateTyping(
   // Net WPM = (Correct words typed) / Minutes (Official Standard)
   const netWpm = Math.max(0, Math.round((correctCount / timeInMinutes) * 10) / 10);
 
-  // Accuracy % = (Correct words / Total words attempted) * 100
+  // ACCURACY PERCENTAGE:
+  // Accuracy percentage = total correctly typed words / total words in reference paragraph
   const accuracyPercentage =
-    totalAttempted > 0 ? Math.round((correctCount / totalAttempted) * 1000) / 10 : 0;
+    totalWordsInPara > 0
+      ? Math.min(100, Math.max(0, Math.round((correctCount / totalWordsInPara) * 1000) / 10))
+      : 0;
 
   // Qualification criteria is strictly based on Number of correctly typed words in 10 minutes only.
   const targetMinCorrectWords =
@@ -451,6 +481,10 @@ export function evaluateTyping(
     correctWordsCount: correctCount,
     incorrectWordsCount: incorrectCount,
     untypedWordsCount: untypedCount,
+    skippedWordsCount,
+    correctWords,
+    incorrectWords,
+    skippedWords,
     netWpm,
     grossWpm,
     accuracyPercentage,
@@ -459,6 +493,82 @@ export function evaluateTyping(
     targetMinCorrectWords,
     status,
     wordStatuses,
+  };
+}
+
+export interface DetailedWordAnalysis {
+  referencePassage: string;
+  refWords: string[];
+  totalWordsInPara: number;
+  correctWords: string[];
+  incorrectWords: { refWord: string; typedWord?: string }[];
+  skippedWords: string[];
+  correctWordsCount: number;
+  incorrectWordsCount: number;
+  skippedWordsCount: number;
+  accuracyPercentage: number;
+  wordStatuses: WordComparisonItem[];
+}
+
+/**
+ * Extracts or computes the reference paragraph and complete word breakdown (correct, incorrect, skipped)
+ * for a typing assessment attempt.
+ */
+export function getDetailedWordAnalysis(
+  attempt: TypingAttempt,
+  referencePassage?: string
+): DetailedWordAnalysis {
+  const passage =
+    referencePassage ||
+    attempt.referencePassage ||
+    (INITIAL_TYPING_TESTS.find((t) => t.id === attempt.typingTestId)?.passageText) ||
+    '';
+
+  const isHindi = attempt.language === 'HINDI_DEVLYS_010';
+
+  if (passage) {
+    const evalRes = evaluateTyping(
+      passage,
+      attempt.typedText || '',
+      attempt.timeTakenSeconds || 600,
+      30,
+      isHindi,
+      undefined,
+      true // isFinalSubmission
+    );
+
+    return {
+      referencePassage: passage,
+      refWords: getWordsArray(passage),
+      totalWordsInPara: evalRes.totalWordsInPara,
+      correctWords: evalRes.correctWords,
+      incorrectWords: evalRes.incorrectWords,
+      skippedWords: evalRes.skippedWords,
+      correctWordsCount: evalRes.correctWordsCount,
+      incorrectWordsCount: evalRes.incorrectWordsCount,
+      skippedWordsCount: evalRes.skippedWordsCount,
+      accuracyPercentage: evalRes.accuracyPercentage,
+      wordStatuses: evalRes.wordStatuses,
+    };
+  }
+
+  // Fallback if passage is completely unavailable
+  const fallbackSkippedCount =
+    attempt.skippedWordsCount ??
+    Math.max(0, (attempt.totalWordsInPara || 0) - (attempt.correctWordsCount || 0) - (attempt.incorrectWordsCount || 0));
+
+  return {
+    referencePassage: '',
+    refWords: [],
+    totalWordsInPara: attempt.totalWordsInPara || 0,
+    correctWords: attempt.correctWords || [],
+    incorrectWords: attempt.incorrectWords || [],
+    skippedWords: attempt.skippedWords || [],
+    correctWordsCount: attempt.correctWordsCount || 0,
+    incorrectWordsCount: attempt.incorrectWordsCount || 0,
+    skippedWordsCount: fallbackSkippedCount,
+    accuracyPercentage: attempt.accuracyPercentage || 0,
+    wordStatuses: [],
   };
 }
 
@@ -489,6 +599,7 @@ export function exportTypingReportToCSV(attempts: TypingAttempt[], testTitle?: s
     'Total Words in Para',
     'Correct Words',
     'Incorrect Words',
+    'Skipped Words',
     'Untyped Words',
     'Net Speed (WPM)',
     'Gross Speed (WPM)',
@@ -508,6 +619,7 @@ export function exportTypingReportToCSV(attempts: TypingAttempt[], testTitle?: s
     att.totalWordsInPara || 0,
     att.correctWordsCount || 0,
     att.incorrectWordsCount || 0,
+    att.skippedWordsCount ?? att.untypedWordsCount ?? 0,
     att.untypedWordsCount || 0,
     att.netWpm || 0,
     att.grossWpm || 0,

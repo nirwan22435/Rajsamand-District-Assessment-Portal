@@ -117,42 +117,6 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
         </div>
       </div>
 
-      {/* Navigation Switch */}
-      <div className="flex items-center space-x-2 border-b border-slate-200 dark:border-slate-800 pb-2">
-        {!isTypingCandidate && (
-          <button
-            onClick={() => setActiveTab('my-tests')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === 'my-tests'
-                ? 'bg-emerald-700 text-white shadow-md'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            <Compass className="w-4 h-4" /> Available Assessments ({availableTests.length})
-          </button>
-        )}
-        <button
-          onClick={() => setActiveTab('typing-test')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'typing-test'
-              ? 'bg-amber-600 text-white shadow-md'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <Keyboard className="w-4 h-4 text-amber-500" /> Typing Test (10 Min)
-        </button>
-        <button
-          onClick={() => setActiveTab('my-performance')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'my-performance'
-              ? 'bg-amber-600 text-white shadow-md'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4" /> My Performance & Scorecard ({completedCount})
-        </button>
-      </div>
-
       {/* TAB 1: Available Assessments List (for General Candidates) */}
       {activeTab === 'my-tests' && !isTypingCandidate && (
         <div className="space-y-4">
@@ -262,24 +226,25 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-semibold border-b border-slate-200 dark:border-slate-800">
                   <tr>
-                    <th className="px-5 py-3">Typing Test Paper</th>
-                    <th className="px-5 py-3 text-center">Medium</th>
-                    <th className="px-5 py-3 text-center text-emerald-600">Correct Words</th>
-                    <th className="px-5 py-3 text-center">Gross WPM</th>
-                    <th className="px-5 py-3 text-center">Net WPM</th>
-                    <th className="px-5 py-3 text-center">Accuracy</th>
-                    <th className="px-5 py-3 text-center">Status</th>
-                    <th className="px-5 py-3 text-right">Scorecard & Report</th>
+                    <th className="px-4 py-3">Typing Test Paper</th>
+                    <th className="px-3 py-3 text-center">Medium</th>
+                    <th className="px-3 py-3 text-center text-emerald-600">Correct</th>
+                    <th className="px-3 py-3 text-center text-rose-600">Incorrect</th>
+                    <th className="px-3 py-3 text-center text-amber-600">Skipped</th>
+                    <th className="px-3 py-3 text-center">Net WPM</th>
+                    <th className="px-3 py-3 text-center">Accuracy</th>
+                    <th className="px-3 py-3 text-center">Status</th>
+                    <th className="px-4 py-3 text-right">Scorecard & Report</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {myTypingAttempts.length > 0 ? (
                     myTypingAttempts.map((att) => (
                       <tr key={att.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td className="px-5 py-4 font-bold text-slate-900 dark:text-white max-w-xs truncate">
+                        <td className="px-4 py-4 font-bold text-slate-900 dark:text-white max-w-xs truncate">
                           {att.testTitle}
                         </td>
-                        <td className="px-5 py-4 text-center">
+                        <td className="px-3 py-4 text-center">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
                             att.language === 'HINDI_DEVLYS_010'
                               ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
@@ -288,16 +253,19 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
                             {att.language === 'HINDI_DEVLYS_010' ? 'Hindi' : 'English'}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-center font-mono font-black text-emerald-600 dark:text-emerald-400">
+                        <td className="px-3 py-4 text-center font-mono font-black text-emerald-600 dark:text-emerald-400">
                           {att.correctWordsCount ?? 0}
                         </td>
-                        <td className="px-5 py-4 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
-                          {att.grossWpm} WPM
+                        <td className="px-3 py-4 text-center font-mono font-black text-rose-600 dark:text-rose-400">
+                          {att.incorrectWordsCount ?? 0}
                         </td>
-                        <td className="px-5 py-4 text-center font-mono font-black text-amber-600 dark:text-amber-400">
+                        <td className="px-3 py-4 text-center font-mono font-bold text-amber-600 dark:text-amber-400">
+                          {att.skippedWordsCount ?? att.untypedWordsCount ?? 0}
+                        </td>
+                        <td className="px-3 py-4 text-center font-mono font-black text-amber-600 dark:text-amber-400">
                           {att.netWpm} WPM
                         </td>
-                        <td className="px-5 py-4 text-center font-mono font-bold text-slate-900 dark:text-white">
+                        <td className="px-3 py-4 text-center font-mono font-bold text-slate-900 dark:text-white">
                           {att.accuracyPercentage}%
                         </td>
                         <td className="px-5 py-4 text-center">
@@ -317,7 +285,7 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
                             type="button"
                             onClick={() => {
                               const foundTest = typingTests.find((t) => t.id === att.typingTestId);
-                              downloadCandidateTypingScorecardPdf(att, foundTest?.passageText);
+                              downloadCandidateTypingScorecardPdf(att, att.referencePassage || foundTest?.passageText);
                             }}
                             className="p-1.5 rounded-lg text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
                             title="Download Official Typing Report PDF"
@@ -457,7 +425,7 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
           isOpen={!!viewingTypingAttempt}
           onClose={() => setViewingTypingAttempt(null)}
           attempt={viewingTypingAttempt}
-          referencePassage={typingTests.find((t) => t.id === viewingTypingAttempt.typingTestId)?.passageText}
+          referencePassage={viewingTypingAttempt.referencePassage || typingTests.find((t) => t.id === viewingTypingAttempt.typingTestId)?.passageText}
         />
       )}
     </div>

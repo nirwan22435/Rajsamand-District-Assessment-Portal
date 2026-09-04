@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TypingAttempt } from '../../types';
-import { formatSecondsToTime } from '../../utils/typingUtils';
+import { formatSecondsToTime, getDetailedWordAnalysis } from '../../utils/typingUtils';
 import { downloadCandidateTypingScorecardPdf } from '../../utils/pdfGenerator';
 import {
   Award,
@@ -14,6 +14,9 @@ import {
   BarChart2,
   Calendar,
   Building2,
+  AlertTriangle,
+  Check,
+  HelpCircle,
 } from 'lucide-react';
 
 interface TypingResultModalProps {
@@ -31,8 +34,13 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
 }) => {
   if (!isOpen || !attempt) return null;
 
+  const [activeTab, setActiveTab] = useState<'paragraph' | 'correct' | 'incorrect' | 'skipped'>('paragraph');
+  const [highlightMode, setHighlightMode] = useState<boolean>(true);
+
+  const analysis = getDetailedWordAnalysis(attempt, referencePassage);
+
   const handleDownloadScorecard = () => {
-    downloadCandidateTypingScorecardPdf(attempt, referencePassage);
+    downloadCandidateTypingScorecardPdf(attempt, referencePassage || analysis.referencePassage);
   };
 
   const isHindi = attempt.language === 'HINDI_DEVLYS_010';
@@ -52,7 +60,7 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-150">
         {/* Header Ribbon */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center space-x-3">
@@ -61,7 +69,7 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
             </div>
             <div>
               <div className="text-[10px] uppercase font-black tracking-widest text-amber-400">
-                District Evaluation Cell • Rajsamand
+                District Administration • Rajsamand
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-base sm:text-lg font-black tracking-tight">
@@ -78,7 +86,7 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
             {/* Download Report Button */}
             <button
               onClick={handleDownloadScorecard}
-              className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-all text-xs font-bold flex items-center gap-1.5 shadow-sm"
+              className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-all text-xs font-bold flex items-center gap-1.5 shadow-sm active:scale-95"
               title="Download Official Scorecard PDF"
             >
               <Download className="w-4 h-4" />
@@ -94,8 +102,8 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-6 max-h-[78vh] overflow-y-auto typing-passage-scroll">
-          {/* Candidate & Test Metadata Banner with Exam Date */}
+        <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto typing-passage-scroll">
+          {/* Candidate & Test Metadata Banner */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 text-xs">
             <div>
               <span className="block text-[10px] font-bold text-slate-500 uppercase">Candidate Name</span>
@@ -119,7 +127,7 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
             </div>
           </div>
 
-          {/* Core Result Highlight: Net WPM & Qualified Status */}
+          {/* Core Result Highlight */}
           <div
             className={`p-5 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 ${
               isQualified
@@ -147,7 +155,7 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
                   {isQualified ? 'QUALIFIED IN TYPING ASSESSMENT' : 'NOT QUALIFIED (BELOW REQUIRED CORRECT WORDS)'}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Assessed on total correctly typed words in 10 minutes (Rajasthan Ministerial Guidelines)
+                  Assessed on total correctly typed words in 10 minutes
                 </p>
               </div>
             </div>
@@ -161,38 +169,38 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
             </div>
           </div>
 
-          {/* Detailed Metric Cards (Word Breakdown) */}
+          {/* Primary Metric Cards (Word Breakdown) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center">
-              <span className="block text-[10px] font-bold text-slate-500 uppercase">Total Words</span>
+              <span className="block text-[10px] font-bold text-slate-500 uppercase">Total Words in Para</span>
               <span className="text-xl font-black text-slate-900 dark:text-white mt-0.5 block">
-                {attempt.totalWordsInPara || 0}
+                {analysis.totalWordsInPara}
               </span>
-              <span className="text-[10px] text-slate-400">In reference para</span>
+              <span className="text-[10px] text-slate-400">Reference passage</span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-center">
               <span className="block text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase">Correct Words</span>
               <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5 block">
-                {attempt.correctWordsCount || 0}
+                {analysis.correctWordsCount}
               </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Accurately typed</span>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Correctly typed</span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-center">
               <span className="block text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase">Incorrect Words</span>
               <span className="text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5 block">
-                {attempt.incorrectWordsCount || 0}
+                {analysis.incorrectWordsCount}
               </span>
               <span className="text-[10px] text-rose-600 dark:text-rose-400">Mistyped / Extra</span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-center">
-              <span className="block text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase">Untyped Words</span>
+              <span className="block text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase">Skipped Words</span>
               <span className="text-xl font-black text-amber-600 dark:text-amber-400 mt-0.5 block">
-                {attempt.untypedWordsCount || 0}
+                {analysis.skippedWordsCount}
               </span>
-              <span className="text-[10px] text-amber-600 dark:text-amber-400">Remaining</span>
+              <span className="text-[10px] text-amber-600 dark:text-amber-400">Omitted from para</span>
             </div>
           </div>
 
@@ -203,15 +211,17 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
               <div className="text-lg font-black text-slate-900 dark:text-white mt-1">
                 {attempt.grossWpm || 0} <span className="text-xs font-normal text-slate-400">WPM</span>
               </div>
-              <span className="text-[10px] text-slate-400">Raw typing keystrokes</span>
+              <span className="text-[10px] text-slate-400">Raw keystrokes speed</span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
               <span className="block text-[10px] font-bold text-slate-500 uppercase">Calculated Accuracy</span>
               <div className="text-lg font-black text-slate-900 dark:text-white mt-1">
-                {attempt.accuracyPercentage || 0}%
+                {analysis.accuracyPercentage}%
               </div>
-              <span className="text-[10px] text-slate-400">Correct words / total typed</span>
+              <span className="text-[10px] text-slate-400 font-medium">
+                total correctly typed words / total words in reference paragraph
+              </span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
@@ -220,25 +230,228 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
                 {formatSecondsToTime(attempt.timeTakenSeconds || 0)}{' '}
                 <span className="text-xs font-normal text-slate-400">/ 10:00 max</span>
               </div>
-              <span className="text-[10px] text-slate-400">Exam duration</span>
+              <span className="text-[10px] text-slate-400">Assessment duration</span>
             </div>
           </div>
 
-          {/* Reference Paragraph Preview */}
-          {referencePassage && (
-            <div className="space-y-2">
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Reference Test Paragraph
-              </span>
-              <div
-                className={`p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-h-32 overflow-y-auto ${
-                  isHindi ? 'font-devlys text-sm' : ''
-                }`}
-              >
-                {referencePassage}
+          {/* Word Analysis Navigation Tabs */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={() => setActiveTab('paragraph')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    activeTab === 'paragraph'
+                      ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Reference Paragraph ({analysis.totalWordsInPara})</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('correct')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    activeTab === 'correct'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                  }`}
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Correctly Typed ({analysis.correctWordsCount})</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('incorrect')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    activeTab === 'incorrect'
+                      ? 'bg-rose-600 text-white shadow-sm'
+                      : 'text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40'
+                  }`}
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Incorrectly Typed ({analysis.incorrectWordsCount})</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('skipped')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    activeTab === 'skipped'
+                      ? 'bg-amber-600 text-white shadow-sm'
+                      : 'text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+                  }`}
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Skipped Words ({analysis.skippedWordsCount})</span>
+                </button>
               </div>
+
+              {activeTab === 'paragraph' && (
+                <button
+                  onClick={() => setHighlightMode(!highlightMode)}
+                  className={`text-[11px] px-2.5 py-1 rounded-md font-bold transition-colors border ${
+                    highlightMode
+                      ? 'bg-amber-50 border-amber-300 text-amber-800 dark:bg-amber-950/50 dark:border-amber-700 dark:text-amber-300'
+                      : 'bg-slate-100 border-slate-300 text-slate-700 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
+                  }`}
+                >
+                  {highlightMode ? '✓ Highlights Active' : 'Plain Text'}
+                </button>
+              )}
             </div>
-          )}
+
+            {/* Tab 1: Reference Paragraph */}
+            {activeTab === 'paragraph' && (
+              <div className="space-y-2">
+                <div
+                  className={`p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs leading-relaxed max-h-56 overflow-y-auto typing-passage-scroll ${
+                    isHindi ? 'font-devlys text-sm' : 'font-sans'
+                  }`}
+                >
+                  {highlightMode && analysis.wordStatuses.length > 0 ? (
+                    <div className="flex flex-wrap gap-x-1.5 gap-y-2">
+                      {analysis.wordStatuses.map((item, idx) => {
+                        let badgeClass = 'text-slate-700 dark:text-slate-300';
+                        if (item.status === 'CORRECT') {
+                          badgeClass =
+                            'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-bold px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-800';
+                        } else if (item.status === 'INCORRECT') {
+                          badgeClass =
+                            'bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 font-bold px-1.5 py-0.5 rounded border border-rose-300 dark:border-rose-800';
+                        } else if (item.status === 'SKIPPED' || item.status === 'UNTYPED') {
+                          badgeClass =
+                            'bg-amber-100/70 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 line-through opacity-80 px-1.5 py-0.5 rounded border border-amber-300/60 dark:border-amber-800/60';
+                        }
+                        return (
+                          <span key={idx} className={badgeClass} title={`#${idx + 1}: ${item.status}`}>
+                            {item.refWord}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-slate-700 dark:text-slate-300 select-text whitespace-pre-wrap">
+                      {analysis.referencePassage || 'No reference passage available.'}
+                    </p>
+                  )}
+                </div>
+                {highlightMode && (
+                  <div className="flex items-center gap-4 text-[11px] text-slate-500 pt-1">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                      <span>Correctly Typed</span>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span>
+                      <span>Incorrectly Typed</span>
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+                      <span>Skipped Word</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab 2: Correctly Typed Words */}
+            {activeTab === 'correct' && (
+              <div className="space-y-2">
+                <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 max-h-56 overflow-y-auto typing-passage-scroll">
+                  {analysis.correctWords.length === 0 ? (
+                    <p className="text-xs text-slate-500 py-3 text-center">No words correctly typed.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {analysis.correctWords.map((word, idx) => (
+                        <span
+                          key={idx}
+                          className={`px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800 text-xs ${
+                            isHindi ? 'font-devlys' : ''
+                          }`}
+                        >
+                          {word}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  Total {analysis.correctWords.length} correctly typed words out of {analysis.totalWordsInPara} in reference paragraph.
+                </div>
+              </div>
+            )}
+
+            {/* Tab 3: Incorrectly Typed Words */}
+            {activeTab === 'incorrect' && (
+              <div className="space-y-2">
+                <div className="p-4 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/60 max-h-56 overflow-y-auto typing-passage-scroll">
+                  {analysis.incorrectWords.length === 0 ? (
+                    <div className="text-center py-6 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Zero Incorrect Words! 100% precision on typed words.</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {analysis.incorrectWords.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="p-2.5 rounded-lg bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-900/60 shadow-2xs flex items-center justify-between text-xs"
+                        >
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase font-bold block">Expected</span>
+                            <span className={`font-bold text-slate-800 dark:text-slate-200 ${isHindi ? 'font-devlys' : ''}`}>
+                              {item.refWord}
+                            </span>
+                          </div>
+                          <span className="text-slate-400 text-xs">→</span>
+                          <div className="text-right">
+                            <span className="text-[10px] text-rose-500 uppercase font-bold block">Typed</span>
+                            <span className={`font-bold text-rose-600 dark:text-rose-400 ${isHindi ? 'font-devlys' : ''}`}>
+                              {item.typedWord || '(Missing)'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  Total {analysis.incorrectWords.length} mistyped or extra words recorded during assessment.
+                </div>
+              </div>
+            )}
+
+            {/* Tab 4: Skipped Words */}
+            {activeTab === 'skipped' && (
+              <div className="space-y-2">
+                <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 max-h-56 overflow-y-auto typing-passage-scroll">
+                  {analysis.skippedWords.length === 0 ? (
+                    <div className="text-center py-6 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center justify-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>No words skipped! All reference words were attempted.</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {analysis.skippedWords.map((word, idx) => (
+                        <span
+                          key={idx}
+                          className={`px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-semibold border border-amber-300 dark:border-amber-800 text-xs ${
+                            isHindi ? 'font-devlys' : ''
+                          }`}
+                        >
+                          {word}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  Total {analysis.skippedWords.length} words omitted or not reached in reference paragraph.
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Official Verification Footer */}
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">

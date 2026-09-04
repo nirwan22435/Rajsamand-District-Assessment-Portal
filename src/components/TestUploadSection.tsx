@@ -466,15 +466,11 @@ Correct Answer: A`);
       {/* Header Banner Card */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 p-6 sm:p-8 rounded-2xl text-white shadow-xl">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-semibold uppercase tracking-wider mb-2">
-            <Sparkles className="w-3.5 h-3.5" />
-            AI Assessment Generator & Multimodal OCR
-          </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
             {editingTest ? `Edit Assessment: ${editingTest.title}` : 'Create New Assessment Paper'}
           </h1>
           <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
-            Upload PDF/scanned question papers for instant AI extraction or build customized MCQ assessments manually.
+            Upload question documents for AI extraction or construct MCQ assessments manually.
           </p>
         </div>
 

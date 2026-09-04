@@ -2,18 +2,52 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Base Clean & Modern Styling */
+@theme {
+  --font-sans: 'Plus Jakarta Sans', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  --font-emblem: 'Cinzel', serif;
+  --font-hindi: 'Noto Sans Devanagari', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-devlys: 'DevLys 010', 'Kruti Dev 010', sans-serif;
+}
+
+/* Base Clean, Authoritative Administrative Portal Typography */
 html, body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: -0.012em;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Headings with refined optical tracking */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.025em;
+}
+
+/* Tabular figures for metric cards, WPM counters & timers */
+.font-mono, [class*="font-mono"] {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace !important;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+/* Civic Emblem / Institutional State Seal Class */
+.font-emblem {
+  font-family: 'Cinzel', serif !important;
+  letter-spacing: 0.06em;
+}
+
+/* Devanagari Unicode Hindi Class */
+.font-hindi {
+  font-family: 'Noto Sans Devanagari', sans-serif !important;
 }
 
 /* Official DevLys 010 & Kruti Dev Font Family Definition for Remington Hindi Typing */
 @font-face {
   font-family: 'DevLys 010';
   src: local('DevLys 010'), local('DevLys010'), local('Kruti Dev 010'), local('KrutiDev010'),
+       url('/fonts/DevLys010.ttf') format('truetype'),
        url('https://fonts.cdnfonts.com/s/77402/DevLys_010.woff') format('woff');
   font-weight: normal;
   font-style: normal;
@@ -23,6 +57,7 @@ html, body {
 @font-face {
   font-family: 'Kruti Dev 010';
   src: local('Kruti Dev 010'), local('KrutiDev010'), local('DevLys 010'),
+       url('/fonts/DevLys010.ttf') format('truetype'),
        url('https://fonts.cdnfonts.com/s/77402/DevLys_010.woff') format('woff');
   font-weight: normal;
   font-style: normal;

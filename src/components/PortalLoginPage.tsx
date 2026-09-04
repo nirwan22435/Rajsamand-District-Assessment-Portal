@@ -156,19 +156,16 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
 
             {/* Title, Badge & Subtitles matching photo */}
             <div className="border-l-2 border-slate-300 dark:border-slate-700 pl-3.5">
-              <div className="text-[12px] font-bold text-amber-600 dark:text-amber-400">
+              <div className="font-hindi text-[12px] font-bold text-amber-600 dark:text-amber-400 tracking-wide">
                 राजसमंद जिला मूल्यांकन पोर्टल
               </div>
-              <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                <h1 className="text-lg sm:text-xl font-black text-slate-950 dark:text-white tracking-tight leading-snug">
+              <div className="mt-0.5">
+                <h1 className="font-display text-lg sm:text-xl font-extrabold text-slate-950 dark:text-white tracking-tight leading-snug">
                   Rajsamand District Assessment Portal
                 </h1>
-                <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-300 text-[11px] font-bold">
-                  Govt. of Rajasthan
-                </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                District Administration • District Evaluation Cell, Rajsamand
+                District Administration, Rajsamand
               </p>
             </div>
           </div>
@@ -203,16 +200,13 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
       </header>
 
       {/* Main Login Card Area */}
-      <div className="max-w-md w-full mx-auto px-4 py-8 relative z-10 flex-1 flex items-center justify-center">
-        <div className="w-full bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-6">
+      <div className="w-full max-w-[500px] mx-auto px-4 py-8 relative z-10 flex-1 flex items-center justify-center">
+        <div className="w-full sm:w-[500px] min-h-[500px] bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-6 flex flex-col justify-center">
           {/* Card Top Title */}
-          <div className="text-center space-y-1">
+          <div className="text-center">
             <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
               Sign In to Portal
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Select your authorization role below to access candidate assessments or evaluation metrics.
-            </p>
           </div>
 
           {/* Role Toggle Tabs */}
@@ -363,12 +357,9 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
       </div>
 
       {/* Official Government Footer */}
-      <footer className="w-full bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-3.5 px-6 text-center text-xs text-slate-500 dark:text-slate-400 space-y-0.5 relative z-10">
+      <footer className="w-full bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-3.5 px-6 text-center text-xs text-slate-500 dark:text-slate-400 relative z-10">
         <div className="font-semibold text-slate-700 dark:text-slate-300">
-          District Administration, Rajsamand (Rajasthan) • Automated Evaluation System
-        </div>
-        <div className="text-[11px] text-slate-400">
-          Designed for Departmental Typing Assessments & MCQ Speed Evaluations • Helpline: 181 / 02952-220001
+          District Administration, Rajsamand (Rajasthan)
         </div>
       </footer>
 

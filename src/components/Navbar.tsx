@@ -55,16 +55,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Title & Subtitles */}
             <div className="border-l-2 border-slate-300 dark:border-slate-700 pl-3">
-              <div className="text-[11px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+              <div className="font-hindi text-[11px] font-bold tracking-wide text-amber-700 dark:text-amber-400">
                 राजसमंद जिला मूल्यांकन पोर्टल
               </div>
-              <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight leading-snug group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
+              <h1 className="font-display text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-snug group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
                 Rajsamand District Assessment Portal
               </h1>
-              <p className="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center gap-1.5">
-                <span>District Evaluation Cell</span>
-                <span>•</span>
-                <span className="text-slate-500">Govt. of Rajasthan</span>
+              <p className="text-xs text-slate-600 dark:text-slate-400 font-medium flex items-center gap-1.5">
+                <span className="font-emblem text-[10px] tracking-wider uppercase text-slate-500 font-bold">Govt. of Rajasthan</span>
               </p>
             </div>
           </div>

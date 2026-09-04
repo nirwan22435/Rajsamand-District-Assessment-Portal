@@ -242,7 +242,7 @@ export function ThemePreviewModal({
                       RJ
                     </div>
                     <div>
-                      <p className="text-xs font-black leading-none">Evaluation Cell</p>
+                      <p className="text-xs font-black leading-none">Rajsamand Portal</p>
                       <p className="text-[10px] opacity-70 mt-0.5">Govt. of Rajasthan</p>
                     </div>
                   </div>

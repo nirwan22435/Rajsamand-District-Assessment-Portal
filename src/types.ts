@@ -21,6 +21,7 @@ export interface Candidate {
   typingMedium?: TypingLanguage; // Medium of typing: ENGLISH or HINDI_DEVLYS_010
   email: string;
   phone: string;
+  category?: string;
   block?: DistrictBlock;
   activeStatus: boolean;
   password: string;
@@ -134,9 +135,14 @@ export interface TypingAttempt {
   correctWordsCount: number; // Number of correctly typed words
   incorrectWordsCount: number; // Number of incorrectly typed words
   untypedWordsCount: number; // Number of words not typed
+  skippedWordsCount?: number; // Number of skipped / omitted words from reference paragraph
+  correctWords?: string[]; // List of correctly typed words
+  incorrectWords?: { refWord: string; typedWord?: string }[]; // List of incorrectly typed words
+  skippedWords?: string[]; // List of skipped words from reference paragraph
+  referencePassage?: string; // Full reference passage text
   netWpm: number; // Net typing speed per minute
   grossWpm: number; // Gross typing speed (total typed / minutes)
-  accuracyPercentage: number; // Correct words %
+  accuracyPercentage: number; // Accuracy % = total correctly typed words / total words in reference paragraph
   timeTakenSeconds: number; // Total time taken in seconds (<= 600s for 10 min test)
   timeTakenMinutes: number;
   status: 'QUALIFIED' | 'DISQUALIFIED';
