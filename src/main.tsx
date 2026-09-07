@@ -39,3 +39,12 @@ try {
   }
 }
 
+// Register Service Worker for Android App / PWA support
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.info('[SW] Service worker registration note:', err);
+    });
+  });
+}
+

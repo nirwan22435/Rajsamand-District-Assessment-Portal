@@ -1,7 +1,9 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
+import mammoth from 'mammoth';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import { createSubmissionPdfDocument } from './src/utils/pdfGenerator';
@@ -41,6 +43,17 @@ async function startServer() {
       hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
       hasResendKey: Boolean(process.env.RESEND_API_KEY),
     });
+  });
+
+  // Android RDAA .APK Direct Download Route
+  app.get(['/api/download/RDAA.apk', '/RDAA.apk'], (req, res) => {
+    const apkFile = path.join(process.cwd(), 'public', 'RDAA.apk');
+    if (fs.existsSync(apkFile)) {
+      res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+      res.setHeader('Content-Disposition', 'attachment; filename="RDAA.apk"');
+      return res.sendFile(apkFile);
+    }
+    return res.status(404).send('RDAA.apk file not found');
   });
 
   // Windows Desktop .EXE Setup Direct Download Route
@@ -130,100 +143,187 @@ Rules:
 1. Extract every valid question accurately.
 2. Ensure each question has exactly 4 distinct options (A, B, C, D). If options are missing in the raw text, generate plausible educational options based on standard syllabus.
 3. Identify or infer the correct option index (0 for Option A, 1 for Option B, 2 for Option C, 3 for Option D).
-4. Provide a short, informative explanation for why the answer is correct.
+4. Do NOT generate explanations or notes for solutions. Explanations are not required.
 5. Provide a realistic title, estimated duration in minutes (e.g. 30, 45, 60), total marks, and subject classification.`;
 
-      const promptText = `Convert the following test paper content into structured editable MCQs for Rajsamand District Assessment Portal.
-Subject requested: ${subject || 'General Assessment'}
+      let extractedDocText = '';
+      const cleanBase64 = fileData && fileData.includes('base64,') ? fileData.split('base64,')[1] : fileData;
+
+      // Auto-detect or normalize MIME type from file signature if missing or generic
+      let resolvedMime = (mimeType || '').toLowerCase().trim();
+      if (cleanBase64 && (!resolvedMime || resolvedMime === 'application/octet-stream')) {
+        if (cleanBase64.startsWith('JVBERi')) {
+          resolvedMime = 'application/pdf';
+        } else if (cleanBase64.startsWith('/9j/')) {
+          resolvedMime = 'image/jpeg';
+        } else if (cleanBase64.startsWith('iVBORw')) {
+          resolvedMime = 'image/png';
+        } else if (cleanBase64.startsWith('UEsDB')) {
+          resolvedMime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        }
+      }
+
+      const isWordDoc = Boolean(
+        (cleanBase64 && cleanBase64.startsWith('UEsDB')) ||
+        resolvedMime.includes('wordprocessingml') ||
+        resolvedMime.includes('msword') ||
+        resolvedMime.includes('officedocument') ||
+        resolvedMime.includes('opendocument') ||
+        resolvedMime.includes('docx')
+      );
+
+      const isTextDoc = Boolean(
+        resolvedMime.startsWith('text/') ||
+        resolvedMime.includes('json') ||
+        resolvedMime.includes('csv')
+      );
+
+      if (cleanBase64 && isWordDoc) {
+        try {
+          const buffer = Buffer.from(cleanBase64, 'base64');
+          const mammothResult = await mammoth.extractRawText({ buffer });
+          if (mammothResult && mammothResult.value) {
+            extractedDocText = mammothResult.value;
+          }
+        } catch (mErr: any) {
+          console.warn('[Mammoth Server Extract Note]:', mErr?.message || mErr);
+        }
+      } else if (cleanBase64 && isTextDoc) {
+        try {
+          extractedDocText = Buffer.from(cleanBase64, 'base64').toString('utf-8');
+        } catch (tErr: any) {
+          console.warn('[Text Extract Note]:', tErr?.message || tErr);
+        }
+      }
+
+      const combinedText = [rawText, extractedDocText].filter(Boolean).join('\n\n');
+
+      // Gemini inlineData only supports image types, audio, video, and application/pdf
+      const isGeminiSupportedMime = Boolean(
+        !isWordDoc &&
+        !isTextDoc &&
+        resolvedMime &&
+        (resolvedMime === 'application/pdf' ||
+         resolvedMime.startsWith('image/') ||
+         resolvedMime.startsWith('audio/') ||
+         resolvedMime.startsWith('video/'))
+      );
+
+      let promptText = '';
+      if (cleanBase64 && isGeminiSupportedMime) {
+        promptText = `You are parsing an uploaded question paper document/image for Rajsamand District Assessment Portal.
+Please thoroughly read and analyze all questions, options, and text present in the attached file.
+Extract ALL multiple choice or assessment questions and return them in structured MCQ format.
+
+Subject: ${subject || 'General Assessment'}
+Target District Block: ${targetBlock || 'District-Wide (Rajsamand)'}
+Recommended Duration: ${defaultTimeLimit || 30} minutes
+${combinedText ? `Accompanying Question Paper Text:\n${combinedText}` : ''}
+
+EXTRACTION RULES:
+1. Extract ALL questions from the document. Preserve question stems and options accurately.
+2. Ensure each question has exactly 4 choices (A, B, C, D). If options are missing, generate 4 plausible syllabus-based choices.
+3. Identify or infer the correct option index: 0 for Option A, 1 for Option B, 2 for Option C, 3 for Option D.
+4. Do NOT generate explanations or notes.
+5. Provide realistic test metadata (testTitle, subject, timeLimitMinutes, totalMarks, passingMarks).`;
+      } else {
+        promptText = `Convert the following test paper content into structured editable MCQs for Rajsamand District Assessment Portal.
+Subject: ${subject || 'General Assessment'}
 Target District Block: ${targetBlock || 'District-Wide (Rajsamand)'}
 Default Time Limit: ${defaultTimeLimit || 30} minutes
 
-Raw Text Content (if provided):
-${rawText || 'N/A'}`;
+Test Paper Content / Raw Text:
+${combinedText || 'Extract all questions found in the test paper.'}
+
+EXTRACTION RULES:
+1. Extract ALL questions accurately into structured MCQs.
+2. Ensure each question has exactly 4 distinct choices (A, B, C, D).
+3. Specify the correctOptionIndex (0 for A, 1 for B, 2 for C, 3 for D).
+4. Do NOT generate explanations or notes.
+5. Provide realistic test metadata (testTitle, subject, timeLimitMinutes, totalMarks, passingMarks).`;
+      }
 
       let contents: any;
-
-      if (fileData && mimeType) {
-        // Base64 file upload (Image or PDF)
-        const cleanBase64 = fileData.includes('base64,') ? fileData.split('base64,')[1] : fileData;
-        contents = {
-          parts: [
-            {
-              inlineData: {
-                data: cleanBase64,
-                mimeType: mimeType || 'image/jpeg',
-              },
+      if (cleanBase64 && isGeminiSupportedMime) {
+        contents = [
+          {
+            inlineData: {
+              data: cleanBase64,
+              mimeType: resolvedMime || 'application/pdf',
             },
-            {
-              text: promptText,
-            },
-          ],
-        };
+          },
+          {
+            text: promptText,
+          },
+        ];
       } else {
-        // Raw text string
         contents = promptText;
       }
 
-      // Try primary and fallback models in case of temporary 503 / high demand spikes
-      const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
+      // Try verified active models in priority order to avoid 503 spikes or 429 quota exhaustion
+      const modelsToTry = [
+        'gemini-3.6-flash',
+        'gemini-3.7-flash',
+        'gemini-3.5-flash',
+        'gemini-3.1-flash-lite',
+        'gemini-3.8-flash',
+        'gemini-2.5-flash',
+      ];
       let response: any = null;
       let lastError: any = null;
 
       for (const modelName of modelsToTry) {
-        for (let attempt = 1; attempt <= 2; attempt++) {
-          try {
-            response = await ai.models.generateContent({
-              model: modelName,
-              contents,
-              config: {
-                systemInstruction,
-                responseMimeType: 'application/json',
-                responseSchema: {
-                  type: Type.OBJECT,
-                  properties: {
-                    testTitle: { type: Type.STRING, description: 'Title of the assessment paper' },
-                    subject: { type: Type.STRING, description: 'Subject or category name' },
-                    timeLimitMinutes: { type: Type.INTEGER, description: 'Recommended test duration in minutes' },
-                    totalMarks: { type: Type.INTEGER, description: 'Total maximum marks for the test' },
-                    passingMarks: { type: Type.INTEGER, description: 'Passing threshold marks' },
-                    instructions: { type: Type.STRING, description: 'General instructions for candidates' },
-                    questions: {
-                      type: Type.ARRAY,
-                      description: 'List of parsed MCQ questions',
-                      items: {
-                        type: Type.OBJECT,
-                        properties: {
-                          id: { type: Type.STRING, description: 'Unique question identifier' },
-                          questionText: { type: Type.STRING, description: 'Question stem / problem description' },
-                          options: {
-                            type: Type.ARRAY,
-                            description: 'Array of exactly 4 choices',
-                            items: { type: Type.STRING },
-                          },
-                          correctOptionIndex: {
-                            type: Type.INTEGER,
-                            description: '0-based index of the correct answer (0, 1, 2, or 3)',
-                          },
-                          explanation: { type: Type.STRING, description: 'Educational solution explanation' },
-                          marks: { type: Type.INTEGER, description: 'Marks allocated for this question' },
+        try {
+          response = await ai.models.generateContent({
+            model: modelName,
+            contents,
+            config: {
+              systemInstruction,
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  testTitle: { type: Type.STRING, description: 'Title of the assessment paper' },
+                  subject: { type: Type.STRING, description: 'Subject or category name' },
+                  timeLimitMinutes: { type: Type.INTEGER, description: 'Recommended test duration in minutes' },
+                  totalMarks: { type: Type.INTEGER, description: 'Total maximum marks for the test' },
+                  passingMarks: { type: Type.INTEGER, description: 'Passing threshold marks' },
+                  instructions: { type: Type.STRING, description: 'General instructions for candidates' },
+                  questions: {
+                    type: Type.ARRAY,
+                    description: 'List of parsed MCQ questions',
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        id: { type: Type.STRING, description: 'Unique question identifier' },
+                        questionText: { type: Type.STRING, description: 'Question stem / problem description' },
+                        options: {
+                          type: Type.ARRAY,
+                          description: 'Array of exactly 4 choices',
+                          items: { type: Type.STRING },
                         },
-                        required: ['questionText', 'options', 'correctOptionIndex', 'explanation'],
+                        correctOptionIndex: {
+                          type: Type.INTEGER,
+                          description: '0-based index of the correct answer (0, 1, 2, or 3)',
+                        },
+                        marks: { type: Type.INTEGER, description: 'Marks allocated for this question' },
                       },
+                      required: ['questionText', 'options', 'correctOptionIndex'],
                     },
                   },
-                  required: ['testTitle', 'subject', 'timeLimitMinutes', 'totalMarks', 'questions'],
                 },
+                required: ['testTitle', 'subject', 'timeLimitMinutes', 'totalMarks', 'questions'],
               },
-            });
-            if (response) break;
-          } catch (err: any) {
-            lastError = err;
-            console.warn(`[Gemini API Parse Attempt Failed] Model: ${modelName}, Attempt: ${attempt}. Error: ${err.message || err}`);
-            // Wait 1 second before retrying
-            await new Promise((r) => setTimeout(r, 1000));
+            },
+          });
+          if (response && response.text) {
+            console.log(`[Gemini API Parse Success] Model: ${modelName}`);
+            break;
           }
+        } catch (err: any) {
+          lastError = err;
+          console.warn(`[Gemini API Parse Attempt Failed] Model: ${modelName}. Error: ${err.message || err}`);
         }
-        if (response) break;
       }
 
       if (!response) {

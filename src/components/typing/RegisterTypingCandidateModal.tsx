@@ -147,6 +147,7 @@ export const RegisterTypingCandidateModal: React.FC<RegisterTypingCandidateModal
         designation: finalDesignation,
         officeName: finalOffice,
         typingMedium,
+        registeredModule: 'TYPING',
         email: email.trim().toLowerCase(),
         phone: phone.trim(),
         block,

@@ -19,6 +19,7 @@ export interface Candidate {
   designation?: string; // e.g. LDC / Clerk Grade-II, Jr Assistant, IA, Stenographer, DEO
   officeName?: string; // e.g. District Collectorate Rajsamand, SDM Office, Tehsil Office
   typingMedium?: TypingLanguage; // Medium of typing: ENGLISH or HINDI_DEVLYS_010
+  registeredModule?: 'ASSESSMENT' | 'TYPING'; // Target registration module
   email: string;
   phone: string;
   category?: string;
@@ -34,7 +35,7 @@ export interface MCQQuestion {
   questionText: string;
   options: string[]; // exactly 4 choices
   correctOptionIndex: number; // 0, 1, 2, or 3
-  explanation: string;
+  explanation?: string;
   marks: number;
 }
 

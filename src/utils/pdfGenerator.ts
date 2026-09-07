@@ -198,16 +198,7 @@ export function createSubmissionPdfDocument(data: SubmissionPdfData): jsPDF {
       const corrLines = doc.splitTextToSize(`Correct Response:   ${correctOptionText}`, cardWidth - 16);
       const corrHeight = Math.max(corrLines.length * 3.8, 5.5);
 
-      let explHeight = 0;
-      let explLines: string[] = [];
-      if (q.explanation) {
-        doc.setFont('helvetica', 'italic');
-        doc.setFontSize(7.5);
-        explLines = doc.splitTextToSize(`Explanation: ${q.explanation}`, cardWidth - 16);
-        explHeight = Math.max(explLines.length * 3.5, 4.5);
-      }
-
-      const totalCardHeight = 8 + qHeight + candHeight + corrHeight + (explHeight > 0 ? explHeight + 3 : 0) + 4;
+      const totalCardHeight = 8 + qHeight + candHeight + corrHeight + 4;
 
       const pageHeight = doc.internal.pageSize.getHeight();
       if (y + totalCardHeight > pageHeight - 18) {
@@ -304,22 +295,6 @@ export function createSubmissionPdfDocument(data: SubmissionPdfData): jsPDF {
       doc.setFontSize(8);
       doc.setTextColor(4, 120, 87);
       doc.text(corrLines, marginX + 7, currentY + 3.8);
-
-      currentY += corrHeight + 2;
-
-      // Explanation Box
-      if (q.explanation) {
-        doc.setFillColor(241, 245, 249);
-        doc.setDrawColor(203, 213, 225);
-        doc.roundedRect(marginX + 4, currentY, cardWidth - 8, explHeight, 1.5, 1.5, 'FD');
-
-        doc.setFont('helvetica', 'italic');
-        doc.setFontSize(7.5);
-        doc.setTextColor(71, 85, 105);
-        doc.text(explLines, marginX + 7, currentY + 3.5);
-
-        currentY += explHeight + 2;
-      }
 
       y += totalCardHeight + 4;
     });
@@ -589,6 +564,229 @@ export function generateAndDownloadTestPaperSummaryPdf(data: TestSummaryPdfData)
   const doc = createTestSummaryPdfDocument(data);
   const cleanTitle = (data.test.title || 'Test_Paper').replace(/[^a-zA-Z0-9]/g, '_');
   doc.save(`Test_Summary_Report_${cleanTitle}.pdf`);
+}
+
+export interface CandidateAnalyticsPdfData {
+  tests: TestPaper[];
+  attempts: TestAttempt[];
+  candidates: Candidate[];
+}
+
+export function createCandidateAnalyticsPdfDocument(data: CandidateAnalyticsPdfData): jsPDF {
+  const { tests, attempts, candidates } = data;
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  // Header Banner
+  doc.setFillColor(15, 118, 110); // Emerald/Teal #0f766e
+  doc.rect(0, 0, pageWidth, 28, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('RAJSAMAND DISTRICT ADMINISTRATION', pageWidth / 2, 10, { align: 'center' });
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('OFFICIAL CANDIDATE PERFORMANCE & DISTRICT TEST ANALYTICS REPORT', pageWidth / 2, 17, { align: 'center' });
+
+  doc.setFontSize(8);
+  doc.text('District Evaluation Authority • Government of Rajasthan', pageWidth / 2, 23, { align: 'center' });
+
+  let y = 34;
+
+  const totalCandidates = candidates.length;
+  const validCandidateIds = new Set(candidates.map((c) => c.id));
+  const validCandidateEmails = new Set(candidates.map((c) => c.email?.toLowerCase().trim()));
+
+  const validAttempts = attempts.filter(
+    (a) =>
+      (a.candidateId && validCandidateIds.has(a.candidateId)) ||
+      (a.candidateEmail && validCandidateEmails.has(a.candidateEmail.toLowerCase().trim()))
+  );
+
+  const totalSubmissions = validAttempts.length;
+  const passedAttempts = validAttempts.filter((a) => a.status === 'PASSED').length;
+  const overallPassRate = totalSubmissions > 0 ? Math.round((passedAttempts / totalSubmissions) * 100) : 0;
+  const avgDistrictScore =
+    totalSubmissions > 0
+      ? Math.round(validAttempts.reduce((sum, a) => sum + a.scorePercentage, 0) / totalSubmissions)
+      : 0;
+
+  // District Overview Metrics Table
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text('DISTRICT-WIDE ASSESSMENT PERFORMANCE OVERVIEW', 12, y);
+
+  y += 3;
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 12, right: 12 },
+    head: [['Total Candidates', 'Tests Published', 'Total Submissions', 'District Average Score', 'Overall Qualification %']],
+    body: [[
+      `${totalCandidates}`,
+      `${tests.length}`,
+      `${totalSubmissions}`,
+      `${avgDistrictScore}%`,
+      `${overallPassRate}%`,
+    ]],
+    theme: 'grid',
+    headStyles: {
+      fillColor: [15, 118, 110],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8.5,
+      halign: 'center',
+    },
+    bodyStyles: {
+      textColor: [30, 41, 59],
+      fontSize: 9,
+      fontStyle: 'bold',
+      halign: 'center',
+    },
+  });
+
+  // @ts-ignore
+  y = doc.lastAutoTable.finalY + 8;
+
+  // Test Papers Analytics Summary Table
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text('TEST PAPERS ANALYTICS SUMMARY', 12, y);
+
+  y += 3;
+
+  const testPaperRows = tests.map((t, idx) => {
+    const tAttempts = validAttempts.filter((a) => a.testId === t.id);
+    const tCount = tAttempts.length;
+    const tPassed = tAttempts.filter((a) => a.status === 'PASSED').length;
+    const tPassRate = tCount > 0 ? `${Math.round((tPassed / tCount) * 100)}%` : 'N/A';
+    const tAvg = tCount > 0 ? `${Math.round(tAttempts.reduce((s, a) => s + a.scorePercentage, 0) / tCount)}%` : 'N/A';
+
+    return [
+      `#${idx + 1}`,
+      t.title,
+      t.subject || 'General',
+      `${t.questions?.length || 0}`,
+      `${t.totalMarks}`,
+      `${tCount}`,
+      tAvg,
+      tPassRate,
+    ];
+  });
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 12, right: 12 },
+    head: [['#', 'Test Paper Title', 'Subject', 'MCQs', 'Marks', 'Submissions', 'Avg Score', 'Pass %']],
+    body: testPaperRows.length > 0 ? testPaperRows : [['-', 'No tests published yet', '-', '-', '-', '-', '-', '-']],
+    theme: 'striped',
+    headStyles: {
+      fillColor: [30, 41, 59],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8,
+      halign: 'center',
+    },
+    bodyStyles: {
+      textColor: [30, 41, 59],
+      fontSize: 8,
+      halign: 'center',
+    },
+  });
+
+  // @ts-ignore
+  y = doc.lastAutoTable.finalY + 8;
+
+  // Candidate Performance Merit & Score Table
+  if (y > pageHeight - 40) {
+    doc.addPage();
+    y = 16;
+  }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text('CANDIDATE PERFORMANCE & EVALUATION SUMMARY', 12, y);
+
+  y += 3;
+
+  const candidateRows = candidates.map((c, idx) => {
+    const cAttempts = validAttempts.filter(
+      (a) => a.candidateId === c.id || (c.email && a.candidateEmail?.toLowerCase() === c.email.toLowerCase())
+    );
+    const count = cAttempts.length;
+    const highest = count > 0 ? Math.max(...cAttempts.map((a) => a.scorePercentage)) : 0;
+    const avg = count > 0 ? Math.round(cAttempts.reduce((s, a) => s + a.scorePercentage, 0) / count) : 0;
+    const passed = cAttempts.some((a) => a.status === 'PASSED');
+    const status = count === 0 ? 'UNASSESSED' : passed ? 'PASSED' : 'NEEDS FOCUS';
+
+    return [
+      `#${idx + 1}`,
+      c.name,
+      c.registrationId,
+      c.block || 'District',
+      `${count}`,
+      count > 0 ? `${highest}%` : '-',
+      count > 0 ? `${avg}%` : '-',
+      status,
+    ];
+  });
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 12, right: 12 },
+    head: [['#', 'Candidate Name', 'Registration ID', 'Block', 'Tests Taken', 'Highest %', 'Average %', 'Status']],
+    body: candidateRows.length > 0 ? candidateRows : [['-', 'No candidates registered yet', '-', '-', '-', '-', '-', '-']],
+    theme: 'grid',
+    headStyles: {
+      fillColor: [15, 118, 110],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 7.5,
+      halign: 'center',
+    },
+    bodyStyles: {
+      textColor: [30, 41, 59],
+      fontSize: 7.5,
+      halign: 'center',
+    },
+  });
+
+  // Footer & Page Numbers
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(12, pageHeight - 12, pageWidth - 12, pageHeight - 12);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `Rajsamand District Administration • Candidate Performance Analytics Report • Page ${i} of ${pageCount}`,
+      pageWidth / 2,
+      pageHeight - 6,
+      { align: 'center' }
+    );
+  }
+
+  return doc;
+}
+
+export function generateAndDownloadCandidateAnalyticsPdf(data: CandidateAnalyticsPdfData) {
+  const doc = createCandidateAnalyticsPdfDocument(data);
+  const dateStr = new Date().toISOString().slice(0, 10);
+  doc.save(`Rajsamand_Candidate_Performance_Analytics_${dateStr}.pdf`);
 }
 
 // -------------------------------------------------------------

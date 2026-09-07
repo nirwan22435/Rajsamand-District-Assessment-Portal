@@ -19,7 +19,14 @@ export const TestSummaryReportModal: React.FC<TestSummaryReportModalProps> = ({
   onClose,
   onEditTest,
 }) => {
-  const testAttempts = attempts.filter((a) => a.testId === test.id);
+  const validCandidateIds = new Set(candidates.map((c) => c.id));
+  const validCandidateEmails = new Set(candidates.map((c) => c.email?.toLowerCase().trim()));
+  const testAttempts = attempts.filter(
+    (a) =>
+      a.testId === test.id &&
+      ((a.candidateId && validCandidateIds.has(a.candidateId)) ||
+        (a.candidateEmail && validCandidateEmails.has(a.candidateEmail.toLowerCase().trim())))
+  );
   const totalAttempts = testAttempts.length;
 
   const passedCount = testAttempts.filter((a) => a.status === 'PASSED').length;

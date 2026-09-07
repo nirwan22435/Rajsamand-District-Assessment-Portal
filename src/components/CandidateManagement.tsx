@@ -130,8 +130,14 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
     setEditingCandidate(null);
   };
 
-  // Filter candidates
-  const filteredCandidates = candidates.filter((c) => {
+  // Only candidates registered for General/District Assessment belong to Candidate Directory.
+  // Candidates registered on Typing Test module are strictly visible only on Typing Test module.
+  const directoryCandidates = candidates.filter(
+    (c) => c.registeredModule !== 'TYPING' && !c.typingMedium && !c.id.startsWith('cand-typ-')
+  );
+
+  // Filter candidates for display table
+  const filteredCandidates = directoryCandidates.filter((c) => {
     const matchesSearch =
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -156,6 +162,7 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
       email,
       phone: phone || '+91 98000 00000',
       activeStatus: true,
+      registeredModule: 'ASSESSMENT',
       password,
       createdAt: new Date().toISOString(),
     };
@@ -251,20 +258,25 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
     }
   };
 
-  // Statistics
-  const activeCount = candidates.filter((c) => c.activeStatus).length;
-  const disabledCount = candidates.filter((c) => !c.activeStatus).length;
-  const withEmailCount = candidates.filter((c) => c.email && c.email.includes('@')).length;
+  // Statistics for Candidate Directory
+  const totalDirectoryCandidates = directoryCandidates.length;
+  const activeCount = directoryCandidates.filter((c) => c.activeStatus).length;
+  const disabledCount = directoryCandidates.filter((c) => !c.activeStatus).length;
 
   return (
     <div className="space-y-6 pb-12">
       {/* Header Banner Card */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 p-6 sm:p-8 rounded-2xl text-white shadow-xl">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Candidate Directory & Access Control</h1>
-          <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
-            Create login credentials, manage candidate accounts, and dispatch notification emails.
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-500/20 border border-amber-400/35 flex items-center justify-center text-amber-300 shadow-lg shadow-amber-950/40 shrink-0">
+            <Users className="w-6 h-6 sm:w-7 sm:h-7 text-amber-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Candidate Directory & Access Control</h1>
+            <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
+              Create login credentials, manage candidate accounts, and dispatch notification emails.
+            </p>
+          </div>
         </div>
 
         <button
@@ -278,13 +290,13 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
       </div>
 
       {/* Metric Cards Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Total Candidates
           </p>
           <p className="text-2xl font-black text-slate-900 dark:text-white mt-1 tabular-nums">
-            {candidates.length}
+            {totalDirectoryCandidates}
           </p>
         </div>
 
@@ -303,15 +315,6 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
           </p>
           <p className="text-2xl font-black text-slate-700 dark:text-slate-300 mt-1 tabular-nums">
             {disabledCount}
-          </p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
-          <p className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
-            Email Ready
-          </p>
-          <p className="text-2xl font-black text-slate-900 dark:text-white mt-1 tabular-nums">
-            {withEmailCount}
           </p>
         </div>
       </div>

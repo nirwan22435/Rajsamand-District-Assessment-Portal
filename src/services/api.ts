@@ -42,36 +42,43 @@ export interface SendEmailParams {
 }
 
 function parseRawTextToMCQs(rawText: string, subject: string = 'General Assessment') {
-  const lines = rawText.split('\n').map((l) => l.trim()).filter(Boolean);
+  const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const questions: any[] = [];
   let currentQ: any = null;
 
   for (const line of lines) {
-    // Check if line starts a new question, e.g. "1.", "Q1.", "Question 1:", "1)"
-    const qMatch = line.match(/^(?:Q(?:uestion)?\s*\d+[\.:\)]|\d+[\.:\)])\s*(.+)/i);
+    // Check if line starts a new question, e.g. "Q1.", "Q.1", "Q1:", "Question 1:", "1.", "1)", "1:"
+    const qMatch = line.match(/^(?:Q(?:uestion)?[\s\.]*\d+[\.:\)\-]?|\d+[\.:\)\-])\s*(.+)/i);
     if (qMatch) {
       if (currentQ && currentQ.questionText) {
         questions.push(currentQ);
       }
       currentQ = {
-        questionText: qMatch[1],
+        questionText: qMatch[1].trim(),
         options: [],
         correctOptionIndex: 0,
-        explanation: 'Extracted from submitted question paper.',
+        explanation: '',
         marks: 4,
       };
       continue;
     }
 
-    // Check if line is an option: "A)", "(A)", "A.", "a)"
-    const optMatch = line.match(/^(?:\(?([A-Da-d1-4])[\.\)]|\b([A-Da-d])\s*[:\-])\s*(.+)/);
-    if (optMatch && currentQ) {
-      currentQ.options.push(optMatch[3] || optMatch[0]);
+    // Check for marks line: "Marks: 4" or "(4 Marks)" or "[4]"
+    const marksMatch = line.match(/^(?:Marks?|Points?)\s*[:\-\=]?\s*(\d+)/i);
+    if (marksMatch && currentQ) {
+      currentQ.marks = parseInt(marksMatch[1], 10) || 4;
       continue;
     }
 
-    // Check for correct answer label: "Ans: A" or "Answer: B"
-    const ansMatch = line.match(/^(?:Ans(?:wer)?|Correct)\s*[:\-\=]?\s*([A-Da-d1-4])/i);
+    // Check for explanation: "Explanation: ...", "Solution: ..."
+    const expMatch = line.match(/^(?:Explanation|Solution|Sol|Note)\s*[:\-\=]\s*(.+)/i);
+    if (expMatch && currentQ) {
+      currentQ.explanation = expMatch[1].trim();
+      continue;
+    }
+
+    // Check for correct answer label: "Correct Answer: A", "Ans: A", "Answer: A"
+    const ansMatch = line.match(/^(?:Correct\s*Answer|Correct\s*Option|Ans(?:wer)?|Key|Correct)\s*[:\-\=]?\s*[\(\[]?([A-Da-d1-4])[\)\]]?/i);
     if (ansMatch && currentQ) {
       const char = ansMatch[1].toUpperCase();
       if (char === 'A' || char === '1') currentQ.correctOptionIndex = 0;
@@ -81,9 +88,19 @@ function parseRawTextToMCQs(rawText: string, subject: string = 'General Assessme
       continue;
     }
 
-    // Append text to existing question or option
+    // Check if line is an option: "A)", "(A)", "A.", "A:", "a)", "[A]"
+    const optMatch = line.match(/^(?:[\(\[]?([A-Da-d1-4])[\.\)\]\:]|\b([A-Da-d])\s*[:\-])\s*(.+)/);
+    if (optMatch && currentQ) {
+      const optText = (optMatch[3] || optMatch[0]).trim();
+      currentQ.options.push(optText);
+      continue;
+    }
+
+    // Append text to existing question or option or explanation
     if (currentQ) {
-      if (currentQ.options.length > 0) {
+      if (currentQ.explanation) {
+        currentQ.explanation += ' ' + line;
+      } else if (currentQ.options.length > 0) {
         currentQ.options[currentQ.options.length - 1] += ' ' + line;
       } else {
         currentQ.questionText += ' ' + line;
@@ -96,8 +113,8 @@ function parseRawTextToMCQs(rawText: string, subject: string = 'General Assessme
   }
 
   if (questions.length > 0) {
-    return questions.map((q) => {
-      let opts = q.options;
+    return questions.map((q, idx) => {
+      let opts = [...q.options];
       if (opts.length < 4) {
         const defaults = [
           `Option A (${subject})`,
@@ -112,11 +129,12 @@ function parseRawTextToMCQs(rawText: string, subject: string = 'General Assessme
         opts = opts.slice(0, 4);
       }
       return {
+        id: `q-parsed-${Date.now()}-${idx}`,
         questionText: q.questionText,
         options: opts,
         correctOptionIndex: Math.min(Math.max(q.correctOptionIndex, 0), 3),
         explanation: q.explanation || 'Refer to Rajsamand District Board curriculum.',
-        marks: 4,
+        marks: q.marks || 4,
       };
     });
   }
@@ -279,7 +297,11 @@ async function parseTestPaperClientSide(params: ParseTestPaperParams) {
       const promptText = `Convert into structured MCQs for Subject: ${subject}, Block: ${targetBlock}.\nText:\n${params.rawText || 'Extract from uploaded image/PDF.'}`;
       
       let contents: any = promptText;
-      if (params.fileData && params.mimeType) {
+      const isGeminiSupported = Boolean(
+        params.mimeType &&
+        (params.mimeType === 'application/pdf' || params.mimeType.startsWith('image/'))
+      );
+      if (params.fileData && isGeminiSupported) {
         const cleanBase64 = params.fileData.includes('base64,') ? params.fileData.split('base64,')[1] : params.fileData;
         contents = {
           parts: [
@@ -289,16 +311,25 @@ async function parseTestPaperClientSide(params: ParseTestPaperParams) {
         };
       }
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents,
-        config: {
-          systemInstruction,
-          responseMimeType: 'application/json',
-        },
-      });
+      const clientModels = ['gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite'];
+      let response: any = null;
+      for (const m of clientModels) {
+        try {
+          response = await ai.models.generateContent({
+            model: m,
+            contents,
+            config: {
+              systemInstruction,
+              responseMimeType: 'application/json',
+            },
+          });
+          if (response && response.text) break;
+        } catch (mErr) {
+          console.warn(`[Client Gemini Parser] Model ${m} failed:`, mErr);
+        }
+      }
 
-      if (response.text) {
+      if (response && response.text) {
         const parsed = JSON.parse(response.text);
         if (parsed && (parsed.questions || Array.isArray(parsed))) {
           const qList = Array.isArray(parsed) ? parsed : parsed.questions || [];
@@ -340,7 +371,7 @@ async function parseTestPaperClientSide(params: ParseTestPaperParams) {
     }
   }
 
-  // 3. Fallback Template MCQs for files uploaded on static hosting
+  // 3. Fallback Template MCQs only if absolutely no questions could be parsed
   const templateQuestions = generateSubjectTemplateQuestions(subject);
   return {
     success: true,
@@ -365,17 +396,36 @@ export async function parseTestPaperAPI(params: ParseTestPaperParams) {
     });
 
     const contentType = response.headers.get('content-type') || '';
-    if (response.ok && contentType.includes('application/json')) {
+    if (contentType.includes('application/json')) {
       const data = await response.json();
       if (data && data.success) {
         return data;
       }
+      // If the backend failed but we have client-side rawText, try client-side regex parsing
+      if (params.rawText) {
+        const clientParsed = parseRawTextToMCQs(params.rawText, params.subject);
+        if (clientParsed && clientParsed.length > 0) {
+          return {
+            success: true,
+            data: {
+              testTitle: `${params.subject || 'General'} Assessment Paper 2026`,
+              subject: params.subject || 'General Assessment',
+              timeLimitMinutes: params.defaultTimeLimit || 30,
+              totalMarks: clientParsed.length * 4,
+              passingMarks: Math.round(clientParsed.length * 4 * 0.4),
+              instructions: 'Answer all multiple choice questions.',
+              questions: clientParsed,
+            },
+          };
+        }
+      }
+      return { success: false, error: data?.error || 'Failed to extract questions from test paper.' };
     }
 
-    // Endpoint returned non-200, 404 HTML or non-JSON (Static Hosting Mode like Netlify)
-    console.info('[parseTestPaperAPI] Backend API endpoint unavailable or static host detected. Switching to Client-Side AI Parser.');
+    // Endpoint returned non-JSON (Static Hosting Mode like Netlify SPA fallback)
+    console.info('[parseTestPaperAPI] Backend API endpoint non-JSON. Switching to Client-Side AI Parser.');
     return await parseTestPaperClientSide(params);
-  } catch (err) {
+  } catch (err: any) {
     console.info('[parseTestPaperAPI] Fetch failed. Executing Client-Side AI Parser fallback.');
     return await parseTestPaperClientSide(params);
   }

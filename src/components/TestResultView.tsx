@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { TestAttempt, TestPaper } from '../types';
 import { sendEmailAPI } from '../services/api';
-import { Award, CheckCircle2, AlertTriangle, Mail, Download, ArrowLeft, Clock, Sparkles, BookOpen, FileText } from 'lucide-react';
+import { Award, CheckCircle2, AlertTriangle, Mail, Download, ArrowLeft, Clock, BookOpen, FileText } from 'lucide-react';
 import { generateAndDownloadSubmissionPdf } from '../utils/pdfGenerator';
 
 interface TestResultViewProps {
@@ -240,14 +240,6 @@ export const TestResultView: React.FC<TestResultViewProps> = ({
                       </div>
                     );
                   })}
-                </div>
-
-                {/* Solution Explanation Box */}
-                <div className="mt-4 pl-8 p-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 text-xs">
-                  <span className="font-bold text-emerald-700 dark:text-emerald-400 block mb-1 flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5" /> Solution Explanation:
-                  </span>
-                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{q.explanation}</p>
                 </div>
               </div>
             );

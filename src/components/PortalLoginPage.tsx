@@ -16,6 +16,7 @@ import {
   PhoneCall,
   Palette,
   Monitor,
+  Smartphone,
 } from 'lucide-react';
 import { getStoredAdminPassword } from '../services/firestoreService';
 import { AdminForgotPasswordModal } from './AdminForgotPasswordModal';
@@ -31,6 +32,7 @@ interface PortalLoginPageProps {
   onLogEmail?: (log: EmailLog) => void;
   onOpenThemeModal?: () => void;
   onOpenDesktopModal?: () => void;
+  onOpenAndroidModal?: () => void;
 }
 
 export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
@@ -43,6 +45,7 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
   onLogEmail,
   onOpenThemeModal,
   onOpenDesktopModal,
+  onOpenAndroidModal,
 }) => {
   const [selectedRole, setSelectedRole] = useState<UserRole>('ADMIN');
 
@@ -144,44 +147,67 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
       </div>
 
       {/* 2. Official Government Main Header */}
-      <header className="w-full bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 py-3.5 px-4 sm:px-8 shadow-xs">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <header className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 py-3 px-4 sm:px-6 lg:px-8 shadow-[0_1px_3px_0_rgba(0,0,0,0.02)] transition-colors">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3.5">
           <div className="flex items-center space-x-3.5">
             {/* Official Portal Logo Badge */}
             <div className="relative flex-shrink-0">
-              <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-800 border-2 border-amber-500/80 p-1 flex items-center justify-center shadow-md shadow-amber-900/10 hover:scale-105 transition-transform">
-                <PortalLogo size={46} darkMode={darkMode} />
+              <div className="w-12 h-12 sm:w-13 sm:h-13 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/90 dark:border-slate-700/80 p-1.5 flex items-center justify-center shadow-xs hover:shadow-sm hover:scale-105 transition-all duration-200">
+                <PortalLogo size={42} darkMode={darkMode} />
               </div>
             </div>
 
+            {/* Subtle Vertical Divider */}
+            <div className="h-9 w-px bg-slate-200 dark:bg-slate-700/80 hidden sm:block shrink-0" aria-hidden="true" />
+
             {/* Title, Badge & Subtitles matching photo */}
-            <div className="border-l-2 border-slate-300 dark:border-slate-700 pl-3.5">
-              <div className="font-hindi text-[12px] font-bold text-amber-600 dark:text-amber-400 tracking-wide">
+            <div className="flex flex-col justify-center">
+              <div className="font-hindi text-[12px] font-semibold text-sky-600 dark:text-sky-400 tracking-wide leading-tight">
                 राजसमंद जिला मूल्यांकन पोर्टल
               </div>
               <div className="mt-0.5">
-                <h1 className="font-display text-lg sm:text-xl font-extrabold text-slate-950 dark:text-white tracking-tight leading-snug">
+                <h1 className="font-display text-base sm:text-lg lg:text-xl font-bold text-slate-900 dark:text-white tracking-tight leading-snug">
                   Rajsamand District Assessment Portal
                 </h1>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 leading-tight">
                 District Administration, Rajsamand
               </p>
             </div>
           </div>
 
           {/* Actions: Themes Button & Dark Mode Toggle on Header Bar */}
-          <div className="flex items-center gap-2 self-end md:self-auto">
+          <div className="flex items-center gap-2.5 self-end md:self-auto flex-wrap sm:flex-nowrap">
             {onOpenDesktopModal && (
               <button
                 type="button"
                 onClick={onOpenDesktopModal}
                 title="Install / Download Windows Desktop Application & .EXE Setup"
-                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 text-slate-950 dark:text-white border border-amber-400 dark:border-amber-500 transition-all flex items-center gap-1.5 text-xs font-black shadow-md shadow-amber-500/20 cursor-pointer active:scale-95 whitespace-nowrap"
+                className="px-4 py-2 rounded-full bg-[#0284c7] hover:bg-[#0369a1] text-white border border-[#38bdf8]/40 shadow-xs hover:shadow-md hover:shadow-sky-500/15 transition-all duration-150 flex items-center gap-2 text-xs font-semibold cursor-pointer active:scale-95 whitespace-nowrap"
               >
-                <Monitor className="w-4 h-4" />
+                <Monitor className="w-3.5 h-3.5 text-white/95" />
                 <span>Desktop App</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
+                <span className="relative flex h-2 w-2 ml-0.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                </span>
+              </button>
+            )}
+
+            {/* Android App (RDAA) Button */}
+            {onOpenAndroidModal && (
+              <button
+                type="button"
+                onClick={onOpenAndroidModal}
+                title="Download RDAA Android APK"
+                className="px-4 py-2 rounded-full bg-[#0284c7] hover:bg-[#0369a1] text-white border border-[#38bdf8]/40 shadow-xs hover:shadow-md hover:shadow-sky-500/15 transition-all duration-150 flex items-center gap-2 text-xs font-semibold cursor-pointer active:scale-95 whitespace-nowrap"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-white/95" />
+                <span>Android App</span>
+                <span className="relative flex h-2 w-2 ml-0.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+                </span>
               </button>
             )}
 
@@ -190,10 +216,10 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
               onClick={() => setDarkMode(!darkMode)}
               aria-label="Toggle Theme"
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-              className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5 text-xs font-bold shadow-sm cursor-pointer active:scale-95"
+              className="px-3.5 py-2 rounded-full bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-200/90 dark:border-slate-700 shadow-xs hover:shadow-sm transition-all duration-150 flex items-center gap-1.5 text-xs font-semibold cursor-pointer active:scale-95 whitespace-nowrap"
             >
-              {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
-              <span className="hidden sm:inline">{darkMode ? 'Light' : 'Dark'}</span>
+              {darkMode ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />}
+              <span>{darkMode ? 'Light' : 'Dark'}</span>
             </button>
           </div>
         </div>

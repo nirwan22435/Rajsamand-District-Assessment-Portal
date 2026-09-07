@@ -1,0 +1,39 @@
+{
+  "packageId": "in.gov.rajsamand.assessment",
+  "host": "ais-dev-ipslj2ssag6j65tfrompqs-957343451703.asia-east1.run.app",
+  "name": "RDAA",
+  "launcherName": "RDAA",
+  "themeColor": "#D97706",
+  "navigationColor": "#0F172A",
+  "backgroundColor": "#0F172A",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "/icon-512.png",
+  "maskableIconUrl": "/icon-maskable.png",
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Candidate Exam",
+      "shortName": "Exam",
+      "url": "/?tab=my-tests"
+    },
+    {
+      "name": "Typing Speed Test",
+      "shortName": "Typing",
+      "url": "/?tab=typing-test"
+    }
+  ],
+  "generator": "Bubblewrap / Trusted Web Activity (TWA)",
+  "features": {
+    "locationDelegation": {
+      "enabled": false
+    },
+    "playBilling": {
+      "enabled": false
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  }
+}

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { TestPaper, MCQQuestion, DistrictBlock, Candidate } from '../types';
 import { parseTestPaperAPI, sendEmailAPI } from '../services/api';
 import { PublishSuccessModal } from './PublishSuccessModal';
+import mammoth from 'mammoth';
 import {
   Upload,
   Sparkles,
@@ -21,7 +22,38 @@ import {
   Search,
   Mail,
   Award,
+  Download,
+  Copy,
+  Check,
+  FileUp,
+  FileCheck,
+  HelpCircle,
+  Info,
 } from 'lucide-react';
+
+const RECOMMENDED_MCQ_FORMAT_SAMPLE = `Q1. Which famous lake built by Maharana Raj Singh I in 1660 AD is located in Rajsamand?
+A) Rajsamand Lake (Rajsamudra)
+B) Pichola Lake
+C) Ana Sagar Lake
+D) Fateh Sagar Lake
+Correct Answer: A
+Marks: 4
+
+Q2. Haldighati mountain pass is located near which historic town in Rajsamand district?
+A) Khamnore / Nathdwara
+B) Bhim
+C) Amet
+D) Deogarh
+Correct Answer: A
+Marks: 4
+
+Q3. What is the primary dimensional stone processed and exported from Rajsamand on a large scale?
+A) White Marble & Granite
+B) Red Sandstone
+C) Limestone
+D) Slate Stone
+Correct Answer: A
+Marks: 4`;
 
 interface TestUploadSectionProps {
   onPublishTest: (test: TestPaper) => void;
@@ -45,6 +77,9 @@ export const TestUploadSection: React.FC<TestUploadSectionProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [pastedText, setPastedText] = useState<string>('');
+  const [showFormatGuide, setShowFormatGuide] = useState<boolean>(true);
+  const [copiedTemplate, setCopiedTemplate] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Assessment Metadata
   const [testTitle, setTestTitle] = useState<string>(editingTest?.title || 'General Knowledge & District History Assessment');
@@ -168,30 +203,150 @@ export const TestUploadSection: React.FC<TestUploadSectionProps> = ({
     }
   };
 
+  // Template Format Utilities for Zero-Error Parsing
+  const handleCopyTemplate = async () => {
+    try {
+      await navigator.clipboard.writeText(RECOMMENDED_MCQ_FORMAT_SAMPLE);
+      setCopiedTemplate(true);
+      setTimeout(() => setCopiedTemplate(false), 2500);
+    } catch (err) {
+      console.warn('Copy format failed:', err);
+    }
+  };
+
+  const handleDownloadSampleFormat = () => {
+    const docContent = `Rajsamand District Assessment Portal - Recommended MCQ Paper Format Template
+================================================================================
+FOR 100% ERROR-FREE CONVERSION, FOLLOW THIS SPECIFIC STRUCTURE IN YOUR PDF / DOCX:
+1. Label each question with Q1., Q2., etc., or 1., 2.
+2. Provide exactly 4 distinct options labeled A), B), C), D) or (A), (B), (C), (D)
+3. Clearly specify the answer on its own line: Correct Answer: A (or B / C / D)
+4. Optional: Marks: 4
+================================================================================
+
+${RECOMMENDED_MCQ_FORMAT_SAMPLE}
+`;
+
+    const blob = new Blob([docContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'Rajsamand_MCQ_Paper_Format_Template.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Process and convert uploaded file (PDF / DOCX / TXT) directly into editable MCQs
+  const handleProcessFile = async (file: File) => {
+    setSelectedFile(file);
+    setParseError(null);
+    setIsParsing(true);
+    setNotificationMsg(null);
+
+    try {
+      let textContent = '';
+      let fileDataUri: string | null = null;
+
+      // 1. DOCX Extraction via Mammoth
+      if (
+        file.name.toLowerCase().endsWith('.docx') ||
+        file.name.toLowerCase().endsWith('.doc') ||
+        file.type.includes('wordprocessingml') ||
+        file.type.includes('msword')
+      ) {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const mammothResult = await mammoth.extractRawText({ arrayBuffer });
+          if (mammothResult && mammothResult.value) {
+            textContent = mammothResult.value;
+            setPastedText(textContent);
+          }
+        } catch (mErr: any) {
+          console.warn('Mammoth DOCX parsing note:', mErr);
+        }
+      } else if (file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.csv')) {
+        textContent = await file.text();
+        setPastedText(textContent);
+      }
+
+      // Read as Data URL (for PDF or Images)
+      fileDataUri = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      setFilePreview(fileDataUri);
+
+      // 2. Send to parse API (which supports both Gemini and local deterministic parser)
+      const payload: any = {
+        subject,
+        targetBlock,
+        defaultTimeLimit: timeLimit,
+      };
+
+      let resolvedMime = file.type || '';
+      const lowerName = file.name.toLowerCase();
+      if (!resolvedMime || resolvedMime === 'application/octet-stream') {
+        if (lowerName.endsWith('.pdf')) resolvedMime = 'application/pdf';
+        else if (lowerName.endsWith('.docx')) resolvedMime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        else if (lowerName.endsWith('.doc')) resolvedMime = 'application/msword';
+        else if (lowerName.endsWith('.png')) resolvedMime = 'image/png';
+        else if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) resolvedMime = 'image/jpeg';
+        else if (lowerName.endsWith('.txt')) resolvedMime = 'text/plain';
+      }
+
+      if (textContent) {
+        payload.rawText = textContent;
+      }
+      if (fileDataUri) {
+        payload.fileData = fileDataUri;
+        payload.mimeType = resolvedMime || (lowerName.endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream');
+      }
+
+      const response = await parseTestPaperAPI(payload);
+
+      if (response.success && response.data) {
+        const data = response.data;
+        const formattedQuestions: MCQQuestion[] = (data.questions || []).map((q: any, idx: number) => ({
+          id: `q-${Date.now()}-${idx}`,
+          questionText: q.questionText || `Question ${idx + 1}`,
+          options: Array.isArray(q.options) && q.options.length === 4
+            ? q.options
+            : [q.options?.[0] || 'Option A', q.options?.[1] || 'Option B', q.options?.[2] || 'Option C', q.options?.[3] || 'Option D'],
+          correctOptionIndex: typeof q.correctOptionIndex === 'number' ? q.correctOptionIndex : 0,
+          marks: q.marks || 4,
+        }));
+
+        const totalQMarks = formattedQuestions.reduce((acc, q) => acc + q.marks, 0);
+        setParsedTest({
+          testTitle: data.testTitle || `${file.name.replace(/\.[^/.]+$/, '')} Assessment`,
+          subject: data.subject || subject,
+          timeLimitMinutes: data.timeLimitMinutes || timeLimit,
+          totalMarks: data.totalMarks || totalQMarks || 20,
+          passingMarks: data.passingMarks || Math.round((data.totalMarks || totalQMarks || 20) * 0.4),
+          instructions: data.instructions || 'Select the correct choice for each MCQ question.',
+          questions: formattedQuestions,
+        });
+
+        setNotificationMsg(`File "${file.name}" uploaded and converted into ${formattedQuestions.length} editable MCQs! Review and adjust questions below.`);
+      } else {
+        throw new Error(response.error || 'Failed to extract questions.');
+      }
+    } catch (err: any) {
+      console.error('File conversion error:', err);
+      setParseError(err.message || 'Error converting test paper. Please check the suggested format below.');
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
   // File Selection Handler
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setSelectedFile(file);
-      setParseError(null);
-
-      // Read as Data URL for base64 sending (PDF / Images)
-      const dataUrlReader = new FileReader();
-      dataUrlReader.onload = () => {
-        setFilePreview(dataUrlReader.result as string);
-      };
-      dataUrlReader.readAsDataURL(file);
-
-      // Also read plain text files directly if text/csv
-      if (file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.csv')) {
-        const textReader = new FileReader();
-        textReader.onload = () => {
-          if (typeof textReader.result === 'string') {
-            setPastedText(textReader.result);
-          }
-        };
-        textReader.readAsText(file);
-      }
+      handleProcessFile(file);
     }
   };
 
@@ -283,12 +438,25 @@ Correct Answer: A`);
       };
 
       if (uploadMethod === 'FILE') {
-        if (!filePreview) {
+        if (!filePreview && !pastedText.trim()) {
           throw new Error('Please select a PDF, image, or docx file to upload.');
         }
-        const mimeType = selectedFile?.type || 'image/jpeg';
-        payload.fileData = filePreview;
-        payload.mimeType = mimeType;
+        if (pastedText.trim()) {
+          payload.rawText = pastedText;
+        }
+        if (filePreview) {
+          let mime = selectedFile?.type || '';
+          const lower = selectedFile?.name.toLowerCase() || '';
+          if (!mime || mime === 'application/octet-stream') {
+            if (lower.endsWith('.pdf')) mime = 'application/pdf';
+            else if (lower.endsWith('.docx')) mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+            else if (lower.endsWith('.doc')) mime = 'application/msword';
+            else if (lower.endsWith('.png')) mime = 'image/png';
+            else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) mime = 'image/jpeg';
+          }
+          payload.fileData = filePreview;
+          payload.mimeType = mime || 'application/pdf';
+        }
       } else {
         if (!pastedText.trim()) {
           throw new Error('Please enter or paste the test paper text.');
@@ -308,7 +476,6 @@ Correct Answer: A`);
             ? q.options
             : [q.options?.[0] || 'Option A', q.options?.[1] || 'Option B', q.options?.[2] || 'Option C', q.options?.[3] || 'Option D'],
           correctOptionIndex: typeof q.correctOptionIndex === 'number' ? q.correctOptionIndex : 0,
-          explanation: q.explanation || 'Refer to Rajsamand District Board syllabus.',
           marks: q.marks || 4,
         }));
 
@@ -366,13 +533,6 @@ Correct Answer: A`);
     if (!parsedTest) return;
     const updated = [...parsedTest.questions];
     updated[qIndex].correctOptionIndex = optIndex;
-    setParsedTest({ ...parsedTest, questions: updated });
-  };
-
-  const handleUpdateExplanation = (qIndex: number, text: string) => {
-    if (!parsedTest) return;
-    const updated = [...parsedTest.questions];
-    updated[qIndex].explanation = text;
     setParsedTest({ ...parsedTest, questions: updated });
   };
 
@@ -465,13 +625,18 @@ Correct Answer: A`);
     <div className="space-y-6 pb-12">
       {/* Header Banner Card */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 p-6 sm:p-8 rounded-2xl text-white shadow-xl">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            {editingTest ? `Edit Assessment: ${editingTest.title}` : 'Create New Assessment Paper'}
-          </h1>
-          <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
-            Upload question documents for AI extraction or construct MCQ assessments manually.
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-purple-500/20 border border-purple-400/35 flex items-center justify-center text-purple-300 shadow-lg shadow-purple-950/40 shrink-0">
+            <FileText className="w-6 h-6 sm:w-7 sm:h-7 text-purple-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              {editingTest ? `Edit Assessment: ${editingTest.title}` : 'Create New Assessment Paper'}
+            </h1>
+            <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
+              Upload question documents for AI extraction or construct MCQ assessments manually.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-3 self-start sm:self-auto">
@@ -488,14 +653,19 @@ Correct Answer: A`);
           <div className="inline-flex p-1 rounded-xl bg-black/30 border border-white/10 text-xs font-bold backdrop-blur-xs">
             <button
               type="button"
-              onClick={() => setCreationMode('AI')}
+              id="file-upload-mode-toggle"
+              onClick={() => {
+                setCreationMode('AI');
+                setUploadMethod('FILE');
+                fileInputRef.current?.click();
+              }}
               className={`px-3 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
                 creationMode === 'AI'
                   ? 'bg-emerald-500 text-slate-950 font-extrabold shadow-sm'
                   : 'text-white/80 hover:text-white'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5" /> <span>AI Multimodal Paper</span>
+              <Upload className="w-3.5 h-3.5" /> <span>Upload File (PDF / DOCX)</span>
             </button>
             <button
               type="button"
@@ -511,6 +681,14 @@ Correct Answer: A`);
           </div>
         </div>
       </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.docx,.doc,.txt,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        onChange={handleFileChange}
+        className="hidden"
+      />
 
       {notificationMsg && (
         <div className="p-4 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex items-center justify-between shadow-xs">
@@ -690,22 +868,119 @@ Correct Answer: A`);
             </div>
 
             {uploadMethod === 'FILE' ? (
-              <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-8 text-center bg-slate-50/50 dark:bg-slate-800/30 hover:bg-slate-100/50 dark:hover:bg-slate-800/60 transition-all cursor-pointer relative">
-                <input
-                  type="file"
-                  accept="image/*,application/pdf,.doc,.docx,text/plain"
-                  onChange={handleFileChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-                <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                  <Upload className="w-6 h-6" />
+              <div className="space-y-4">
+                <div className="border-2 border-dashed border-emerald-300 dark:border-emerald-800 rounded-2xl p-6 sm:p-8 text-center bg-emerald-50/30 dark:bg-emerald-950/20 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40 transition-all cursor-pointer relative group">
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.doc,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                    onChange={handleFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs">
+                    <Upload className="w-7 h-7" />
+                  </div>
+                  <p className="text-sm font-black text-slate-900 dark:text-white">
+                    {selectedFile ? selectedFile.name : 'Click or Drag PDF / DOCX File Here'}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 font-medium">
+                    Supports <strong>PDF documents (.pdf)</strong>, <strong>Microsoft Word (.docx)</strong>, and plain text (.txt)
+                  </p>
+                  <div className="mt-3 flex items-center justify-center gap-2">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                      PDF
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                      DOCX
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      TXT
+                    </span>
+                  </div>
+                  {selectedFile && (
+                    <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold">
+                      <FileCheck className="w-4 h-4 text-emerald-600" />
+                      <span>Ready to convert: {(selectedFile.size / 1024).toFixed(1)} KB</span>
+                    </div>
+                  )}
                 </div>
-                <p className="text-sm font-black text-slate-800 dark:text-slate-200">
-                  {selectedFile ? selectedFile.name : 'Click or Drag Test Paper File Here'}
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-                  Supports scanned PDF, question paper photos (JPG/PNG), DOCX or TXT files
-                </p>
+
+                {/* Suggested Format Guide for Error-Free Parsing */}
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/70 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-700/80 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Info className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                      <div>
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                          Suggested Format (For 100% Error-Free Conversion)
+                        </span>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Format your PDF / Word document with this pattern so the system converts it without errors:
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={handleCopyTemplate}
+                        className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors flex items-center gap-1 cursor-pointer"
+                        title="Copy sample format template to clipboard"
+                      >
+                        {copiedTemplate ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-emerald-600">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copy Format</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleDownloadSampleFormat}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors flex items-center gap-1 cursor-pointer"
+                        title="Download sample format template file"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download Template</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Format Preview Code Block */}
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 font-mono text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed overflow-x-auto">
+                    <p className="font-bold text-emerald-700 dark:text-emerald-400">Q1. Which famous lake built by Maharana Raj Singh I in 1660 AD is located in Rajsamand?</p>
+                    <p className="pl-3">A) Rajsamand Lake (Rajsamudra)</p>
+                    <p className="pl-3">B) Pichola Lake</p>
+                    <p className="pl-3">C) Ana Sagar Lake</p>
+                    <p className="pl-3">D) Fateh Sagar Lake</p>
+                    <p className="pl-3 font-semibold text-emerald-600 dark:text-emerald-400">Correct Answer: A</p>
+                    <p className="pl-3 text-slate-500">Marks: 4</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[10px] font-semibold text-slate-600 dark:text-slate-400">
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span>Start with <strong>Q1.</strong> or <strong>1.</strong></span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span>4 choices <strong>A), B), C), D)</strong></span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span>Key: <strong>Correct Answer: A</strong></span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <span>Optional <strong>Marks: 4</strong></span>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : (
               <div>
@@ -756,12 +1031,13 @@ Correct Answer: A`);
           </div>
 
           <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              Multimodal Question Extraction Engine
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5">
+              <FileUp className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Converts PDF/DOCX into Editable MCQs</span>
             </span>
 
             <button
-              id="ai-parse-btn"
+              id="convert-to-mcqs-btn"
               type="button"
               onClick={handleParseWithAI}
               disabled={isParsing}
@@ -770,12 +1046,12 @@ Correct Answer: A`);
               {isParsing ? (
                 <>
                   <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                  <span>Converting Paper to MCQs...</span>
+                  <span>Converting Document to Editable MCQs...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
-                  <span>Convert Test Paper with AI</span>
+                  <FileUp className="w-4 h-4" />
+                  <span>Convert File to Editable MCQs</span>
                 </>
               )}
             </button>
@@ -1049,19 +1325,6 @@ Correct Answer: A`);
                       </div>
                     );
                   })}
-                </div>
-
-                {/* Explanation Input Card */}
-                <div className="sm:pl-11">
-                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                    Solution Explanation & Notes:
-                  </label>
-                  <input
-                    type="text"
-                    value={q.explanation}
-                    onChange={(e) => handleUpdateExplanation(qIndex, e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none font-medium"
-                  />
                 </div>
               </div>
             ))}

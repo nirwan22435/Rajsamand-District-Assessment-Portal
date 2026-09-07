@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Candidate, TestPaper, TestAttempt, DistrictBlock } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, PieChart, Pie, Legend } from 'recharts';
-import { Users, FileCheck, Award, TrendingUp, Download, Search, CheckCircle2, AlertTriangle, UserCheck, RefreshCw, FileSpreadsheet, ExternalLink, Mail, Send, Edit3, BarChart3, BookOpen, Key, Copy, Check, Trash2, Globe } from 'lucide-react';
+import { Users, FileCheck, Award, TrendingUp, Download, FileText, Search, CheckCircle2, AlertTriangle, UserCheck, RefreshCw, FileSpreadsheet, ExternalLink, Mail, Send, Edit3, BarChart3, BookOpen, Key, Copy, Check, Trash2, Globe, Filter } from 'lucide-react';
 import { sendEmailAPI } from '../services/api';
 import { TestSummaryReportModal } from './TestSummaryReportModal';
 import { PublishSuccessModal } from './PublishSuccessModal';
+import { generateAndDownloadTestPaperSummaryPdf, generateAndDownloadCandidateAnalyticsPdf } from '../utils/pdfGenerator';
 
 interface AdminDashboardProps {
   candidates: Candidate[];
@@ -154,21 +155,60 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  // 1. High-level Summary Metrics (Candidate Focused)
-  const totalCandidates = candidates.length;
+  // Exclude typing-test-registered candidates from general assessment analytics
+  const assessmentCandidates = candidates.filter(
+    (c) => c.registeredModule !== 'TYPING' && !c.typingMedium && !c.id.startsWith('cand-typ-')
+  );
+
+  // Set of valid directory candidate IDs and emails (excluding deleted candidates)
+  const validCandidateIds = new Set(candidates.map((c) => c.id));
+  const validCandidateEmails = new Set(candidates.map((c) => c.email.toLowerCase().trim()));
+
+  // Active attempts belonging only to candidates currently existing in the candidate directory
+  // (Removes candidate data from test submission in district analytics if candidate has been deleted from directory)
+  const validDirectoryAttempts = attempts.filter((a) => {
+    const hasValidId = a.candidateId && validCandidateIds.has(a.candidateId);
+    const hasValidEmail =
+      a.candidateEmail && validCandidateEmails.has(a.candidateEmail.toLowerCase().trim());
+    return hasValidId || hasValidEmail;
+  });
+
+  // Active test paper object if filtered
+  const activeTestPaper = selectedTestFilter === 'ALL' ? null : tests.find((t) => t.id === selectedTestFilter);
+
+  // Filter test attempts based on selected test paper
+  const activeAttempts = selectedTestFilter === 'ALL'
+    ? validDirectoryAttempts
+    : validDirectoryAttempts.filter((a) => a.testId === selectedTestFilter || (activeTestPaper && a.testTitle === activeTestPaper.title));
+
+  // Determine candidates eligible / in scope for the active filter
+  const activeCandidatesInScope = activeTestPaper
+    ? (activeTestPaper.assignedCandidateIds && activeTestPaper.assignedCandidateIds.length > 0 && !activeTestPaper.assignedCandidateIds.includes('ALL')
+        ? assessmentCandidates.filter((c) => activeTestPaper.assignedCandidateIds!.includes(c.id))
+        : assessmentCandidates)
+    : assessmentCandidates;
+
+  // 1. High-level Summary Metrics (Test Paper Filtered)
+  const totalCandidates = activeCandidatesInScope.length;
   const publishedTestsCount = tests.filter((t) => t.status === 'PUBLISHED').length;
-  const totalAttemptsCount = attempts.length;
+  const totalAttemptsCount = activeAttempts.length;
 
   // Assessed candidates (unique candidate IDs with at least 1 attempt)
-  const assessedCandidateIds = new Set(attempts.map((a) => a.candidateId));
+  const assessedCandidateIds = new Set(activeAttempts.map((a) => a.candidateId));
   const assessedCandidatesCount = assessedCandidateIds.size;
 
-  const passedAttemptsCount = attempts.filter((a) => a.status === 'PASSED').length;
+  const passedAttemptsCount = activeAttempts.filter((a) => {
+    if (activeTestPaper) {
+      return a.scoreObtained >= activeTestPaper.passingMarks;
+    }
+    return a.status === 'PASSED';
+  }).length;
+
   const overallPassRate = totalAttemptsCount > 0 ? Math.round((passedAttemptsCount / totalAttemptsCount) * 100) : 0;
 
   const candidateMeanScore =
-    attempts.length > 0
-      ? Math.round(attempts.reduce((sum, a) => sum + a.scorePercentage, 0) / attempts.length)
+    totalAttemptsCount > 0
+      ? Math.round(activeAttempts.reduce((sum, a) => sum + a.scorePercentage, 0) / totalAttemptsCount)
       : 0;
 
   // 2. Candidate Performance Score Brackets (For Candidate Bar Chart)
@@ -181,7 +221,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { bracket: '<40% (Needs Focus)', count: 0, color: '#e11d48' },
   ];
 
-  attempts.forEach((att) => {
+  activeAttempts.forEach((att) => {
     const s = att.scorePercentage;
     if (s >= 90) scoreDistribution[0].count++;
     else if (s >= 75) scoreDistribution[1].count++;
@@ -192,8 +232,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // 3. Donut Chart Data: Candidate Qualification
   const passedCandidatesCount = Array.from(assessedCandidateIds).filter((candId) => {
-    const candAttempts = attempts.filter((a) => a.candidateId === candId);
-    return candAttempts.some((a) => a.status === 'PASSED');
+    const candAttempts = activeAttempts.filter((a) => a.candidateId === candId);
+    return candAttempts.some((a) => (activeTestPaper ? a.scoreObtained >= activeTestPaper.passingMarks : a.status === 'PASSED'));
   }).length;
 
   const needsImprovementCandidatesCount = assessedCandidatesCount - passedCandidatesCount;
@@ -206,7 +246,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   ];
 
   // 4. Filtered Candidate Records for Individual Analytics Table
-  const filteredCandidates = candidates.filter((c) => {
+  const filteredCandidates = activeCandidatesInScope.filter((c) => {
     const matchesSearch =
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.registrationId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -215,7 +255,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   });
 
   // 5. Filtered Individual Test Attempts
-  const filteredAttempts = attempts.filter((att) => {
+  const filteredAttempts = activeAttempts.filter((att) => {
     const matchesSearch =
       att.candidateName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       att.testTitle.toLowerCase().includes(searchTerm.toLowerCase());
@@ -224,57 +264,143 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // CSV Export helper for Candidate Analytics Reports
   const handleExportCSV = () => {
-    const headers = [
-      'Registration ID',
-      'Candidate Name',
-      'Email',
-      'Total Tests Taken',
-      'Highest Score %',
-      'Average Score %',
-      'Qualification Status',
-    ];
-
-    const rows = candidates.map((c) => {
-      const candAttempts = attempts.filter((a) => a.candidateId === c.id);
-      const attemptsCount = candAttempts.length;
-      const highestScore = attemptsCount > 0 ? Math.max(...candAttempts.map((a) => a.scorePercentage)) : 0;
-      const avgScore =
-        attemptsCount > 0
-          ? Math.round(candAttempts.reduce((sum, a) => sum + a.scorePercentage, 0) / attemptsCount)
-          : 0;
-      const hasPassed = candAttempts.some((a) => a.status === 'PASSED');
-      const status = attemptsCount === 0 ? 'UNASSESSED' : hasPassed ? 'PASSED' : 'NEEDS_FOCUS';
-
-      return [
-        c.registrationId,
-        `"${c.name}"`,
-        c.email,
-        attemptsCount,
-        `${highestScore}%`,
-        `${avgScore}%`,
-        status,
+    if (activeTestPaper) {
+      // Test Paper specific CSV export
+      const headers = [
+        'Registration ID',
+        'Candidate Name',
+        'Email',
+        'Assessment Title',
+        'Target Block',
+        'Score Obtained',
+        'Total Marks',
+        'Passing Marks',
+        'Score Percentage',
+        'Qualification Status',
+        'Attempt Date',
       ];
-    });
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Rajsamand_Candidate_Analytics_Report_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const rows = activeCandidatesInScope.map((c) => {
+        const candAttempt = activeAttempts.find((a) => a.candidateId === c.id || a.candidateEmail === c.email);
+        const hasAttempted = !!candAttempt;
+        const score = hasAttempted ? candAttempt.scoreObtained : 'N/A';
+        const pct = hasAttempted ? `${candAttempt.scorePercentage}%` : 'N/A';
+        const isPassed = hasAttempted && candAttempt.scoreObtained >= activeTestPaper.passingMarks;
+        const status = !hasAttempted ? 'UNASSESSED' : isPassed ? 'PASSED' : 'NEEDS_FOCUS';
+        const attemptDate = hasAttempted ? new Date(candAttempt.submittedAt).toLocaleDateString('en-IN') : 'N/A';
+
+        return [
+          c.registrationId,
+          `"${c.name}"`,
+          c.email,
+          `"${activeTestPaper.title}"`,
+          `"${activeTestPaper.targetBlock || 'District-Wide'}"`,
+          score,
+          activeTestPaper.totalMarks,
+          activeTestPaper.passingMarks,
+          pct,
+          status,
+          attemptDate,
+        ];
+      });
+
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      const safeTitle = activeTestPaper.title.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
+      link.setAttribute('download', `Rajsamand_${safeTitle}_Analytics_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // All Test Papers summary export
+      const headers = [
+        'Registration ID',
+        'Candidate Name',
+        'Email',
+        'Total Tests Taken',
+        'Highest Score %',
+        'Average Score %',
+        'Qualification Status',
+      ];
+
+      const rows = assessmentCandidates.map((c) => {
+        const candAttempts = validDirectoryAttempts.filter(
+          (a) => a.candidateId === c.id || (c.email && a.candidateEmail?.toLowerCase() === c.email.toLowerCase())
+        );
+        const attemptsCount = candAttempts.length;
+        const highestScore = attemptsCount > 0 ? Math.max(...candAttempts.map((a) => a.scorePercentage)) : 0;
+        const avgScore =
+          attemptsCount > 0
+            ? Math.round(candAttempts.reduce((sum, a) => sum + a.scorePercentage, 0) / attemptsCount)
+            : 0;
+        const hasPassed = candAttempts.some((a) => a.status === 'PASSED');
+        const status = attemptsCount === 0 ? 'UNASSESSED' : hasPassed ? 'PASSED' : 'NEEDS_FOCUS';
+
+        return [
+          c.registrationId,
+          `"${c.name}"`,
+          c.email,
+          attemptsCount,
+          `${highestScore}%`,
+          `${avgScore}%`,
+          status,
+        ];
+      });
+
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `Rajsamand_Candidate_Analytics_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  // PDF Report Export helper for Test Paper & Candidate Analytics
+  const handleDownloadReportPDF = () => {
+    if (activeTestPaper) {
+      // Test Paper specific Analytics PDF report
+      generateAndDownloadTestPaperSummaryPdf({
+        test: activeTestPaper,
+        attempts: validDirectoryAttempts,
+        candidates: activeCandidatesInScope,
+      });
+    } else {
+      if (tests.length === 1) {
+        generateAndDownloadTestPaperSummaryPdf({
+          test: tests[0],
+          attempts: validDirectoryAttempts,
+          candidates: assessmentCandidates,
+        });
+      } else {
+        // District-wide Candidate Performance & Test Paper Analytics Report
+        generateAndDownloadCandidateAnalyticsPdf({
+          tests,
+          attempts: validDirectoryAttempts,
+          candidates: assessmentCandidates,
+        });
+      }
+    }
   };
 
   return (
     <div className="space-y-8 pb-12">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 p-6 sm:p-8 rounded-2xl text-white shadow-xl">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Candidate Performance Dashboard</h1>
-          <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
-            Real-time candidate assessment scores, qualification metrics, and progress reports.
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-500/20 border border-emerald-400/35 flex items-center justify-center text-emerald-300 shadow-lg shadow-emerald-950/40 shrink-0">
+            <BarChart3 className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Candidate Performance Dashboard</h1>
+            <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
+              Real-time candidate assessment scores, qualification metrics, and progress reports.
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -282,11 +408,92 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <button
               id="admin-export-csv-btn"
               onClick={handleExportCSV}
-              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs sm:text-sm backdrop-blur-md border border-white/20 transition-all flex items-center space-x-2"
+              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs sm:text-sm backdrop-blur-md border border-white/20 transition-all flex items-center space-x-2 cursor-pointer active:scale-[0.98]"
             >
               <Download className="w-4 h-4" />
-              <span>Export Candidate CSV</span>
+              <span>{activeTestPaper ? 'Export Test Paper CSV' : 'Export Candidate CSV'}</span>
             </button>
+          )}
+
+          {(totalCandidates > 0 || tests.length > 0) && (
+            <button
+              id="admin-download-report-pdf-btn"
+              onClick={handleDownloadReportPDF}
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center space-x-2 cursor-pointer border border-emerald-400/30 active:scale-[0.98]"
+              title={activeTestPaper ? `Download ${activeTestPaper.title} PDF Analytics Report` : 'Download Candidate Performance & Test Analytics PDF Report'}
+            >
+              <FileText className="w-4 h-4" />
+              <span>{activeTestPaper ? 'Download Test Report (PDF)' : 'Download Analytics Report (PDF)'}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Test Paper Wise Filtration Bar */}
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+            <Filter className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                Test Paper Wise Analytics Filter
+              </h3>
+              {activeTestPaper ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                  Filtered: {activeTestPaper.title}
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                  All Test Papers (Combined District Overview)
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Select a test paper to filter statistical cards, score distribution graphs, and individual scores.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <label htmlFor="admin-test-filter-select" className="text-xs font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
+            Select Test:
+          </label>
+          <select
+            id="admin-test-filter-select"
+            value={selectedTestFilter}
+            onChange={(e) => setSelectedTestFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-emerald-500 focus:outline-none min-w-[260px] max-w-md cursor-pointer"
+          >
+            <option value="ALL">All Test Papers (Combined District Overview)</option>
+            {tests.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title} ({t.subject}) • {t.questions?.length || 0} Qs • {t.totalMarks} Marks
+              </option>
+            ))}
+          </select>
+
+          {selectedTestFilter !== 'ALL' && (
+            <>
+              {activeTestPaper && (
+                <button
+                  id="admin-view-test-summary-modal-btn"
+                  onClick={() => setReportTest(activeTestPaper)}
+                  className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 text-emerald-800 dark:text-emerald-300 text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 border border-emerald-300 dark:border-emerald-800"
+                  title="View full interactive question accuracy and score report modal"
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  <span>Question Analytics Modal</span>
+                </button>
+              )}
+              <button
+                onClick={() => setSelectedTestFilter('ALL')}
+                className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1"
+              >
+                <span>✕ Reset Filter</span>
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -297,14 +504,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Candidates</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {activeTestPaper ? 'Candidates In Scope' : 'Total Candidates'}
+              </p>
               <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">{totalCandidates}</h3>
               <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1">
                 <UserCheck className="w-3 h-3" /> {assessedCandidatesCount} candidates assessed
               </p>
             </div>
-            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
-              <Users className="w-6 h-6" />
+            <div className="p-3.5 rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-xs">
+              <Users className="w-7 h-7" />
             </div>
           </div>
         </div>
@@ -313,14 +522,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Test Submissions</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {activeTestPaper ? 'Test Submissions' : 'Total Test Submissions'}
+              </p>
               <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">{totalAttemptsCount}</h3>
               <p className="text-xs text-sky-600 dark:text-sky-400 mt-1 font-medium flex items-center gap-1">
-                <FileCheck className="w-3 h-3" /> Across {publishedTestsCount} active tests
+                <FileCheck className="w-3 h-3" /> {activeTestPaper ? `Passing Marks: ${activeTestPaper.passingMarks}/${activeTestPaper.totalMarks}` : `Across ${publishedTestsCount} active tests`}
               </p>
             </div>
-            <div className="p-3 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400">
-              <FileCheck className="w-6 h-6" />
+            <div className="p-3.5 rounded-2xl bg-sky-500/15 dark:bg-sky-500/25 border border-sky-500/30 text-sky-600 dark:text-sky-400 shadow-xs">
+              <FileCheck className="w-7 h-7" />
             </div>
           </div>
         </div>
@@ -329,14 +540,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Candidate Mean Score</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {activeTestPaper ? 'Mean Score on Test' : 'Candidate Mean Score'}
+              </p>
               <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">{candidateMeanScore}%</h3>
               <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" /> Across all attempts
+                <TrendingUp className="w-3 h-3" /> {activeTestPaper ? `Target Block: ${activeTestPaper.targetBlock || 'District-Wide'}` : 'Across all attempts'}
               </p>
             </div>
-            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
-              <TrendingUp className="w-6 h-6" />
+            <div className="p-3.5 rounded-2xl bg-amber-500/15 dark:bg-amber-500/25 border border-amber-500/30 text-amber-600 dark:text-amber-400 shadow-xs">
+              <TrendingUp className="w-7 h-7" />
             </div>
           </div>
         </div>
@@ -345,14 +558,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pass Rate</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {activeTestPaper ? 'Test Pass Rate' : 'Pass Rate'}
+              </p>
               <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">{overallPassRate}%</h3>
               <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" /> {passedAttemptsCount} qualified submissions
               </p>
             </div>
-            <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400">
-              <Award className="w-6 h-6" />
+            <div className="p-3.5 rounded-2xl bg-purple-500/15 dark:bg-purple-500/25 border border-purple-500/30 text-purple-600 dark:text-purple-400 shadow-xs">
+              <Award className="w-7 h-7" />
             </div>
           </div>
         </div>
@@ -365,8 +580,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Candidate Score Range Distribution</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Categorization of candidate assessment performance into score brackets</p>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                {activeTestPaper ? `Score Range Distribution: ${activeTestPaper.title}` : 'Candidate Score Range Distribution'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {activeTestPaper ? `Categorization of performance on ${activeTestPaper.title} (${activeTestPaper.subject})` : 'Categorization of candidate assessment performance into score brackets'}
+              </p>
             </div>
             <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
               {totalAttemptsCount} Attempt Records
@@ -406,8 +625,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* Donut Chart: Candidate Qualification Status */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Candidate Qualification Breakdown</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Ratio of Qualified vs Needs Focus vs Unassessed Candidates</p>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+              {activeTestPaper ? `Qualification Breakdown: ${activeTestPaper.title}` : 'Candidate Qualification Breakdown'}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              {activeTestPaper ? `Qualified vs Needs Focus vs Unassessed for ${activeTestPaper.title}` : 'Ratio of Qualified vs Needs Focus vs Unassessed Candidates'}
+            </p>
 
             <div className="h-56 w-full">
               {totalCandidates > 0 ? (
@@ -442,7 +665,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
 
           <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-medium">
-            <span className="text-slate-500 dark:text-slate-400">Pass Cutoff: ≥40% Score</span>
+            <span className="text-slate-500 dark:text-slate-400">
+              {activeTestPaper ? `Pass Cutoff: ≥${activeTestPaper.passingMarks} Marks` : 'Pass Cutoff: ≥40% Score'}
+            </span>
             <span className="text-emerald-600 dark:text-emerald-400 font-bold">{passedCandidatesCount} / {totalCandidates} Qualified</span>
           </div>
         </div>
@@ -453,9 +678,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {/* Table Header Controls */}
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Individual Candidate Performance Metrics</h3>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              {activeTestPaper ? `Candidate Scores for ${activeTestPaper.title}` : 'Individual Candidate Performance Metrics'}
+            </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Detailed breakdown of scores, test attempts, and progress reports for each candidate
+              {activeTestPaper
+                ? `Performance, marks obtained, and scorecard actions for candidates assigned to ${activeTestPaper.title} (${activeTestPaper.subject})`
+                : 'Detailed breakdown of scores, test attempts, and progress reports for each candidate'}
             </p>
           </div>
 
@@ -481,17 +710,109 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <tr>
                 <th className="px-5 py-3">Reg ID</th>
                 <th className="px-5 py-3">Candidate</th>
-                <th className="px-5 py-3 text-center">Tests Taken</th>
-                <th className="px-5 py-3 text-center">Best Score</th>
-                <th className="px-5 py-3 text-center">Avg Score</th>
-                <th className="px-5 py-3 text-center">Qualification</th>
+                {activeTestPaper ? (
+                  <>
+                    <th className="px-5 py-3 text-center">Attempt Status</th>
+                    <th className="px-5 py-3 text-center">Score ({activeTestPaper.totalMarks} M)</th>
+                    <th className="px-5 py-3 text-center">Percentage</th>
+                    <th className="px-5 py-3 text-center">Result</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-5 py-3 text-center">Tests Taken</th>
+                    <th className="px-5 py-3 text-center">Best Score</th>
+                    <th className="px-5 py-3 text-center">Avg Score</th>
+                    <th className="px-5 py-3 text-center">Qualification</th>
+                  </>
+                )}
                 <th className="px-5 py-3 text-right">Progress Report</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {filteredCandidates.length > 0 ? (
                 filteredCandidates.map((cand) => {
-                  const candAttempts = attempts.filter((a) => a.candidateId === cand.id);
+                  if (activeTestPaper) {
+                    // Test-Paper-Wise candidate row
+                    const candAttempt = activeAttempts.find(
+                      (a) => a.candidateId === cand.id || a.candidateEmail === cand.email
+                    );
+                    const hasAttempted = Boolean(candAttempt);
+                    const isPassed = hasAttempted && candAttempt!.scoreObtained >= activeTestPaper.passingMarks;
+
+                    return (
+                      <tr key={cand.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="px-5 py-4 font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                          {cand.registrationId}
+                        </td>
+                        <td className="px-5 py-4 font-medium text-slate-900 dark:text-white">
+                          <div className="font-bold">{cand.name}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400">{cand.email}</div>
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          {hasAttempted ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                              Completed
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500">
+                              Unattempted
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4 text-center font-bold text-slate-900 dark:text-white">
+                          {hasAttempted ? `${candAttempt!.scoreObtained} / ${candAttempt!.totalMarks}` : <span className="text-slate-400">-</span>}
+                        </td>
+                        <td className="px-5 py-4 text-center font-bold">
+                          {hasAttempted ? (
+                            <span className={`inline-block px-2 py-0.5 rounded ${
+                              candAttempt!.scorePercentage >= 75
+                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                                : candAttempt!.scorePercentage >= activeTestPaper.passingMarks
+                                ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
+                                : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
+                            }`}>
+                              {candAttempt!.scorePercentage}%
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          {!hasAttempted ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500">
+                              Unassessed
+                            </span>
+                          ) : isPassed ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Qualified
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-semibold">
+                              <AlertTriangle className="w-3.5 h-3.5" /> Needs Focus
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          {onSelectCandidateForReport ? (
+                            <button
+                              type="button"
+                              onClick={() => onSelectCandidateForReport(cand)}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 hover:bg-emerald-100 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 font-bold text-[11px] transition-colors inline-flex items-center gap-1"
+                            >
+                              <ExternalLink className="w-3 h-3" /> Report Card
+                            </button>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  // Default All-Tests view
+                  const candAttempts = validDirectoryAttempts.filter(
+                    (a) => a.candidateId === cand.id || (cand.email && a.candidateEmail?.toLowerCase() === cand.email.toLowerCase())
+                  );
                   const attemptsCount = candAttempts.length;
                   const highestScore = attemptsCount > 0 ? Math.max(...candAttempts.map((a) => a.scorePercentage)) : 0;
                   const avgScore =
@@ -589,12 +910,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       {/* Submissions Audit Log */}
-      {attempts.length > 0 && (
+      {validDirectoryAttempts.length > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
           <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Recent Individual Test Submissions</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Real-time candidate score logs and 1-click Resend email notification buttons</p>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                {activeTestPaper ? `Recent Submissions for ${activeTestPaper.title}` : 'Recent Individual Test Submissions'}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {activeTestPaper
+                  ? `Showing test attempts recorded specifically for ${activeTestPaper.title} (${activeTestPaper.subject})`
+                  : 'Real-time candidate score logs and 1-click Resend email notification buttons'}
+              </p>
             </div>
             {resendAttemptToast && (
               <div className="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2 border border-emerald-300 dark:border-emerald-800">
@@ -619,66 +946,74 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {filteredAttempts.map((att) => (
-                  <tr key={att.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-slate-900 dark:text-white">
-                      <div>{att.candidateName}</div>
-                      <div className="text-[10px] text-slate-400">{att.candidateEmail}</div>
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-800 dark:text-slate-200 max-w-xs truncate">
-                      {att.testTitle}
-                    </td>
-                    <td className="px-5 py-3.5 text-center font-bold text-slate-900 dark:text-white">
-                      {att.scoreObtained} / {att.totalMarks}
-                    </td>
-                    <td className="px-5 py-3.5 text-center font-bold">
-                      <span className={`inline-block px-2 py-0.5 rounded ${
-                        att.scorePercentage >= 75
-                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
-                          : att.scorePercentage >= 40
-                          ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
-                          : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
-                      }`}>
-                        {att.scorePercentage}%
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-center">
-                      {att.status === 'PASSED' ? (
-                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Passed</span>
-                      ) : (
-                        <span className="text-rose-600 dark:text-rose-400 font-semibold">Needs Focus</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5 text-center text-slate-500 dark:text-slate-400 text-[11px]">
-                      {new Date(att.submittedAt).toLocaleString('en-IN', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleResendAttemptEmail(att)}
-                        disabled={resendingAttemptId === att.id}
-                        className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] shadow-sm transition-all inline-flex items-center gap-1.5 disabled:opacity-50"
-                      >
-                        {resendingAttemptId === att.id ? (
-                          <>
-                            <RefreshCw className="w-3 h-3 animate-spin" />
-                            <span>Resending...</span>
-                          </>
+                {filteredAttempts.length > 0 ? (
+                  filteredAttempts.map((att) => (
+                    <tr key={att.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="px-5 py-3.5 font-medium text-slate-900 dark:text-white">
+                        <div>{att.candidateName}</div>
+                        <div className="text-[10px] text-slate-400">{att.candidateEmail}</div>
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-800 dark:text-slate-200 max-w-xs truncate">
+                        {att.testTitle}
+                      </td>
+                      <td className="px-5 py-3.5 text-center font-bold text-slate-900 dark:text-white">
+                        {att.scoreObtained} / {att.totalMarks}
+                      </td>
+                      <td className="px-5 py-3.5 text-center font-bold">
+                        <span className={`inline-block px-2 py-0.5 rounded ${
+                          att.scorePercentage >= 75
+                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                            : att.scorePercentage >= 40
+                            ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
+                            : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
+                        }`}>
+                          {att.scorePercentage}%
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-center">
+                        {att.status === 'PASSED' ? (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Passed</span>
                         ) : (
-                          <>
-                            <Send className="w-3 h-3" />
-                            <span>Resend Scorecard</span>
-                          </>
+                          <span className="text-rose-600 dark:text-rose-400 font-semibold">Needs Focus</span>
                         )}
-                      </button>
+                      </td>
+                      <td className="px-5 py-3.5 text-center text-slate-500 dark:text-slate-400 text-[11px]">
+                        {new Date(att.submittedAt).toLocaleString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleResendAttemptEmail(att)}
+                          disabled={resendingAttemptId === att.id}
+                          className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] shadow-sm transition-all inline-flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                          {resendingAttemptId === att.id ? (
+                            <>
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                              <span>Resending...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-3 h-3" />
+                              <span>Resend Scorecard</span>
+                            </>
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="px-5 py-8 text-center text-slate-400 text-xs">
+                      No test submissions recorded yet for the selected filter.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -688,7 +1023,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {reportTest && (
         <TestSummaryReportModal
           test={reportTest}
-          attempts={attempts}
+          attempts={validDirectoryAttempts}
           candidates={candidates}
           onClose={() => setReportTest(null)}
           onEditTest={onEditTest}

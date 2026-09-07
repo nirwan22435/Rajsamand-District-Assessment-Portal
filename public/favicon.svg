@@ -1,73 +1,43 @@
 <svg width="512" height="512" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="favCapOrange" x1="50" y1="50" x2="350" y2="180" gradientUnits="userSpaceOnUse">
+    <linearGradient id="capOrange" x1="50" y1="50" x2="350" y2="180" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#FB923C" />
       <stop offset="50%" stop-color="#EA580C" />
       <stop offset="100%" stop-color="#C2410C" />
     </linearGradient>
-
-    <linearGradient id="favNavyWings" x1="120" y1="280" x2="280" y2="380" gradientUnits="userSpaceOnUse">
+    <linearGradient id="navyWings" x1="120" y1="280" x2="280" y2="380" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#1E3A5F" />
       <stop offset="100%" stop-color="#0B192C" />
     </linearGradient>
   </defs>
-
-  <!-- Clean Rounded Square Background for App Icon / Favicon -->
-  <rect width="400" height="400" rx="80" fill="#0B132B" />
-
-  <!-- 1. TOP GRADUATION / MORTARBOARD CAP -->
+  <rect width="400" height="400" rx="80" fill="#FFFFFF" />
   <g id="graduation-cap">
-    <!-- Cap Diamond Top -->
-    <polygon points="200,42 355,88 200,134 45,88" fill="url(#favCapOrange)" />
-
-    <!-- Cap Headband Base -->
+    <polygon points="200,42 355,88 200,134 45,88" fill="url(#capOrange)" />
     <path d="M130,114 L270,114 C270,114 276,148 200,154 C124,148 130,114 130,114 Z" fill="#D95A0B" />
-
-    <!-- Tassel Button / Center Pin -->
     <circle cx="200" cy="88" r="6" fill="#C2410C" />
-
-    <!-- Hanging Tassel Ribbon & Fringe -->
     <path d="M200,88 Q140,94 110,130 Q92,154 94,180" stroke="#EA580C" stroke-width="6" stroke-linecap="round" fill="none" />
     <path d="M94,176 C86,186 64,198 76,218 C84,210 102,204 98,178 Z" fill="#EA580C" />
   </g>
-
-  <!-- 2. OWLS EYES & SPECTACLES -->
   <g id="owl-spectacles">
-    <!-- Bridge between the two glasses -->
-    <path d="M172,215 Q200,202 228,215" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" fill="none" />
-
-    <!-- Left Eye Glass Frame Outer -->
-    <circle cx="138" cy="216" r="54" fill="#0B132B" stroke="#FFFFFF" stroke-width="18" />
-
-    <!-- Right Eye Glass Frame Outer -->
-    <circle cx="262" cy="216" r="54" fill="#0B132B" stroke="#FFFFFF" stroke-width="18" />
-
-    <!-- Left Pupil with Signature Wedge Highlight -->
+    <path d="M172,215 Q200,202 228,215" stroke="#0B1E36" stroke-width="15" stroke-linecap="round" fill="none" />
+    <circle cx="138" cy="216" r="54" fill="none" stroke="#0B1E36" stroke-width="22" />
+    <circle cx="262" cy="216" r="54" fill="none" stroke="#0B1E36" stroke-width="22" />
     <g id="left-pupil">
-      <circle cx="138" cy="216" r="28" fill="#FFFFFF" />
-      <polygon points="138,216 160,194 168,216" fill="#0B132B" />
+      <circle cx="138" cy="216" r="30" fill="#0B1E36" />
+      <polygon points="138,216 160,194 168,216" fill="white" />
     </g>
-
-    <!-- Right Pupil with Signature Wedge Highlight -->
     <g id="right-pupil">
-      <circle cx="262" cy="216" r="28" fill="#FFFFFF" />
-      <polygon points="262,216 284,194 292,216" fill="#0B132B" />
+      <circle cx="262" cy="216" r="30" fill="#0B1E36" />
+      <polygon points="262,216 284,194 292,216" fill="white" />
     </g>
   </g>
-
-  <!-- 3. OPEN BOOK & FOUNTAIN PEN NIB -->
   <g id="open-book-and-beak">
-    <!-- Orange Top Page Layers -->
-    <path d="M192,305 C156,282 108,284 88,298 C104,316 150,314 192,328 Z" fill="url(#favCapOrange)" />
-    <path d="M208,305 C244,282 292,284 312,298 C296,316 250,314 208,328 Z" fill="url(#favCapOrange)" />
-
-    <!-- Wings Base -->
-    <path d="M194,332 C152,316 100,318 72,338 C94,364 154,352 196,380 Z" fill="#38BDF8" />
-    <path d="M206,332 C248,316 300,318 328,338 C306,364 246,352 204,380 Z" fill="#38BDF8" />
-
-    <!-- Center Fountain Pen Nib -->
-    <path d="M200,282 L212,326 L200,380 L188,326 Z" fill="#FFFFFF" />
-    <circle cx="200" cy="326" r="2.5" fill="#0B132B" />
-    <line x1="200" y1="328" x2="200" y2="378" stroke="#0B132B" stroke-width="2" stroke-linecap="round" />
+    <path d="M192,305 C156,282 108,284 88,298 C104,316 150,314 192,328 Z" fill="url(#capOrange)" />
+    <path d="M208,305 C244,282 292,284 312,298 C296,316 250,314 208,328 Z" fill="url(#capOrange)" />
+    <path d="M194,332 C152,316 100,318 72,338 C94,364 154,352 196,380 Z" fill="url(#navyWings)" />
+    <path d="M206,332 C248,316 300,318 328,338 C306,364 246,352 204,380 Z" fill="url(#navyWings)" />
+    <path d="M200,282 L212,326 L200,380 L188,326 Z" fill="#0B1E36" />
+    <circle cx="200" cy="326" r="2.5" fill="white" />
+    <line x1="200" y1="328" x2="200" y2="378" stroke="white" stroke-width="2" stroke-linecap="round" />
   </g>
 </svg>

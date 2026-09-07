@@ -38,10 +38,16 @@ export const AdminTypingCandidatesView: React.FC<AdminTypingCandidatesViewProps>
   const [mediumFilter, setMediumFilter] = useState<'ALL' | TypingLanguage>('ALL');
   const [deletingCandidateId, setDeletingCandidateId] = useState<string | null>(null);
 
+  // Only candidates specifically registered for typing test are shown here.
+  // Candidates created in Candidate Directory module MUST NOT be registered or visible for typing test.
+  const typingCandidates = candidates.filter((c) => {
+    return c.registeredModule === 'TYPING' || Boolean(c.typingMedium) || c.id.startsWith('cand-typ-');
+  });
+
   // Filter candidates specifically registered or eligible for typing test
-  const filteredCandidates = candidates.filter((c) => {
+  const filteredCandidates = typingCandidates.filter((c) => {
     // Medium filter
-    if (mediumFilter !== 'ALL' && c.typingMedium && c.typingMedium !== mediumFilter) {
+    if (mediumFilter !== 'ALL' && c.typingMedium !== mediumFilter) {
       return false;
     }
     // Search query (name, email, regId, designation, office)
@@ -57,8 +63,8 @@ export const AdminTypingCandidatesView: React.FC<AdminTypingCandidatesViewProps>
     return true;
   });
 
-  const hindiCount = candidates.filter((c) => c.typingMedium === 'HINDI_DEVLYS_010').length;
-  const englishCount = candidates.filter((c) => c.typingMedium === 'ENGLISH').length;
+  const hindiCount = typingCandidates.filter((c) => c.typingMedium === 'HINDI_DEVLYS_010').length;
+  const englishCount = typingCandidates.filter((c) => c.typingMedium === 'ENGLISH').length;
 
   return (
     <div className="space-y-6">

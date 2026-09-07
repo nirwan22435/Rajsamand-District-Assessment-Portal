@@ -19,10 +19,14 @@ export const AssignTypingTestModal: React.FC<AssignTypingTestModalProps> = ({
 }) => {
   if (!isOpen || !test) return null;
 
-  // Filter candidates matching test language medium
-  const eligibleCandidates = candidates.filter(
-    (c) => !c.typingMedium || c.typingMedium === test.language
-  );
+  // Only candidates specifically registered for typing test module are eligible.
+  // Candidates created in Candidate Directory module are excluded.
+  const eligibleCandidates = candidates.filter((c) => {
+    const isTypingCandidate =
+      c.registeredModule === 'TYPING' || Boolean(c.typingMedium) || c.id.startsWith('cand-typ-');
+    if (!isTypingCandidate) return false;
+    return !c.typingMedium || c.typingMedium === test.language;
+  });
 
   const initialAssigned = test.assignedCandidateIds || [];
   const [selectedIds, setSelectedIds] = useState<string[]>(

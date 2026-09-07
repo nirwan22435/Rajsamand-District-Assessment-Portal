@@ -63,11 +63,16 @@ export const EmailLogView: React.FC<EmailLogViewProps> = ({ logs, candidates = [
     <div className="space-y-6 pb-12">
       {/* Header Banner Card */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 p-6 sm:p-8 rounded-2xl text-white shadow-xl">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Notification & Email Audit Logs</h1>
-          <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
-            Audit log of credentials, assessment assignments, and PDF scorecards dispatched via SMTP.
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-cyan-500/20 border border-cyan-400/35 flex items-center justify-center text-cyan-300 shadow-lg shadow-cyan-950/40 shrink-0">
+            <Mail className="w-6 h-6 sm:w-7 sm:h-7 text-cyan-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Notification & Email Audit Logs</h1>
+            <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
+              Audit log of credentials, assessment assignments, and PDF scorecards dispatched via SMTP.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center space-x-2 bg-black/30 border border-white/10 p-2 rounded-xl backdrop-blur-xs self-start sm:self-auto">

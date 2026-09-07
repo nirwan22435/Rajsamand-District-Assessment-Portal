@@ -22,6 +22,7 @@ import { PublishedTestPapersView } from './components/PublishedTestPapersView';
 import { TypingTestSection } from './components/typing/TypingTestSection';
 import { ThemePreviewModal, APP_THEMES } from './components/ThemePreviewModal';
 import { DesktopSetupModal } from './components/DesktopSetupModal';
+import { AndroidAppModal } from './components/AndroidAppModal';
 import { downloadWindowsSetupScript } from './utils/desktopAppDownloader';
 import { applyThemeToDOM } from './utils/themeManager';
 import { safeStorage } from './utils/safeStorage';
@@ -62,6 +63,7 @@ export default function App() {
   });
   const [isThemeModalOpen, setIsThemeModalOpen] = useState<boolean>(false);
   const [isDesktopModalOpen, setIsDesktopModalOpen] = useState<boolean>(false);
+  const [isAndroidModalOpen, setIsAndroidModalOpen] = useState<boolean>(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
@@ -91,6 +93,10 @@ export default function App() {
 
     // 2. Open the desktop setup modal with 1-click Windows installer options
     setIsDesktopModalOpen(true);
+  };
+
+  const handleTriggerAndroidInstall = () => {
+    setIsAndroidModalOpen(true);
   };
 
   useEffect(() => {
@@ -146,7 +152,7 @@ export default function App() {
     });
 
     const unsubAttempts = subscribeAttempts((data) => {
-      if (data.length > 0) setAttempts(data);
+      setAttempts(data);
     });
 
     const unsubLogs = subscribeEmailLogs((data) => {
@@ -240,8 +246,34 @@ export default function App() {
   };
 
   const handleDeleteCandidate = async (candidateId: string) => {
+    const candToDelete = candidates.find((c) => c.id === candidateId);
+    const candEmail = candToDelete?.email?.toLowerCase().trim();
+
+    // 1. Remove candidate from local state
     setCandidates((prev) => prev.filter((c) => c.id !== candidateId));
-    await deleteCandidateFromFirestore(candidateId);
+
+    // 2. Cascade remove test submissions / attempts of deleted candidate
+    setAttempts((prev) =>
+      prev.filter((a) => {
+        const matchId = a.candidateId === candidateId;
+        const matchEmail =
+          candEmail && a.candidateEmail && a.candidateEmail.toLowerCase().trim() === candEmail;
+        return !matchId && !matchEmail;
+      })
+    );
+
+    // 3. Cascade remove typing attempts of deleted candidate
+    setTypingAttempts((prev) =>
+      prev.filter((a) => {
+        const matchId = a.candidateId === candidateId;
+        const matchEmail =
+          candEmail && a.candidateEmail && a.candidateEmail.toLowerCase().trim() === candEmail;
+        return !matchId && !matchEmail;
+      })
+    );
+
+    // 4. Delete candidate and associated test submissions from Firestore
+    await deleteCandidateFromFirestore(candidateId, candEmail);
   };
 
   const handleToggleCandidateStatus = async (id: string) => {
@@ -471,6 +503,7 @@ export default function App() {
           onLogEmail={(log) => setEmailLogs((prev) => [log, ...prev])}
           onOpenThemeModal={() => setIsThemeModalOpen(true)}
           onOpenDesktopModal={handleTriggerDesktopInstall}
+          onOpenAndroidModal={handleTriggerAndroidInstall}
         />
         {/* Theme Selection & Style Gallery Modal */}
         <ThemePreviewModal
@@ -486,6 +519,13 @@ export default function App() {
         <DesktopSetupModal
           isOpen={isDesktopModalOpen}
           onClose={() => setIsDesktopModalOpen(false)}
+          deferredPrompt={deferredPrompt}
+          setDeferredPrompt={setDeferredPrompt}
+        />
+        {/* Android App & Mobile Sync Modal */}
+        <AndroidAppModal
+          isOpen={isAndroidModalOpen}
+          onClose={() => setIsAndroidModalOpen(false)}
           deferredPrompt={deferredPrompt}
           setDeferredPrompt={setDeferredPrompt}
         />
@@ -511,6 +551,7 @@ export default function App() {
         onOpenLogin={() => setShowLoginModal(true)}
         onOpenThemeModal={() => setIsThemeModalOpen(true)}
         onOpenDesktopModal={handleTriggerDesktopInstall}
+        onOpenAndroidModal={handleTriggerAndroidInstall}
       />
 
       {/* Main Container Area */}
@@ -733,6 +774,13 @@ export default function App() {
       <DesktopSetupModal
         isOpen={isDesktopModalOpen}
         onClose={() => setIsDesktopModalOpen(false)}
+        deferredPrompt={deferredPrompt}
+        setDeferredPrompt={setDeferredPrompt}
+      />
+      {/* Android App & Mobile Sync Modal */}
+      <AndroidAppModal
+        isOpen={isAndroidModalOpen}
+        onClose={() => setIsAndroidModalOpen(false)}
         deferredPrompt={deferredPrompt}
         setDeferredPrompt={setDeferredPrompt}
       />

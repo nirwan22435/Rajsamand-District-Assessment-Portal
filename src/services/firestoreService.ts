@@ -176,13 +176,58 @@ export async function saveCandidateToFirestore(candidate: Candidate) {
   }
 }
 
-// Delete candidate
-export async function deleteCandidateFromFirestore(candidateId: string) {
-  const path = `${CANDIDATES_COL}/${candidateId}`;
+// Delete candidate and cascade-delete all test submissions / attempts
+export async function deleteCandidateFromFirestore(candidateId: string, candidateEmail?: string) {
   try {
     await deleteDoc(doc(db, CANDIDATES_COL, candidateId));
   } catch (error) {
     console.error('Firestore delete candidate error:', error);
+  }
+
+  // Delete test attempts/submissions associated with this candidate
+  try {
+    const attemptsSnap = await getDocs(collection(db, ATTEMPTS_COL));
+    const targetEmail = candidateEmail ? candidateEmail.toLowerCase().trim() : null;
+    const deletePromises: Promise<void>[] = [];
+    attemptsSnap.forEach((docSnap) => {
+      const data = docSnap.data();
+      const matchId = data.candidateId === candidateId;
+      const matchEmail =
+        targetEmail &&
+        data.candidateEmail &&
+        data.candidateEmail.toLowerCase().trim() === targetEmail;
+      if (matchId || matchEmail) {
+        deletePromises.push(deleteDoc(doc(db, ATTEMPTS_COL, docSnap.id)));
+      }
+    });
+    if (deletePromises.length > 0) {
+      await Promise.all(deletePromises);
+    }
+  } catch (err) {
+    console.error('Firestore cascade delete attempts error:', err);
+  }
+
+  // Delete typing attempts associated with this candidate
+  try {
+    const typingAttemptsSnap = await getDocs(collection(db, TYPING_ATTEMPTS_COL));
+    const targetEmail = candidateEmail ? candidateEmail.toLowerCase().trim() : null;
+    const deletePromises: Promise<void>[] = [];
+    typingAttemptsSnap.forEach((docSnap) => {
+      const data = docSnap.data();
+      const matchId = data.candidateId === candidateId;
+      const matchEmail =
+        targetEmail &&
+        data.candidateEmail &&
+        data.candidateEmail.toLowerCase().trim() === targetEmail;
+      if (matchId || matchEmail) {
+        deletePromises.push(deleteDoc(doc(db, TYPING_ATTEMPTS_COL, docSnap.id)));
+      }
+    });
+    if (deletePromises.length > 0) {
+      await Promise.all(deletePromises);
+    }
+  } catch (err) {
+    console.error('Firestore cascade delete typing attempts error:', err);
   }
 }
 

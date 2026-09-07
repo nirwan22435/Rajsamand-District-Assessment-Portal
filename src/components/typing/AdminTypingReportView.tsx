@@ -23,6 +23,9 @@ import {
   Calendar,
   FileDown,
   X,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface AdminTypingReportViewProps {
@@ -57,6 +60,7 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
   const [selectedStatus, setSelectedStatus] = useState<'ALL' | 'QUALIFIED' | 'DISQUALIFIED'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [deletingAttemptId, setDeletingAttemptId] = useState<string | null>(null);
+  const [showPaperSummary, setShowPaperSummary] = useState<boolean>(true);
 
   // Selected attempt for detailed scorecard inspection modal
   const [viewingAttempt, setViewingAttempt] = useState<TypingAttempt | null>(null);
@@ -143,6 +147,44 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
       highestNetWpm: highestSpeed,
     };
   }, [filteredAttempts]);
+
+  // Paper-wise typing test result summary
+  const paperWiseSummary = useMemo(() => {
+    return tests.map((test) => {
+      // Find all attempts for this specific paper (respecting selected date filter if set)
+      const paperAttempts = attempts.filter((att) => {
+        if (att.typingTestId !== test.id) return false;
+        if (selectedDate) {
+          const rawDate = att.submittedAt || (att as any).examDate || '';
+          if (!rawDate) return false;
+          const attemptDateStr = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate.substring(0, 10);
+          if (attemptDateStr !== selectedDate) return false;
+        }
+        return true;
+      });
+
+      const appeared = paperAttempts.length;
+      const qualified = paperAttempts.filter((a) => a.status === 'QUALIFIED').length;
+      const passRate = appeared > 0 ? Math.round((qualified / appeared) * 100) : 0;
+      const avgNet = appeared > 0 ? Math.round((paperAttempts.reduce((acc, a) => acc + (a.netWpm || 0), 0) / appeared) * 10) / 10 : 0;
+      const highestNet = appeared > 0 ? Math.max(...paperAttempts.map((a) => a.netWpm || 0)) : 0;
+      const avgAcc = appeared > 0 ? Math.round((paperAttempts.reduce((acc, a) => acc + (a.accuracyPercentage || 0), 0) / appeared) * 10) / 10 : 0;
+
+      return {
+        testId: test.id,
+        title: test.title,
+        language: test.language,
+        durationMinutes: test.durationMinutes,
+        minPassingWpm: test.minPassingWpm,
+        totalAppeared: appeared,
+        totalQualified: qualified,
+        passPercentage: passRate,
+        avgNetWpm: avgNet,
+        highestNetWpm: highestNet,
+        avgAccuracy: avgAcc,
+      };
+    });
+  }, [tests, attempts, selectedDate]);
 
   // Determine current exam date for heading
   const currentExamDateFormatted = useMemo(() => {
@@ -301,6 +343,144 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
           </span>
           <span className="text-[10px] text-slate-400">English & Hindi</span>
         </div>
+      </div>
+
+      {/* Typing Test Paper-Wise Result Summary Section */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="p-4 bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <BookOpen className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white flex items-center gap-2">
+                <span>Typing Test Paper-Wise Result Summary</span>
+                <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
+                  {paperWiseSummary.length} {paperWiseSummary.length === 1 ? 'Paper' : 'Papers'}
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                Paper-specific candidate turnout, passing percentage, average speed & highest WPM
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowPaperSummary(!showPaperSummary)}
+            className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60 flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <span>{showPaperSummary ? 'Hide Details' : 'Show Paper Summary'}</span>
+            {showPaperSummary ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+
+        {showPaperSummary && (
+          <div className="p-4">
+            {paperWiseSummary.length === 0 ? (
+              <div className="text-center py-6 text-slate-400 text-xs font-medium">
+                No typing test papers registered yet.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {paperWiseSummary.map((paper) => {
+                  const isFiltered = selectedTestId === paper.testId;
+                  const isHindi = paper.language === 'HINDI_DEVLYS_010';
+
+                  return (
+                    <div
+                      key={paper.testId}
+                      className={`p-4 rounded-2xl border transition-all ${
+                        isFiltered
+                          ? 'border-amber-500 bg-amber-50/40 dark:bg-amber-950/20 ring-2 ring-amber-500/30'
+                          : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 hover:border-slate-300 dark:hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                            <span
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                                isHindi
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300'
+                                  : 'bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300'
+                              }`}
+                            >
+                              {isHindi ? 'DevLys 010 (Hindi)' : 'English'}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {paper.durationMinutes}m • Pass: ≥{paper.minPassingWpm} WPM
+                            </span>
+                          </div>
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate" title={paper.title}>
+                            {paper.title}
+                          </h4>
+                        </div>
+                      </div>
+
+                      {/* 4 Mini Metric Badges */}
+                      <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-200/80 dark:border-slate-700/60">
+                        <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
+                          <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400">
+                            Turnout
+                          </span>
+                          <span className="text-base font-black text-slate-900 dark:text-white">
+                            {paper.totalAppeared}
+                          </span>
+                          <span className="block text-[9px] text-slate-500">Appeared</span>
+                        </div>
+
+                        <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/60">
+                          <span className="block text-[9px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                            Qualified
+                          </span>
+                          <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                            {paper.totalQualified}{' '}
+                            <span className="text-[10px] font-normal">({paper.passPercentage}%)</span>
+                          </span>
+                          <span className="block text-[9px] text-emerald-600 dark:text-emerald-400">Pass Rate</span>
+                        </div>
+
+                        <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/50 border border-sky-200/80 dark:border-sky-800/60">
+                          <span className="block text-[9px] font-black uppercase tracking-wider text-sky-700 dark:text-sky-400">
+                            Avg Speed
+                          </span>
+                          <span className="text-base font-black text-sky-600 dark:text-sky-400">
+                            {paper.avgNetWpm} <span className="text-[10px]">WPM</span>
+                          </span>
+                          <span className="block text-[9px] text-sky-600 dark:text-sky-400">{paper.avgAccuracy}% Acc</span>
+                        </div>
+
+                        <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 border border-purple-200/80 dark:border-purple-800/60">
+                          <span className="block text-[9px] font-black uppercase tracking-wider text-purple-700 dark:text-purple-400">
+                            Highest
+                          </span>
+                          <span className="text-base font-black text-purple-600 dark:text-purple-400">
+                            {paper.highestNetWpm} <span className="text-[10px]">WPM</span>
+                          </span>
+                          <span className="block text-[9px] text-purple-600 dark:text-purple-400">Top Speed</span>
+                        </div>
+                      </div>
+
+                      {/* Quick Filter Action Button */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTestId(isFiltered ? 'ALL' : paper.testId)}
+                        className={`w-full mt-3 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          isFiltered
+                            ? 'bg-amber-600 text-white shadow-xs'
+                            : 'bg-slate-200/80 hover:bg-slate-300/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        {isFiltered ? 'Active Filter (Click to Reset)' : 'Filter Results to This Paper'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Filters Toolbar */}

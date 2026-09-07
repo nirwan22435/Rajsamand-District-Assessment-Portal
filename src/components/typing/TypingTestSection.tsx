@@ -93,6 +93,12 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
   // Completed result modal state
   const [lastFinishedAttempt, setLastFinishedAttempt] = useState<TypingAttempt | null>(null);
 
+  // Isolate candidates specifically registered for typing test module.
+  // Candidates created on Candidate Directory module are excluded from Typing Test module.
+  const typingCandidates = candidates.filter(
+    (c) => c.registeredModule === 'TYPING' || Boolean(c.typingMedium) || c.id.startsWith('cand-typ-')
+  );
+
   // Filter attempts for candidate
   const candidateAttempts = activeCandidate
     ? attempts.filter((a) => a.candidateId === activeCandidate.id || a.candidateEmail === activeCandidate.email)
@@ -183,14 +189,19 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* 1. Official Header Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-amber-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-amber-500/20 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
-        <div className="relative z-10">
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-            Typing Speed Assessment & Evaluation
-          </h1>
-          <p className="text-sm text-slate-300 max-w-2xl mt-1.5 leading-relaxed">
-            Standardized 10-minute speed evaluation in <strong>English</strong> and{' '}
-            <strong>Hindi (DevLys 010)</strong> with gross & net WPM, accuracy %, and official scorecards.
-          </p>
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-rose-500/20 border border-rose-400/35 flex items-center justify-center text-rose-300 shadow-lg shadow-rose-950/40 shrink-0">
+            <Keyboard className="w-6 h-6 sm:w-7 sm:h-7 text-rose-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+              Typing Speed Assessment & Evaluation
+            </h1>
+            <p className="text-sm text-slate-300 max-w-2xl mt-1.5 leading-relaxed">
+              Standardized 10-minute speed evaluation in <strong>English</strong> and{' '}
+              <strong>Hindi (DevLys 010)</strong> with gross & net WPM, accuracy %, and official scorecards.
+            </p>
+          </div>
         </div>
 
         {role === 'ADMIN' ? (
@@ -287,7 +298,14 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
           {/* Sub-Tab 1: Reports & Analytics */}
           {adminSubTab === 'REPORTS' && (
             <AdminTypingReportView
-              attempts={attempts}
+              attempts={attempts.filter((a) => {
+                const validIds = new Set(candidates.map((c) => c.id));
+                const validEmails = new Set(candidates.map((c) => c.email?.toLowerCase().trim()));
+                return (
+                  (a.candidateId && validIds.has(a.candidateId)) ||
+                  (a.candidateEmail && validEmails.has(a.candidateEmail.toLowerCase().trim()))
+                );
+              })}
               tests={tests}
               onDeleteAttempt={onDeleteAttempt}
               onViewScorecard={(attempt) => {
@@ -301,7 +319,7 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
           {/* Sub-Tab 2: Typing Candidates Registration & Roll Management */}
           {adminSubTab === 'TYPING_CANDIDATES' && (
             <AdminTypingCandidatesView
-              candidates={candidates}
+              candidates={typingCandidates}
               onOpenRegisterModal={() => {
                 setEditingCandidate(null);
                 setIsRegisterCandidateModalOpen(true);
@@ -712,7 +730,7 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
           isOpen={!!assigningTest}
           onClose={() => setAssigningTest(null)}
           test={assigningTest}
-          candidates={candidates}
+          candidates={typingCandidates}
           onSaveAssignment={handleSaveAssignment}
         />
       )}
