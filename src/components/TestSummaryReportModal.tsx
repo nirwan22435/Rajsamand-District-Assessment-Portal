@@ -325,7 +325,7 @@ export const TestSummaryReportModal: React.FC<TestSummaryReportModalProps> = ({
                                   : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700'
                               }`}
                             >
-                              {att.status === 'PASSED' ? 'PASSED' : 'NEEDS FOCUS'}
+                              {att.status === 'PASSED' ? 'PASSED' : 'NOT QUALIFIED'}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-center">

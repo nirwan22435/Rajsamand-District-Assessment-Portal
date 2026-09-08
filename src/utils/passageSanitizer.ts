@@ -72,7 +72,7 @@ export function analyzeToken(token: string, index: number, isHindi: boolean): To
   // Derive Unicode Devanagari representation
   let unicodeRepr = refined;
   if (isHindi) {
-    const isDevlysAscii = /^[A-Za-z0-9~`!@#$%^&*()_+\-=\[\]{}':;"\\|,.<>\/?]+$/.test(refined) && !/[\u0900-\u097F]/.test(refined);
+    const isDevlysAscii = !/[\u0900-\u097F]/.test(refined) || /[A-Za-zçÁØÝæäéàáâãíìïêëô÷ÌÍÎÏÑÔÖÜËè¶¸|}]/.test(refined);
     if (isDevlysAscii) {
       unicodeRepr = convertDevlysToUnicode(refined);
     }
@@ -169,11 +169,11 @@ export function verifyDevlysKeystrokeMatch(
     return { isMatch: false, refUnicode: refWord || '', typedUnicode: typedWord || '' };
   }
 
-  const refUnicode = /^[A-Za-z0-9~`!@#$%^&*()_+\-=\[\]{}':;"\\|,.<>\/?]+$/.test(refWord) && !/[\u0900-\u097F]/.test(refWord)
+  const refUnicode = (!/[\u0900-\u097F]/.test(refWord) || /[A-Za-zçÁØÝæäéàáâãíìïêëô÷ÌÍÎÏÑÔÖÜËè¶¸|}]/.test(refWord))
     ? convertDevlysToUnicode(refWord)
     : refWord;
 
-  const typedUnicode = /^[A-Za-z0-9~`!@#$%^&*()_+\-=\[\]{}':;"\\|,.<>\/?]+$/.test(typedWord) && !/[\u0900-\u097F]/.test(typedWord)
+  const typedUnicode = (!/[\u0900-\u097F]/.test(typedWord) || /[A-Za-zçÁØÝæäéàáâãíìïêëô÷ÌÍÎÏÑÔÖÜËè¶¸|}]/.test(typedWord))
     ? convertDevlysToUnicode(typedWord)
     : typedWord;
 

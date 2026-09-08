@@ -155,22 +155,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  // Exclude typing-test-registered candidates from general assessment analytics
+  // Exclude typing-test-registered candidates and ensure candidate is actively registered in the directory (not deleted or disabled)
   const assessmentCandidates = candidates.filter(
-    (c) => c.registeredModule !== 'TYPING' && !c.typingMedium && !c.id.startsWith('cand-typ-')
+    (c) =>
+      c.activeStatus !== false &&
+      c.registeredModule !== 'TYPING' &&
+      !c.typingMedium &&
+      !c.id.startsWith('cand-typ-')
   );
 
-  // Set of valid directory candidate IDs and emails (excluding deleted candidates)
-  const validCandidateIds = new Set(candidates.map((c) => c.id));
-  const validCandidateEmails = new Set(candidates.map((c) => c.email.toLowerCase().trim()));
+  // Set of valid directory candidate IDs and emails for active directory candidates
+  const validCandidateIds = new Set(assessmentCandidates.map((c) => c.id));
+  const validCandidateEmails = new Set(
+    assessmentCandidates
+      .map((c) => c.email?.toLowerCase().trim())
+      .filter(Boolean) as string[]
+  );
 
-  // Active attempts belonging only to candidates currently existing in the candidate directory
+  // Active attempts belonging strictly to candidates currently existing in the candidate directory
   // (Removes candidate data from test submission in district analytics if candidate has been deleted from directory)
   const validDirectoryAttempts = attempts.filter((a) => {
     const hasValidId = a.candidateId && validCandidateIds.has(a.candidateId);
     const hasValidEmail =
       a.candidateEmail && validCandidateEmails.has(a.candidateEmail.toLowerCase().trim());
-    return hasValidId || hasValidEmail;
+    return Boolean(hasValidId || hasValidEmail);
   });
 
   // Active test paper object if filtered
@@ -193,8 +201,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const publishedTestsCount = tests.filter((t) => t.status === 'PUBLISHED').length;
   const totalAttemptsCount = activeAttempts.length;
 
-  // Assessed candidates (unique candidate IDs with at least 1 attempt)
-  const assessedCandidateIds = new Set(activeAttempts.map((a) => a.candidateId));
+  // Assessed candidates: count strictly active, existing candidates who have submitted at least 1 attempt
+  // (Guarantees candidates deleted from app are never counted)
+  const assessedCandidateIds = new Set<string>();
+  activeCandidatesInScope.forEach((c) => {
+    const cEmail = c.email?.toLowerCase().trim();
+    const hasAttempt = activeAttempts.some(
+      (a) => a.candidateId === c.id || (cEmail && a.candidateEmail?.toLowerCase().trim() === cEmail)
+    );
+    if (hasAttempt) {
+      assessedCandidateIds.add(c.id);
+    }
+  });
   const assessedCandidatesCount = assessedCandidateIds.size;
 
   const passedAttemptsCount = activeAttempts.filter((a) => {
@@ -218,7 +236,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     { bracket: '75-89% (Distinction)', count: 0, color: '#2563eb' },
     { bracket: '50-74% (Satisfactory)', count: 0, color: '#7c3aed' },
     { bracket: '40-49% (Pass)', count: 0, color: '#d97706' },
-    { bracket: '<40% (Needs Focus)', count: 0, color: '#e11d48' },
+    { bracket: '<40% (Not Qualified)', count: 0, color: '#e11d48' },
   ];
 
   activeAttempts.forEach((att) => {
@@ -241,7 +259,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const pieData = [
     { name: 'Qualified Candidates', value: passedCandidatesCount, color: '#10b981' },
-    { name: 'Needs Focus', value: needsImprovementCandidatesCount, color: '#f43f5e' },
+    { name: 'Not Qualified', value: needsImprovementCandidatesCount, color: '#f43f5e' },
     { name: 'Unassessed Candidates', value: unassessedCandidatesCount, color: '#64748b' },
   ];
 
@@ -286,7 +304,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         const score = hasAttempted ? candAttempt.scoreObtained : 'N/A';
         const pct = hasAttempted ? `${candAttempt.scorePercentage}%` : 'N/A';
         const isPassed = hasAttempted && candAttempt.scoreObtained >= activeTestPaper.passingMarks;
-        const status = !hasAttempted ? 'UNASSESSED' : isPassed ? 'PASSED' : 'NEEDS_FOCUS';
+        const status = !hasAttempted ? 'UNASSESSED' : isPassed ? 'PASSED' : 'NOT_QUALIFIED';
         const attemptDate = hasAttempted ? new Date(candAttempt.submittedAt).toLocaleDateString('en-IN') : 'N/A';
 
         return [
@@ -336,7 +354,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             ? Math.round(candAttempts.reduce((sum, a) => sum + a.scorePercentage, 0) / attemptsCount)
             : 0;
         const hasPassed = candAttempts.some((a) => a.status === 'PASSED');
-        const status = attemptsCount === 0 ? 'UNASSESSED' : hasPassed ? 'PASSED' : 'NEEDS_FOCUS';
+        const status = attemptsCount === 0 ? 'UNASSESSED' : hasPassed ? 'PASSED' : 'NOT_QUALIFIED';
 
         return [
           c.registrationId,
@@ -505,11 +523,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                {activeTestPaper ? 'Candidates In Scope' : 'Total Candidates'}
+                {activeTestPaper ? 'Active Assessed Candidates' : 'Total Candidates'}
               </p>
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">{totalCandidates}</h3>
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                {assessedCandidatesCount}
+              </h3>
               <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1">
-                <UserCheck className="w-3 h-3" /> {assessedCandidatesCount} candidates assessed
+                <UserCheck className="w-3 h-3" /> Active assessed candidates
               </p>
             </div>
             <div className="p-3.5 rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-xs">
@@ -629,7 +649,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {activeTestPaper ? `Qualification Breakdown: ${activeTestPaper.title}` : 'Candidate Qualification Breakdown'}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              {activeTestPaper ? `Qualified vs Needs Focus vs Unassessed for ${activeTestPaper.title}` : 'Ratio of Qualified vs Needs Focus vs Unassessed Candidates'}
+              {activeTestPaper ? `Qualified vs Not Qualified vs Unassessed for ${activeTestPaper.title}` : 'Ratio of Qualified vs Not Qualified vs Unassessed Candidates'}
             </p>
 
             <div className="h-56 w-full">
@@ -788,7 +808,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-semibold">
-                              <AlertTriangle className="w-3.5 h-3.5" /> Needs Focus
+                              <AlertTriangle className="w-3.5 h-3.5" /> Not Qualified
                             </span>
                           )}
                         </td>
@@ -862,7 +882,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-semibold">
-                            <AlertTriangle className="w-3.5 h-3.5" /> Needs Focus
+                            <AlertTriangle className="w-3.5 h-3.5" /> Not Qualified
                           </span>
                         )}
                       </td>
@@ -974,7 +994,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         {att.status === 'PASSED' ? (
                           <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Passed</span>
                         ) : (
-                          <span className="text-rose-600 dark:text-rose-400 font-semibold">Needs Focus</span>
+                          <span className="text-rose-600 dark:text-rose-400 font-semibold">Not Qualified</span>
                         )}
                       </td>
                       <td className="px-5 py-3.5 text-center text-slate-500 dark:text-slate-400 text-[11px]">

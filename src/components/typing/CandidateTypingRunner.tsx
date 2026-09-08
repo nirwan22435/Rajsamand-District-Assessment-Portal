@@ -40,6 +40,45 @@ interface CandidateTypingRunnerProps {
   onCancel: () => void;
 }
 
+interface PassageWordItemProps {
+  item: WordComparisonItem;
+  isCurrent: boolean;
+}
+
+const PassageWordItem = React.memo<PassageWordItemProps>(
+  ({ item, isCurrent }) => {
+    let wordStyle = 'text-slate-700 dark:text-slate-300 px-1 py-0.5 rounded';
+
+    if (item.status === 'CORRECT') {
+      wordStyle =
+        'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 font-bold border-b-2 border-emerald-500/80 px-1.5 py-0.5 rounded shadow-2xs';
+    } else if (item.status === 'INCORRECT') {
+      wordStyle =
+        'text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/80 font-bold border-b-2 border-rose-500 px-1.5 py-0.5 rounded shadow-2xs';
+    } else if (item.status === 'CURRENT') {
+      wordStyle =
+        'bg-amber-300/50 text-amber-950 dark:text-amber-200 font-extrabold border-b-2 border-amber-600 px-1.5 py-0.5 rounded shadow-xs';
+    } else if (item.status === 'CURRENT_MISMATCH') {
+      wordStyle =
+        'bg-rose-200/70 text-rose-900 dark:text-rose-200 font-extrabold border-b-2 border-rose-600 px-1.5 py-0.5 rounded shadow-xs';
+    }
+
+    return (
+      <span id={`passage-word-${item.index}`} className={wordStyle}>
+        {item.refWord}
+      </span>
+    );
+  },
+  (prev, next) => {
+    return (
+      prev.item.status === next.item.status &&
+      prev.isCurrent === next.isCurrent &&
+      prev.item.refWord === next.item.refWord
+    );
+  }
+);
+PassageWordItem.displayName = 'PassageWordItem';
+
 export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
   test,
   candidate,
@@ -167,39 +206,55 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
   // References
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const passageContainerRef = useRef<HTMLDivElement | null>(null);
-  const activeWordRef = useRef<HTMLSpanElement | null>(null);
 
   const sanitizedPassage = useMemo(() => {
     return auditAndRefinePassage(test.passageText, isHindi).refinedPassage || test.passageText;
   }, [test.passageText, isHindi]);
   const referenceWords = useMemo(() => getWordsArray(sanitizedPassage), [sanitizedPassage]);
 
-  // Live evaluation with independent word-by-word matching
-  const timeElapsedSeconds = Math.max(1, durationSeconds - secondsRemaining);
+  // Target qualifying words threshold
   const targetQualifyingWords =
     test.minCorrectWords || (test.minPassingWpm ? test.minPassingWpm * 10 : (isHindi ? 250 : 300));
 
-  const liveEvaluation = useMemo(() => {
+  // 1. Live word evaluation ONLY recalculates when typedText or passage changes (NOT on timer ticks)
+  const wordEvaluation = useMemo(() => {
     return evaluateTyping(
       sanitizedPassage,
       typedText,
-      timeElapsedSeconds,
+      durationSeconds,
       test.minPassingWpm || (isHindi ? 25 : 30),
       isHindi,
       targetQualifyingWords
     );
-  }, [sanitizedPassage, typedText, timeElapsedSeconds, test.minPassingWpm, isHindi, targetQualifyingWords]);
+  }, [sanitizedPassage, typedText, isHindi, targetQualifyingWords, test.minPassingWpm, durationSeconds]);
 
-  // Find index of currently active word directly from live evaluation statuses
+  // 2. High-precision dynamic live metrics calculated on-demand from wall-clock elapsed time
+  const timeElapsedSeconds = Math.max(1, durationSeconds - secondsRemaining);
+  const timeInMinutes = timeElapsedSeconds / 60;
+  const liveNetWpm = Math.max(0, Math.round((wordEvaluation.correctWordsCount / timeInMinutes) * 10) / 10);
+
+  // Combined shallow view object for UI components
+  const liveEvaluation = useMemo(() => ({
+    ...wordEvaluation,
+    netWpm: liveNetWpm,
+  }), [wordEvaluation, liveNetWpm]);
+
+  // Find index of currently active word directly from evaluation statuses
   const activeWordIndex = useMemo(() => {
-    const currentIdx = liveEvaluation.wordStatuses.findIndex(
+    const currentIdx = wordEvaluation.wordStatuses.findIndex(
       (item) => item.status === 'CURRENT' || item.status === 'CURRENT_MISMATCH'
     );
     if (currentIdx !== -1) return currentIdx;
     const rawTokens = getWordsArray(typedText);
     const hasTrailingSpace = /\s$/.test(typedText);
     return hasTrailingSpace ? rawTokens.length : Math.max(0, rawTokens.length - 1);
-  }, [liveEvaluation, typedText]);
+  }, [wordEvaluation, typedText]);
+
+  // Fast count of typed words for toolbar
+  const typedWordsCount = useMemo(() => {
+    const trimmed = typedText.trim();
+    return trimmed ? trimmed.split(/\s+/).length : 0;
+  }, [typedText]);
 
   // Keep refs synchronized on every render
   useEffect(() => {
@@ -247,27 +302,33 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
     };
   }, [isTestStarted, isTestFinished, durationSeconds]);
 
-  // Reliable, smooth Paragraph Auto-Scroll using container-relative bounding rectangles
+  // High-performance Paragraph Auto-Scroll using requestAnimationFrame & offsetTop (zero layout reflow)
   useEffect(() => {
-    if (activeWordRef.current && passageContainerRef.current) {
+    if (!passageContainerRef.current) return;
+
+    const frameId = requestAnimationFrame(() => {
       const container = passageContainerRef.current;
-      const wordEl = activeWordRef.current;
+      if (!container) return;
 
-      const containerRect = container.getBoundingClientRect();
-      const wordRect = wordEl.getBoundingClientRect();
+      const activeEl = container.querySelector(`#passage-word-${activeWordIndex}`) as HTMLElement | null;
+      if (!activeEl) return;
 
-      const relativeTop = wordRect.top - containerRect.top;
+      const wordTop = activeEl.offsetTop;
+      const containerScrollTop = container.scrollTop;
       const containerH = container.clientHeight;
+      const relativeTop = wordTop - containerScrollTop;
 
-      // When the active word progresses beyond 50% of the viewport height, smoothly scroll container
+      // When the active word progresses beyond 55% of the viewport or scrolls above top
       if (relativeTop > containerH * 0.55 || relativeTop < 20) {
-        const targetScrollTop = container.scrollTop + (relativeTop - containerH * 0.35);
+        const targetScrollTop = Math.max(0, wordTop - containerH * 0.35);
         container.scrollTo({
-          top: Math.max(0, targetScrollTop),
+          top: targetScrollTop,
           behavior: 'smooth',
         });
       }
-    }
+    });
+
+    return () => cancelAnimationFrame(frameId);
   }, [activeWordIndex]);
 
   // Handle typing input change
@@ -282,6 +343,61 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
     const value = e.target.value;
     typedTextRef.current = value;
     setTypedText(value);
+  };
+
+  // Handle key down mapping for DevLys 010 Hindi typing
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isTestFinished || isFinishedRef.current) return;
+
+    if (isHindi && (e.code === 'KeyZ' || e.key.toLowerCase() === 'z')) {
+      // User pressed the physical Z key:
+      // "do not map shift+Z for rakar sign, only map Z for that."
+      if (e.shiftKey) {
+        // Shift+Z MUST produce reph ('Z' / 'र्'), never rakar sign.
+        // If CapsLock is active, browser may emit 'z'; ensure it outputs 'Z'.
+        if (e.key === 'z') {
+          e.preventDefault();
+          const target = e.currentTarget;
+          const start = target.selectionStart ?? target.value.length;
+          const end = target.selectionEnd ?? target.value.length;
+          const currentVal = target.value;
+
+          if (!isTestStarted) {
+            setIsTestStarted(true);
+            startTimeRef.current = Date.now();
+          }
+
+          const nextVal = currentVal.substring(0, start) + 'Z' + currentVal.substring(end);
+          target.value = nextVal;
+          target.selectionStart = target.selectionEnd = start + 1;
+          typedTextRef.current = nextVal;
+          setTypedText(nextVal);
+        }
+        return;
+      } else {
+        // Unshifted key Z maps strictly to rakar sign ('z' / '्र', as in 'प्र')
+        // If CapsLock is active without Shift, browser emits 'Z'; ensure it outputs 'z'.
+        if (e.key === 'Z') {
+          e.preventDefault();
+          const target = e.currentTarget;
+          const start = target.selectionStart ?? target.value.length;
+          const end = target.selectionEnd ?? target.value.length;
+          const currentVal = target.value;
+
+          if (!isTestStarted) {
+            setIsTestStarted(true);
+            startTimeRef.current = Date.now();
+          }
+
+          const nextVal = currentVal.substring(0, start) + 'z' + currentVal.substring(end);
+          target.value = nextVal;
+          target.selectionStart = target.selectionEnd = start + 1;
+          typedTextRef.current = nextVal;
+          setTypedText(nextVal);
+        }
+        return;
+      }
+    }
   };
 
   // Open confirmation modal or auto finish
@@ -530,38 +646,13 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
             } ${FONT_SIZES[passageFontIndex].id}`}
           >
             <div className="flex flex-wrap gap-x-2 gap-y-2.5">
-              {liveEvaluation.wordStatuses.map((item, idx) => {
-                const isCurrent = idx === activeWordIndex;
-
-                let wordStyle = 'text-slate-700 dark:text-slate-300 px-1 py-0.5 rounded transition-all';
-
-                if (item.status === 'CORRECT') {
-                  // Accurately typed word (clean green pill, high readability)
-                  wordStyle = 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 font-bold border-b-2 border-emerald-500/80 px-1.5 py-0.5 rounded shadow-2xs';
-                } else if (item.status === 'INCORRECT') {
-                  // ONLY the single mistyped word is highlighted in clear rose pill without CSS text-underline
-                  wordStyle = 'text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/80 font-bold border-b-2 border-rose-500 px-1.5 py-0.5 rounded shadow-2xs';
-                } else if (item.status === 'CURRENT') {
-                  // Active word being typed with matching prefix
-                  wordStyle = 'bg-amber-300/50 text-amber-950 dark:text-amber-200 font-extrabold border-b-2 border-amber-600 px-1.5 py-0.5 rounded shadow-xs';
-                } else if (item.status === 'CURRENT_MISMATCH') {
-                  // Active word has typo in current letters
-                  wordStyle = 'bg-rose-200/70 text-rose-900 dark:text-rose-200 font-extrabold border-b-2 border-rose-600 px-1.5 py-0.5 rounded shadow-xs';
-                } else {
-                  // Untyped future word (clean slate, neutral text)
-                  wordStyle = 'text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded';
-                }
-
-                return (
-                  <span
-                    key={idx}
-                    ref={isCurrent ? activeWordRef : null}
-                    className={wordStyle}
-                  >
-                    {item.refWord}
-                  </span>
-                );
-              })}
+              {wordEvaluation.wordStatuses.map((item, idx) => (
+                <PassageWordItem
+                  key={idx}
+                  item={item}
+                  isCurrent={idx === activeWordIndex}
+                />
+              ))}
             </div>
           </div>
 
@@ -619,7 +710,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
               </div>
 
               <div className="text-[11px] font-mono font-bold text-slate-500 hidden sm:block">
-                {typedText.length} Chars • {typedText.split(/\s+/).filter(Boolean).length} Words
+                {typedText.length} Chars • {typedWordsCount} Words
               </div>
             </div>
           </div>
@@ -630,6 +721,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
               ref={textareaRef}
               value={typedText}
               onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
               placeholder={
                 !isTestStarted
                   ? isHindi

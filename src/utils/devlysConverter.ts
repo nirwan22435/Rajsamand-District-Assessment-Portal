@@ -10,6 +10,62 @@ export function convertDevlysToUnicode(devlysText: string): string {
 
   // Replace compound special characters & conjuncts
   const compoundReplacements: [string | RegExp, string][] = [
+    // Alt Codes and special conjunct glyphs in DevLys 010 / Kruti Dev
+    [/ç/g, 'प्र'],     // Alt+0231 (Crucial for Remington words like 'प्रतिदिन' - çfrfnu)
+    [/Á/g, 'प्र'],     // Alt+0193
+    [/Ø/g, 'क्र'],     // Alt+0216
+    [/Ð/g, 'क्र'],     // Alt+0208
+    [/Ý/g, 'फ्र'],     // Alt+0221
+    [/æ/g, 'द्र'],     // Alt+0230
+    [/\|/g, 'द्य'],    // Alt+0124 (Crucial for words like 'विद्यालय' - fo|ky;)
+    [/}/g, 'द्व'],     // Alt+0125
+    [/\)/g, 'द्ध'],    // Alt+0041
+    [/Ùk/g, 'त्त'],
+    [/Ù/g, 'त्त्'],
+    [/ä/g, 'क्त'],     // Alt+0228
+    [/–/g, 'दृ'],     // Alt+0150
+    [/—/g, 'कृ'],     // Alt+0151
+    [/Ñ/g, 'कृ'],     // Alt+0209
+    [/é/g, 'न्न'],     // Alt+0233
+    [/™/g, 'न्न्'],    // Alt+0153
+    [/à/g, 'ह्न'],     // Alt+0224
+    [/á/g, 'ह्य'],     // Alt+0225
+    [/â/g, 'हृ'],     // Alt+0226
+    [/ã/g, 'ह्म'],     // Alt+0227
+    [/í/g, 'द्द'],     // Alt+0237
+    [/ì/g, 'ड्ड'],     // Alt+0236
+    [/ï/g, 'ड्ढ'],     // Alt+0239
+    [/ê/g, 'ट्ट'],     // Alt+0234
+    [/ë/g, 'ट्ठ'],     // Alt+0235
+    [/ô/g, 'क्क'],     // Alt+0244
+    [/÷/g, 'झ्'],
+    [/Ì/g, 'द्द'],
+    [/Í/g, 'ट्ट'],
+    [/Î/g, 'ट्ठ'],
+    [/Ï/g, 'ड्ड'],
+    [/Ô/g, 'ड्ढ'],
+    [/Ö/g, 'झ्'],
+    [/Ük/g, 'श'],
+    [/Ü/g, 'श्'],
+    [/Ë/g, 'ध्'],
+    [/è/g, 'ध'],
+    [/¶/g, 'फ्'],
+    [/¸/g, 'य्'],
+    [/Vª/g, 'ट्र'],
+    [/Mª/g, 'ड्र'],
+    [/Nª/g, 'छ्र'],
+    [/<ªª/g, 'ढ्र'],
+    [/<ª/g, 'ढ्र'],
+    [/ª/g, '्र'],
+    [/xz/g, 'ग्र'],
+    [/nzZ/g, 'र्द्र'],
+    [/~j/g, '्र'],
+    [/#/g, 'रु'],
+    [/:/g, 'रू'],
+    [/Œ/g, '॰'],
+    [/ñ/g, '॰'],
+    [/,s/g, 'ऐ'],
+    [/,/g, 'ए'],      // Comma key in Remington layout gives 'ए' (e.g. 'fy,' -> 'लिए')
     [/vksSa/g, 'ॐ'],
     [/AA/g, '॥'],
     [/A/g, '।'],
@@ -112,9 +168,7 @@ export function convertDevlysToUnicode(devlysText: string): string {
   ];
 
   // Reorder 'f' (matra 'ि') which is placed before consonant in DevLys
-  // Pattern: f followed by character(s)
-  const matraIPattern = /f([a-zA-Z~`!@#$%^&*()_+\-=\[\]{}':;"\\|,.<>\/?]+?)(?=[a-zA-Z~`!@#$%^&*()_+\-=\[\]{}':;"\\|,.<>\/?]|$)/g;
-  text = text.replace(/f([d\[x\?pNtTVBM<.\/rFnduipcHe;jyGolgh'"{]k?(?:~[d\[x\?pNtTVBM<.\/rFnduipcHe;jyGolgh'"{]k?)?)/g, '$1f');
+  text = text.replace(/f([d\[x\?pNtTVBM<.\/rFnduipcHe;jyGolgh'"{çÁØÝæäéàáâãíìïêëô÷|}=KJ]k?(?:~[d\[x\?pNtTVBM<.\/rFnduipcHe;jyGolgh'"{çÁØÝæäéàáâãíìïêëô÷|}=KJ]k?)?|(?:[DXPTURFICEHYOL]{1,2}[d\[x\?pNtTVBM<.\/rFnduipcHe;jyGolgh'"{çÁØÝæäéàáâãíìïêëô÷|}=KJ]k?))/g, '$1f');
 
   // Convert compounds
   for (const [regex, rep] of compoundReplacements) {
@@ -281,7 +335,7 @@ export const DEVLYS_KEYBOARD_LAYOUT = [
   { key: 'J', shift: 'श्र (J)', normal: 'र (j)', char: 'j' },
   { key: 'K', shift: 'ज्ञ (K)', normal: 'ा (k)', char: 'k' },
   { key: 'L', shift: 'स् (L)', normal: 'स (l)', char: 'l' },
-  { key: 'Z', shift: 'र् (Z)', normal: '्र (z)', char: 'z' },
+  { key: 'Z', shift: 'र् (Z / Shift+Z)', normal: '्र (Z - प्र)', char: 'z' },
   { key: 'X', shift: 'ग् (X)', normal: 'ग (x)', char: 'x' },
   { key: 'C', shift: 'ऋ (C)', normal: 'ब (c)', char: 'c' },
   { key: 'V', shift: 'अ (V)', normal: 'ट (v)', char: 'v' },

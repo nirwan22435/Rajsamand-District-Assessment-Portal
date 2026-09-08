@@ -107,18 +107,28 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
   // Filter available tests for candidate:
   // 1. Must be PUBLISHED (not REVOKED or DRAFT)
   // 2. Must match registered typing medium
-  // 3. Must be assigned to this candidate (or assigned to all candidates if empty)
+  // 3. Must be assigned to this candidate.
+  // CRITICAL: If assignment has been removed (empty or contains __UNASSIGNED__), paragraph is removed from candidate's login!
   const candidateTypingMedium = activeCandidate?.typingMedium;
   const candidateFilteredTests = tests.filter((t) => {
     if (t.status !== 'PUBLISHED') return false;
     if (candidateTypingMedium && t.language !== candidateTypingMedium) return false;
-    if (
-      activeCandidate &&
-      t.assignedCandidateIds &&
-      t.assignedCandidateIds.length > 0 &&
-      !t.assignedCandidateIds.includes(activeCandidate.id)
-    ) {
-      return false;
+    if (activeCandidate) {
+      const assigned = t.assignedCandidateIds;
+      if (assigned !== undefined) {
+        // If assignment was removed or has no assigned candidates, candidate CANNOT see this test!
+        if (
+          assigned.length === 0 ||
+          assigned.includes('__UNASSIGNED__') ||
+          assigned.includes('__NONE__')
+        ) {
+          return false;
+        }
+        // If candidates are specifically assigned, active candidate must be in the list or assigned to 'ALL'
+        if (!assigned.includes('ALL') && !assigned.includes(activeCandidate.id)) {
+          return false;
+        }
+      }
     }
     return true;
   });
@@ -311,7 +321,7 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
                 }`}
               >
                 <BookOpen className={`w-5 h-5 transition-transform group-hover:scale-110 ${adminSubTab === 'MANAGE_TESTS' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
-                <span>Manage Test Papers</span>
+                <span>Typing Paragraph</span>
                 <span
                   className={`ml-1.5 px-2.5 py-0.5 rounded-full text-xs font-black transition-colors ${
                     adminSubTab === 'MANAGE_TESTS'
@@ -329,8 +339,13 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
           {adminSubTab === 'REPORTS' && (
             <AdminTypingReportView
               attempts={attempts.filter((a) => {
-                const validIds = new Set(candidates.map((c) => c.id));
-                const validEmails = new Set(candidates.map((c) => c.email?.toLowerCase().trim()));
+                const validIds = new Set(candidates.filter((c) => c.activeStatus !== false).map((c) => c.id));
+                const validEmails = new Set(
+                  candidates
+                    .filter((c) => c.activeStatus !== false)
+                    .map((c) => c.email?.toLowerCase().trim())
+                    .filter(Boolean) as string[]
+                );
                 return (
                   (a.candidateId && validIds.has(a.candidateId)) ||
                   (a.candidateEmail && validEmails.has(a.candidateEmail.toLowerCase().trim()))
@@ -407,7 +422,16 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
                   {tests.map((test) => {
                     const isHindi = test.language === 'HINDI_DEVLYS_010';
                     const attemptsForThisTest = attempts.filter((a) => a.typingTestId === test.id);
-                    const assignedCount = test.assignedCandidateIds?.length || 0;
+                    const isUnassigned =
+                      test.assignedCandidateIds !== undefined &&
+                      (test.assignedCandidateIds.length === 0 ||
+                        test.assignedCandidateIds.includes('__UNASSIGNED__') ||
+                        test.assignedCandidateIds.includes('__NONE__'));
+                    const assignedCount = isUnassigned
+                      ? 0
+                      : test.assignedCandidateIds?.filter(
+                          (id) => id !== 'ALL' && id !== '__UNASSIGNED__' && id !== '__NONE__'
+                        ).length || 0;
                     const isDeleting = deletingTestId === test.id;
                     const isPublished = test.status === 'PUBLISHED';
                     const isRevoked = test.status === 'REVOKED';
@@ -542,24 +566,43 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
                             </div>
                           </div>
                         ) : (
-                          <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+                          <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 flex-wrap gap-2">
                             <div className="flex items-center space-x-2">
                               <span>
                                 Total: <strong className="text-slate-800 dark:text-slate-200">{test.totalWords || test.passageText.split(/\s+/).filter(Boolean).length} words</strong>
                               </span>
                               <button
                                 onClick={() => setAssigningTest(test)}
-                                className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer flex items-center gap-1"
+                                className="text-[11px] font-bold hover:underline cursor-pointer flex items-center gap-1"
                               >
-                                <Users className="w-3 h-3" />
-                                <span>{assignedCount > 0 ? `${assignedCount} Assigned` : 'Assigned to All'}</span>
+                                <Users className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                {isUnassigned ? (
+                                  <span className="text-rose-600 dark:text-rose-400 font-extrabold">Assignment Removed</span>
+                                ) : assignedCount > 0 ? (
+                                  <span className="text-amber-600 dark:text-amber-400">{assignedCount} Assigned</span>
+                                ) : (
+                                  <span className="text-slate-600 dark:text-slate-300">Assigned to All</span>
+                                )}
                               </button>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-slate-600 dark:text-slate-300">
                                 {attemptsForThisTest.length} Submissions
                               </span>
+
+                              {/* Remove Assignment Button: immediately removes paragraph from candidate's login */}
+                              {!isUnassigned && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveAssignment(test.id, ['__UNASSIGNED__'])}
+                                  title="Remove assignment so this paragraph is immediately removed from candidate's login"
+                                  className="px-2.5 py-1.5 rounded-xl border border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
+                                >
+                                  <Ban className="w-3.5 h-3.5" />
+                                  <span>Remove Assignment</span>
+                                </button>
+                              )}
 
                               {/* Requirement: Revoke Para / Publish Function */}
                               {isPublished ? (

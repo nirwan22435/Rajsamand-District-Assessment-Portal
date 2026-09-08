@@ -110,7 +110,7 @@ export function createSubmissionPdfDocument(data: SubmissionPdfData): jsPDF {
     doc.text('Result Status: QUALIFIED (PASSED)', 112, y + 38);
   } else {
     doc.setTextColor(153, 27, 27);
-    doc.text('Result Status: NEEDS IMPROVEMENT', 112, y + 38);
+    doc.text('Result Status: NOT QUALIFIED', 112, y + 38);
   }
 
   y += 48;
@@ -455,7 +455,7 @@ export function createTestSummaryPdfDocument(data: TestSummaryPdfData): jsPDF {
       `${att.scoreObtained} / ${att.totalMarks}`,
       `${att.scorePercentage}%`,
       `${att.timeTakenMinutes} Mins`,
-      att.status === 'PASSED' ? 'PASSED' : 'NEEDS FOCUS',
+      att.status === 'PASSED' ? 'PASSED' : 'NOT QUALIFIED',
     ];
   });
 
@@ -728,7 +728,7 @@ export function createCandidateAnalyticsPdfDocument(data: CandidateAnalyticsPdfD
     const highest = count > 0 ? Math.max(...cAttempts.map((a) => a.scorePercentage)) : 0;
     const avg = count > 0 ? Math.round(cAttempts.reduce((s, a) => s + a.scorePercentage, 0) / count) : 0;
     const passed = cAttempts.some((a) => a.status === 'PASSED');
-    const status = count === 0 ? 'UNASSESSED' : passed ? 'PASSED' : 'NEEDS FOCUS';
+    const status = count === 0 ? 'UNASSESSED' : passed ? 'PASSED' : 'NOT QUALIFIED';
 
     return [
       `#${idx + 1}`,

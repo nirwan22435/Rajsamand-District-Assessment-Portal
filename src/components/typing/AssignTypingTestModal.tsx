@@ -29,9 +29,19 @@ export const AssignTypingTestModal: React.FC<AssignTypingTestModalProps> = ({
   });
 
   const initialAssigned = test.assignedCandidateIds || [];
-  const [selectedIds, setSelectedIds] = useState<string[]>(
-    initialAssigned.length > 0 ? initialAssigned : eligibleCandidates.map((c) => c.id)
-  );
+  const isCurrentlyUnassigned =
+    test.assignedCandidateIds !== undefined &&
+    (initialAssigned.length === 0 ||
+      initialAssigned.includes('__UNASSIGNED__') ||
+      initialAssigned.includes('__NONE__'));
+
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => {
+    if (isCurrentlyUnassigned) return [];
+    if (initialAssigned.length > 0 && !initialAssigned.includes('ALL')) {
+      return initialAssigned.filter((id) => id !== '__UNASSIGNED__' && id !== '__NONE__');
+    }
+    return eligibleCandidates.map((c) => c.id);
+  });
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredCandidates = eligibleCandidates.filter((c) => {
@@ -71,7 +81,11 @@ export const AssignTypingTestModal: React.FC<AssignTypingTestModalProps> = ({
   };
 
   const handleSave = () => {
-    onSaveAssignment(test.id, selectedIds);
+    if (selectedIds.length === 0) {
+      onSaveAssignment(test.id, ['__UNASSIGNED__']);
+    } else {
+      onSaveAssignment(test.id, selectedIds);
+    }
     onClose();
   };
 
@@ -221,15 +235,14 @@ export const AssignTypingTestModal: React.FC<AssignTypingTestModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                // Revoke all: save empty array
-                onSaveAssignment(test.id, []);
+                onSaveAssignment(test.id, ['__UNASSIGNED__']);
                 onClose();
               }}
-              title="Revoke assignment from all candidates (test won't be accessible by specific roll numbers)"
-              className="px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+              title="Remove assignment so this paragraph is immediately removed from all candidates' login"
+              className="px-3.5 py-2 rounded-xl border border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
             >
               <Ban className="w-3.5 h-3.5" />
-              <span>Revoke All Assignments</span>
+              <span>Remove Assignment</span>
             </button>
             <button
               type="button"

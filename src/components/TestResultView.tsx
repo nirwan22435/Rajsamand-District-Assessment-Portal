@@ -148,7 +148,7 @@ export const TestResultView: React.FC<TestResultViewProps> = ({
               isPassed ? 'bg-emerald-500 text-slate-950' : 'bg-rose-500 text-white'
             }`}
           >
-            {isPassed ? 'QUALIFIED ✅' : 'NEEDS IMPROVEMENT ⚠️'}
+            {isPassed ? 'QUALIFIED ✅' : 'NOT QUALIFIED ❌'}
           </span>
         </div>
       </div>

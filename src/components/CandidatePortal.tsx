@@ -57,8 +57,17 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
         if (t.status !== 'PUBLISHED') return false;
 
         // Check targeted candidate assignment match
-        if (t.assignedCandidateIds && t.assignedCandidateIds.length > 0 && !t.assignedCandidateIds.includes('ALL')) {
-          return t.assignedCandidateIds.includes(candidate.id);
+        if (t.assignedCandidateIds !== undefined) {
+          if (
+            t.assignedCandidateIds.length === 0 ||
+            t.assignedCandidateIds.includes('__UNASSIGNED__') ||
+            t.assignedCandidateIds.includes('__NONE__')
+          ) {
+            return false;
+          }
+          if (!t.assignedCandidateIds.includes('ALL')) {
+            return t.assignedCandidateIds.includes(candidate.id);
+          }
         }
 
         return true;
