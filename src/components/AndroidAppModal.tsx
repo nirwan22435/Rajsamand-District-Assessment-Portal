@@ -5,6 +5,11 @@ import {
   CheckCircle2,
   Smartphone,
   Loader2,
+  Copy,
+  Check,
+  ExternalLink,
+  ShieldCheck,
+  AlertCircle,
 } from 'lucide-react';
 import { PortalLogo } from './PortalLogo';
 
@@ -18,37 +23,120 @@ interface AndroidAppModalProps {
 export const AndroidAppModal: React.FC<AndroidAppModalProps> = ({
   isOpen,
   onClose,
+  deferredPrompt,
+  setDeferredPrompt,
 }) => {
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [downloadSuccess, setDownloadSuccess] = useState<boolean>(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
-  const handleConfirmDownload = () => {
+  const downloadUrl = '/api/download/RDAA.apk';
+  const fullDownloadUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}${downloadUrl}`
+    : downloadUrl;
+
+  const handleConfirmDownload = async () => {
     setIsDownloading(true);
+    setDownloadError(null);
 
     try {
-      // Trigger download of RDAA.apk
-      const link = document.createElement('a');
-      link.href = '/api/download/RDAA.apk';
-      link.setAttribute('download', 'RDAA.apk');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // 1. Fetch file as binary Blob
+      const candidateEndpoints = [
+        '/api/download/RDAA.apk',
+        '/RDAA.apk',
+        '/api/download/rdaa.apk',
+      ];
+
+      let blob: Blob | null = null;
+      for (const endpoint of candidateEndpoints) {
+        try {
+          const res = await fetch(endpoint, { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.blob();
+            if (data && data.size > 500) {
+              blob = data;
+              break;
+            }
+          }
+        } catch {
+          // try next endpoint
+        }
+      }
+
+      if (blob) {
+        // Create Blob URL - works reliably in modern browsers and iframes
+        const blobUrl = window.URL.createObjectURL(
+          new Blob([blob], { type: 'application/vnd.android.package-archive' })
+        );
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = 'RDAA.apk';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+
+        setTimeout(() => {
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(blobUrl);
+        }, 3000);
+
+        setDownloadSuccess(true);
+        setTimeout(() => {
+          setIsDownloading(false);
+          setDownloadSuccess(false);
+          onClose();
+        }, 1800);
+        return;
+      }
+
+      // 2. Direct fallback via programmatic link
+      const fallbackLink = document.createElement('a');
+      fallbackLink.href = downloadUrl;
+      fallbackLink.download = 'RDAA.apk';
+      fallbackLink.target = '_blank';
+      fallbackLink.rel = 'noopener noreferrer';
+      document.body.appendChild(fallbackLink);
+      fallbackLink.click();
+      document.body.removeChild(fallbackLink);
 
       setDownloadSuccess(true);
       setTimeout(() => {
         setIsDownloading(false);
         setDownloadSuccess(false);
         onClose();
-      }, 1500);
+      }, 1800);
+    } catch (err: any) {
+      console.error('Download failed:', err);
+      setDownloadError(
+        'Automatic download was blocked by browser permissions. Please click "Direct Download" or copy the link below.'
+      );
+      setIsDownloading(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(fullDownloadUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
     } catch {
-      // Direct window location fallback
-      window.location.href = '/RDAA.apk';
-      setTimeout(() => {
-        setIsDownloading(false);
-        onClose();
-      }, 1000);
+      // Fallback
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2500);
+    }
+  };
+
+  const handleInstallPWA = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice.outcome === 'accepted' && setDeferredPrompt) {
+        setDeferredPrompt(null);
+      }
+      onClose();
     }
   };
 
@@ -58,7 +146,7 @@ export const AndroidAppModal: React.FC<AndroidAppModalProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
     >
       <div
-        className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-center p-6"
+        className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden text-center p-6"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -72,33 +160,65 @@ export const AndroidAppModal: React.FC<AndroidAppModalProps> = ({
         </button>
 
         {/* Exact Portal Logo */}
-        <div className="flex justify-center mt-2 mb-4">
-          <div className="p-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
-            <PortalLogo size={68} />
+        <div className="flex justify-center mt-1 mb-3">
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
+            <PortalLogo size={58} />
           </div>
         </div>
 
-        {/* App Title */}
+        {/* App Title & Badges */}
         <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-          RDAA
+          RDAA Mobile App
         </h3>
         <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center justify-center gap-1">
           <Smartphone className="w-3.5 h-3.5" />
-          <span>Android Application Package (APK)</span>
+          <span>Rajsamand District Assessment Application</span>
         </p>
 
-        {/* Confirmation Question */}
-        <div className="mt-5 py-3 px-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 font-medium">
-          Do you want to download <strong className="text-slate-900 dark:text-white font-bold">RDAA.apk</strong>?
+        {/* Technical Specs Pill Bar */}
+        <div className="mt-3 flex items-center justify-center gap-2 flex-wrap text-[11px]">
+          <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-bold">
+            v1.0.0
+          </span>
+          <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+            ~144 KB .APK
+          </span>
+          <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 font-medium flex items-center gap-1 border border-emerald-300 dark:border-emerald-800">
+            <ShieldCheck className="w-3 h-3" />
+            Signed Package
+          </span>
         </div>
 
+        {/* Confirmation Question / Instructions */}
+        <div className="mt-4 py-3 px-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 font-medium text-left space-y-1.5">
+          <p>
+            Download <strong className="text-slate-900 dark:text-white font-bold">RDAA.apk</strong> to install on your Android phone or tablet.
+          </p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Compatible with Android 5.0 through Android 15+. Signed with APK Scheme v1, v2 &amp; v3.
+          </p>
+          <p className="text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 p-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60">
+            💡 <strong>Installation Tip:</strong> When opening the file, tap &quot;Settings&quot; and enable &quot;Allow from this source&quot; to permit sideloading.
+          </p>
+        </div>
+
+        {/* Download Error Notice if any */}
+        {downloadError && (
+          <div className="mt-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-left flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-900 dark:text-amber-200">
+              <p className="font-semibold">{downloadError}</p>
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons: Cancel or Download APK */}
-        <div className="mt-6 flex items-center gap-3">
+        <div className="mt-5 flex items-center gap-2.5">
           <button
             type="button"
             onClick={onClose}
             disabled={isDownloading}
-            className="flex-1 py-2.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-50"
+            className="py-2.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-50"
           >
             Cancel
           </button>
@@ -113,12 +233,12 @@ export const AndroidAppModal: React.FC<AndroidAppModalProps> = ({
               downloadSuccess ? (
                 <>
                   <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                  <span>Downloading...</span>
+                  <span>Downloaded!</span>
                 </>
               ) : (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Starting...</span>
+                  <span>Preparing APK...</span>
                 </>
               )
             ) : (
@@ -129,6 +249,52 @@ export const AndroidAppModal: React.FC<AndroidAppModalProps> = ({
             )}
           </button>
         </div>
+
+        {/* Secondary Direct Download Options (Ideal for iframes, mobile browsers & sharing) */}
+        <div className="mt-3.5 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs gap-2">
+          <a
+            href={downloadUrl}
+            download="RDAA.apk"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>Direct Link (New Tab)</span>
+          </a>
+
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-medium flex items-center gap-1 cursor-pointer transition-colors"
+          >
+            {copiedLink ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy Link</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* PWA 1-Click Install if available */}
+        {deferredPrompt && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={handleInstallPWA}
+              className="w-full py-2 px-3 rounded-xl bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Or Install Directly to Android Home Screen</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

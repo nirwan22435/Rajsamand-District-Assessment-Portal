@@ -9,7 +9,18 @@ import {
   ShieldCheck,
   AlignLeft,
   Eye,
+  Plus,
+  Minus,
 } from 'lucide-react';
+
+const SANITIZER_FONT_SIZES = [
+  { id: 'text-xs', label: '12px' },
+  { id: 'text-sm', label: '14px' },
+  { id: 'text-base', label: '16px' },
+  { id: 'text-lg', label: '18px' },
+  { id: 'text-xl', label: '20px' },
+  { id: 'text-2xl', label: '24px' },
+] as const;
 
 interface PassageSanitizerModalProps {
   isOpen: boolean;
@@ -30,6 +41,7 @@ export const PassageSanitizerModal: React.FC<PassageSanitizerModalProps> = ({
   const [currentText, setCurrentText] = useState<string>(test.passageText);
   const [applied, setApplied] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'DEVLYS' | 'UNICODE'>('DEVLYS');
+  const [fontSizeIndex, setFontSizeIndex] = useState<number>(isHindi ? 3 : 2);
 
   const audit = useMemo(() => {
     return auditAndRefinePassage(currentText, isHindi);
@@ -138,14 +150,42 @@ export const PassageSanitizerModal: React.FC<PassageSanitizerModalProps> = ({
 
           {/* Passage Display */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
-              <span>{isHindi && activeTab === 'UNICODE' ? 'Devanagari Meaning' : 'Exam Reference Paragraph'}</span>
-              <span className="text-[11px] font-mono text-slate-500">{audit.refinedWordCount} words</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                {isHindi && activeTab === 'UNICODE' ? 'Devanagari Meaning' : 'Exam Reference Paragraph'}
+              </label>
+              <div className="flex items-center space-x-2">
+                {/* Font Size Adjuster */}
+                <div className="flex items-center bg-white dark:bg-slate-900 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setFontSizeIndex((i) => Math.max(0, i - 1))}
+                    disabled={fontSizeIndex <= 0}
+                    title="Decrease font size"
+                    className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="px-1.5 font-mono text-[11px] font-bold text-amber-700 dark:text-amber-400 min-w-[32px] text-center">
+                    {SANITIZER_FONT_SIZES[fontSizeIndex].label}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFontSizeIndex((i) => Math.min(SANITIZER_FONT_SIZES.length - 1, i + 1))}
+                    disabled={fontSizeIndex >= SANITIZER_FONT_SIZES.length - 1}
+                    title="Increase font size"
+                    className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <span className="text-[11px] font-mono text-slate-500">{audit.refinedWordCount} words</span>
+              </div>
+            </div>
             <div
               className={`p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 min-h-48 max-h-72 overflow-y-auto leading-relaxed whitespace-pre-wrap ${
-                isHindi && activeTab === 'DEVLYS' ? 'font-devlys text-lg' : 'font-sans text-sm'
-              }`}
+                isHindi && activeTab === 'DEVLYS' ? 'font-devlys' : 'font-sans'
+              } ${SANITIZER_FONT_SIZES[fontSizeIndex].id}`}
             >
               {isHindi && activeTab === 'UNICODE' ? unicodeEquivalent : currentText}
             </div>

@@ -17,7 +17,17 @@ import {
   AlertTriangle,
   Check,
   HelpCircle,
+  Plus,
+  Minus,
 } from 'lucide-react';
+
+const RESULT_FONT_SIZES = [
+  { id: 'text-xs', label: '12px' },
+  { id: 'text-sm', label: '14px' },
+  { id: 'text-base', label: '16px' },
+  { id: 'text-lg', label: '18px' },
+  { id: 'text-xl', label: '20px' },
+] as const;
 
 interface TypingResultModalProps {
   isOpen: boolean;
@@ -36,6 +46,8 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
 
   const [activeTab, setActiveTab] = useState<'paragraph' | 'correct' | 'incorrect' | 'skipped'>('paragraph');
   const [highlightMode, setHighlightMode] = useState<boolean>(true);
+  const isHindi = attempt.language === 'HINDI_DEVLYS_010';
+  const [passageFontSizeIndex, setPassageFontSizeIndex] = useState<number>(isHindi ? 2 : 1);
 
   const analysis = getDetailedWordAnalysis(attempt, referencePassage);
 
@@ -43,7 +55,6 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
     downloadCandidateTypingScorecardPdf(attempt, referencePassage || analysis.referencePassage);
   };
 
-  const isHindi = attempt.language === 'HINDI_DEVLYS_010';
   const isQualified = attempt.status === 'QUALIFIED';
 
   const examDateFormatted = attempt.submittedAt
@@ -287,6 +298,31 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
                 </button>
               </div>
 
+              {/* Font Size Adjuster for Reference Passage / Attempt Viewer */}
+              <div className="flex items-center bg-white dark:bg-slate-900 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setPassageFontSizeIndex((i) => Math.max(0, i - 1))}
+                  disabled={passageFontSizeIndex <= 0}
+                  title="Decrease font size"
+                  className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <span className="px-1.5 font-mono text-[11px] font-bold text-amber-700 dark:text-amber-400 min-w-[32px] text-center">
+                  {RESULT_FONT_SIZES[passageFontSizeIndex].label}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPassageFontSizeIndex((i) => Math.min(RESULT_FONT_SIZES.length - 1, i + 1))}
+                  disabled={passageFontSizeIndex >= RESULT_FONT_SIZES.length - 1}
+                  title="Increase font size"
+                  className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               {activeTab === 'paragraph' && (
                 <button
                   onClick={() => setHighlightMode(!highlightMode)}
@@ -305,9 +341,9 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
             {activeTab === 'paragraph' && (
               <div className="space-y-2">
                 <div
-                  className={`p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs leading-relaxed max-h-56 overflow-y-auto typing-passage-scroll ${
-                    isHindi ? 'font-devlys text-sm' : 'font-sans'
-                  }`}
+                  className={`p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 leading-relaxed max-h-56 overflow-y-auto typing-passage-scroll ${
+                    isHindi ? 'font-devlys' : 'font-sans'
+                  } ${RESULT_FONT_SIZES[passageFontSizeIndex].id}`}
                 >
                   {highlightMode && analysis.wordStatuses.length > 0 ? (
                     <div className="flex flex-wrap gap-x-1.5 gap-y-2">

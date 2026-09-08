@@ -256,41 +256,71 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
         <div className="space-y-6">
           {/* Admin Navigation Sub-Tabs */}
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
-            <div className="flex p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 text-xs font-bold space-x-1">
+            <div className="flex flex-wrap p-2 rounded-2xl bg-slate-100 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 gap-2 sm:gap-2.5 shadow-xs">
               <button
+                type="button"
                 onClick={() => setAdminSubTab('REPORTS')}
-                className={`px-4 py-2.5 rounded-xl transition-all flex items-center space-x-2 cursor-pointer ${
+                className={`px-5 py-3 sm:px-6 sm:py-3.5 rounded-xl transition-all duration-200 flex items-center space-x-3 cursor-pointer text-sm sm:text-base font-extrabold select-none ${
                   adminSubTab === 'REPORTS'
-                    ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm font-extrabold'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-600 text-white shadow-lg shadow-emerald-600/30 scale-[1.02] ring-2 ring-emerald-400/50'
+                    : 'bg-white/80 dark:bg-slate-900/70 text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-300 hover:scale-[1.01] hover:shadow-sm active:scale-[0.98] border border-slate-200/60 dark:border-slate-700/60'
                 }`}
               >
-                <BarChart3 className="w-4 h-4" />
-                <span>Typing Reports ({attempts.length})</span>
+                <BarChart3 className={`w-5 h-5 transition-transform group-hover:scale-110 ${adminSubTab === 'REPORTS' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                <span>Typing Reports</span>
+                <span
+                  className={`ml-1.5 px-2.5 py-0.5 rounded-full text-xs font-black transition-colors ${
+                    adminSubTab === 'REPORTS'
+                      ? 'bg-white/25 text-white border border-white/30'
+                      : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  }`}
+                >
+                  {attempts.length}
+                </span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setAdminSubTab('TYPING_CANDIDATES')}
-                className={`px-4 py-2.5 rounded-xl transition-all flex items-center space-x-2 cursor-pointer ${
+                className={`px-5 py-3 sm:px-6 sm:py-3.5 rounded-xl transition-all duration-200 flex items-center space-x-3 cursor-pointer text-sm sm:text-base font-extrabold select-none ${
                   adminSubTab === 'TYPING_CANDIDATES'
-                    ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm font-extrabold'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-600 text-white shadow-lg shadow-emerald-600/30 scale-[1.02] ring-2 ring-emerald-400/50'
+                    : 'bg-white/80 dark:bg-slate-900/70 text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-300 hover:scale-[1.01] hover:shadow-sm active:scale-[0.98] border border-slate-200/60 dark:border-slate-700/60'
                 }`}
               >
-                <Users className="w-4 h-4" />
-                <span>Registered Candidates ({candidates.length})</span>
+                <Users className={`w-5 h-5 transition-transform group-hover:scale-110 ${adminSubTab === 'TYPING_CANDIDATES' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                <span>Registered Candidates</span>
+                <span
+                  className={`ml-1.5 px-2.5 py-0.5 rounded-full text-xs font-black transition-colors ${
+                    adminSubTab === 'TYPING_CANDIDATES'
+                      ? 'bg-white/25 text-white border border-white/30'
+                      : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  }`}
+                >
+                  {candidates.length}
+                </span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setAdminSubTab('MANAGE_TESTS')}
-                className={`px-4 py-2.5 rounded-xl transition-all flex items-center space-x-2 cursor-pointer ${
+                className={`px-5 py-3 sm:px-6 sm:py-3.5 rounded-xl transition-all duration-200 flex items-center space-x-3 cursor-pointer text-sm sm:text-base font-extrabold select-none ${
                   adminSubTab === 'MANAGE_TESTS'
-                    ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm font-extrabold'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-600 text-white shadow-lg shadow-emerald-600/30 scale-[1.02] ring-2 ring-emerald-400/50'
+                    : 'bg-white/80 dark:bg-slate-900/70 text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-300 hover:scale-[1.01] hover:shadow-sm active:scale-[0.98] border border-slate-200/60 dark:border-slate-700/60'
                 }`}
               >
-                <BookOpen className="w-4 h-4" />
-                <span>Manage Test Papers ({tests.length})</span>
+                <BookOpen className={`w-5 h-5 transition-transform group-hover:scale-110 ${adminSubTab === 'MANAGE_TESTS' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                <span>Manage Test Papers</span>
+                <span
+                  className={`ml-1.5 px-2.5 py-0.5 rounded-full text-xs font-black transition-colors ${
+                    adminSubTab === 'MANAGE_TESTS'
+                      ? 'bg-white/25 text-white border border-white/30'
+                      : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  }`}
+                >
+                  {tests.length}
+                </span>
               </button>
             </div>
           </div>

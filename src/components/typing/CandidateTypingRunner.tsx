@@ -18,7 +18,20 @@ import {
   AlertCircle,
   HelpCircle,
   ArrowDown,
+  Plus,
+  Minus,
+  Link2,
 } from 'lucide-react';
+
+const FONT_SIZES = [
+  { id: 'text-xs', label: '12px', name: 'XS' },
+  { id: 'text-sm', label: '14px', name: 'Small' },
+  { id: 'text-base', label: '16px', name: 'Medium' },
+  { id: 'text-lg', label: '18px', name: 'Large' },
+  { id: 'text-xl', label: '20px', name: 'XL' },
+  { id: 'text-2xl', label: '24px', name: '2XL' },
+  { id: 'text-3xl', label: '30px', name: '3XL' },
+] as const;
 
 interface CandidateTypingRunnerProps {
   test: TypingTest;
@@ -43,9 +56,107 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
 
   // Typed Text State
   const [typedText, setTypedText] = useState<string>('');
-  const [fontSizeClass, setFontSizeClass] = useState<'text-sm' | 'text-base' | 'text-lg' | 'text-xl'>('text-base');
+  const isHindi = test.language === 'HINDI_DEVLYS_010';
+  const defaultFontIdx = isHindi ? 3 : 2; // 18px for DevLys, 16px for English
+
+  // Font Size States for Reference Passage and Candidate Typing Input
+  const [passageFontIndex, setPassageFontIndex] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('rdaa_typing_passage_font');
+      if (saved !== null) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 0 && parsed < FONT_SIZES.length) return parsed;
+      }
+    } catch {}
+    return defaultFontIdx;
+  });
+
+  const [typingFontIndex, setTypingFontIndex] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('rdaa_typing_input_font');
+      if (saved !== null) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 0 && parsed < FONT_SIZES.length) return parsed;
+      }
+    } catch {}
+    return defaultFontIdx;
+  });
+
+  const [syncFontSizes, setSyncFontSizes] = useState<boolean>(true);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState<boolean>(false);
   const [showSubmitConfirmModal, setShowSubmitConfirmModal] = useState<boolean>(false);
+
+  const handleIncreasePassageFont = () => {
+    setPassageFontIndex((prev) => {
+      const next = Math.min(FONT_SIZES.length - 1, prev + 1);
+      try {
+        localStorage.setItem('rdaa_typing_passage_font', String(next));
+      } catch {}
+      if (syncFontSizes) {
+        setTypingFontIndex(next);
+        try {
+          localStorage.setItem('rdaa_typing_input_font', String(next));
+        } catch {}
+      }
+      return next;
+    });
+  };
+
+  const handleDecreasePassageFont = () => {
+    setPassageFontIndex((prev) => {
+      const next = Math.max(0, prev - 1);
+      try {
+        localStorage.setItem('rdaa_typing_passage_font', String(next));
+      } catch {}
+      if (syncFontSizes) {
+        setTypingFontIndex(next);
+        try {
+          localStorage.setItem('rdaa_typing_input_font', String(next));
+        } catch {}
+      }
+      return next;
+    });
+  };
+
+  const handleResetPassageFont = () => {
+    setPassageFontIndex(defaultFontIdx);
+    try {
+      localStorage.setItem('rdaa_typing_passage_font', String(defaultFontIdx));
+    } catch {}
+    if (syncFontSizes) {
+      setTypingFontIndex(defaultFontIdx);
+      try {
+        localStorage.setItem('rdaa_typing_input_font', String(defaultFontIdx));
+      } catch {}
+    }
+  };
+
+  const handleIncreaseTypingFont = () => {
+    setTypingFontIndex((prev) => {
+      const next = Math.min(FONT_SIZES.length - 1, prev + 1);
+      try {
+        localStorage.setItem('rdaa_typing_input_font', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleDecreaseTypingFont = () => {
+    setTypingFontIndex((prev) => {
+      const next = Math.max(0, prev - 1);
+      try {
+        localStorage.setItem('rdaa_typing_input_font', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const handleResetTypingFont = () => {
+    setTypingFontIndex(defaultFontIdx);
+    try {
+      localStorage.setItem('rdaa_typing_input_font', String(defaultFontIdx));
+    } catch {}
+  };
 
   // Synchronous State Tracking Refs (Prevents React stale closures during timer auto-finish)
   const typedTextRef = useRef<string>('');
@@ -58,7 +169,6 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
   const passageContainerRef = useRef<HTMLDivElement | null>(null);
   const activeWordRef = useRef<HTMLSpanElement | null>(null);
 
-  const isHindi = test.language === 'HINDI_DEVLYS_010';
   const sanitizedPassage = useMemo(() => {
     return auditAndRefinePassage(test.passageText, isHindi).refinedPassage || test.passageText;
   }, [test.passageText, isHindi]);
@@ -348,33 +458,56 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
             </div>
 
             <div className="flex items-center space-x-2">
-              {/* Font Size Adjuster */}
-              <div className="flex items-center bg-white dark:bg-slate-900 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700 text-xs">
+              {/* Font Size Increase/Decrease Controller for Reference Passage */}
+              <div className="flex items-center bg-white dark:bg-slate-900 rounded-xl p-0.5 border border-slate-200 dark:border-slate-700 shadow-2xs">
                 <button
-                  onClick={() => setFontSizeClass('text-sm')}
-                  className={`px-2 py-0.5 rounded font-bold text-xs ${fontSizeClass === 'text-sm' ? 'bg-amber-600 text-white' : 'text-slate-600 dark:text-slate-400'}`}
+                  type="button"
+                  onClick={handleDecreasePassageFont}
+                  disabled={passageFontIndex <= 0}
+                  title="Decrease passage font size"
+                  aria-label="Decrease passage font size"
+                  className="p-1 sm:px-2 py-1 rounded-lg font-bold text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center gap-0.5 cursor-pointer"
                 >
-                  A-
+                  <Minus className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-[10px]">A-</span>
                 </button>
+
                 <button
-                  onClick={() => setFontSizeClass('text-base')}
-                  className={`px-2 py-0.5 rounded font-bold text-xs ${fontSizeClass === 'text-base' ? 'bg-amber-600 text-white' : 'text-slate-600 dark:text-slate-400'}`}
+                  type="button"
+                  onClick={handleResetPassageFont}
+                  title={`Click to reset font size to default (${FONT_SIZES[defaultFontIdx].label})`}
+                  className="px-2 py-0.5 font-mono text-[11px] font-extrabold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded transition-colors"
                 >
-                  A
+                  {FONT_SIZES[passageFontIndex].label}
                 </button>
+
                 <button
-                  onClick={() => setFontSizeClass('text-lg')}
-                  className={`px-2 py-0.5 rounded font-bold text-xs ${fontSizeClass === 'text-lg' ? 'bg-amber-600 text-white' : 'text-slate-600 dark:text-slate-400'}`}
+                  type="button"
+                  onClick={handleIncreasePassageFont}
+                  disabled={passageFontIndex >= FONT_SIZES.length - 1}
+                  title="Increase passage font size"
+                  aria-label="Increase passage font size"
+                  className="p-1 sm:px-2 py-1 rounded-lg font-bold text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center gap-0.5 cursor-pointer"
                 >
-                  A+
-                </button>
-                <button
-                  onClick={() => setFontSizeClass('text-xl')}
-                  className={`px-2 py-0.5 rounded font-bold text-xs ${fontSizeClass === 'text-xl' ? 'bg-amber-600 text-white' : 'text-slate-600 dark:text-slate-400'}`}
-                >
-                  A++
+                  <Plus className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-[10px]">A+</span>
                 </button>
               </div>
+
+              {/* Sync font sizes button */}
+              <button
+                type="button"
+                onClick={() => setSyncFontSizes(!syncFontSizes)}
+                title={syncFontSizes ? 'Passage & Typing Box font sizes are synced (click to unlink)' : 'Passage & Typing Box font sizes are independent (click to sync)'}
+                className={`p-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                  syncFontSizes
+                    ? 'bg-amber-100/70 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-300'
+                    : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500'
+                }`}
+              >
+                <Link2 className="w-3.5 h-3.5" />
+                <span className="hidden md:inline text-[10px]">{syncFontSizes ? 'Sync Font' : 'Unlinked'}</span>
+              </button>
 
               {/* DevLys Keyboard Helper Toggle */}
               {isHindi && (
@@ -394,7 +527,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
             ref={passageContainerRef}
             className={`p-5 overflow-y-auto flex-1 leading-relaxed select-none typing-passage-scroll relative ${
               isHindi ? 'font-devlys' : 'font-sans'
-            } ${fontSizeClass}`}
+            } ${FONT_SIZES[passageFontIndex].id}`}
           >
             <div className="flex flex-wrap gap-x-2 gap-y-2.5">
               {liveEvaluation.wordStatuses.map((item, idx) => {
@@ -445,11 +578,49 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
           <div className="bg-amber-500/10 dark:bg-slate-800/80 px-4 py-2.5 border-b border-amber-500/30 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center space-x-2 text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-300">
               <Sparkles className="w-4 h-4 text-amber-600" />
-              <span>Typing Window ({isHindi ? 'DevLys 010 Font Active' : 'English Text Active'})</span>
+              <span>Typing Window ({isHindi ? 'DevLys 010' : 'English'})</span>
             </div>
 
-            <div className="text-[11px] font-mono font-bold text-slate-500">
-              {typedText.length} Chars • {typedText.split(/\s+/).filter(Boolean).length} Words
+            <div className="flex items-center space-x-2.5">
+              {/* Font Size Increase/Decrease Controller for Typing Textarea */}
+              <div className="flex items-center bg-white dark:bg-slate-900 rounded-xl p-0.5 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={handleDecreaseTypingFont}
+                  disabled={typingFontIndex <= 0}
+                  title="Decrease typing text area font size"
+                  aria-label="Decrease typing text area font size"
+                  className="p-1 sm:px-2 py-1 rounded-lg font-bold text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center gap-0.5 cursor-pointer"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-[10px]">A-</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResetTypingFont}
+                  title={`Click to reset font size to default (${FONT_SIZES[defaultFontIdx].label})`}
+                  className="px-2 py-0.5 font-mono text-[11px] font-extrabold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded transition-colors"
+                >
+                  {FONT_SIZES[typingFontIndex].label}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleIncreaseTypingFont}
+                  disabled={typingFontIndex >= FONT_SIZES.length - 1}
+                  title="Increase typing text area font size"
+                  aria-label="Increase typing text area font size"
+                  className="p-1 sm:px-2 py-1 rounded-lg font-bold text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center gap-0.5 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline text-[10px]">A+</span>
+                </button>
+              </div>
+
+              <div className="text-[11px] font-mono font-bold text-slate-500 hidden sm:block">
+                {typedText.length} Chars • {typedText.split(/\s+/).filter(Boolean).length} Words
+              </div>
             </div>
           </div>
 
@@ -467,8 +638,8 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
                   : 'Keep typing the reference passage...'
               }
               className={`w-full flex-1 p-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none leading-relaxed ${
-                isHindi ? 'font-devlys text-lg sm:text-xl' : 'font-mono text-base'
-              }`}
+                isHindi ? 'font-devlys' : 'font-mono'
+              } ${FONT_SIZES[typingFontIndex].id}`}
               autoFocus
               spellCheck={false}
               autoComplete="off"

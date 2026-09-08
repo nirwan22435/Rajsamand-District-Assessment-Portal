@@ -14,7 +14,18 @@ import {
   Award,
   Eye,
   AlignLeft,
+  Plus,
+  Minus,
 } from 'lucide-react';
+
+const PASSAGE_EDITOR_FONT_SIZES = [
+  { id: 'text-xs', label: '12px' },
+  { id: 'text-sm', label: '14px' },
+  { id: 'text-base', label: '16px' },
+  { id: 'text-lg', label: '18px' },
+  { id: 'text-xl', label: '20px' },
+  { id: 'text-2xl', label: '24px' },
+] as const;
 
 interface CreateTypingTestModalProps {
   isOpen: boolean;
@@ -64,6 +75,9 @@ export const CreateTypingTestModal: React.FC<CreateTypingTestModalProps> = ({
       (initialTest?.minPassingWpm ? initialTest.minPassingWpm * 10 : initialTest?.language === 'HINDI_DEVLYS_010' ? 250 : 300)
   );
   const [passageText, setPassageText] = useState<string>(initialTest?.passageText || '');
+  const [passageFontSizeIndex, setPassageFontSizeIndex] = useState<number>(() => {
+    return initialTest?.language === 'HINDI_DEVLYS_010' ? 3 : 2;
+  });
   const [status, setStatus] = useState<'PUBLISHED' | 'DRAFT' | 'REVOKED'>(initialTest?.status || 'PUBLISHED');
   const [instructions, setInstructions] = useState<string>(
     initialTest?.instructions ||
@@ -359,12 +373,40 @@ export const CreateTypingTestModal: React.FC<CreateTypingTestModalProps> = ({
 
           {/* Reference Paragraph Input */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-amber-600" />
                 <span>Typing Test Paragraph Passage</span>
               </label>
-              <div className="flex items-center space-x-2">
+              
+              <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                {/* Font Size Increase / Decrease Controller */}
+                <div className="flex items-center bg-white dark:bg-slate-900 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setPassageFontSizeIndex((i) => Math.max(0, i - 1))}
+                    disabled={passageFontSizeIndex <= 0}
+                    title="Decrease passage text area font size"
+                    aria-label="Decrease passage font size"
+                    className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="px-1.5 font-mono text-[11px] font-bold text-amber-700 dark:text-amber-400 min-w-[32px] text-center">
+                    {PASSAGE_EDITOR_FONT_SIZES[passageFontSizeIndex].label}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPassageFontSizeIndex((i) => Math.min(PASSAGE_EDITOR_FONT_SIZES.length - 1, i + 1))}
+                    disabled={passageFontSizeIndex >= PASSAGE_EDITOR_FONT_SIZES.length - 1}
+                    title="Increase passage text area font size"
+                    aria-label="Increase passage font size"
+                    className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                   {wordCount} words • {passageText.length} characters
                 </span>
@@ -388,9 +430,9 @@ export const CreateTypingTestModal: React.FC<CreateTypingTestModalProps> = ({
                   ? 'DevLys 010 QWERTY encoded text paste here (e.g. jktLFkku ljdkj...)'
                   : 'Enter the official examination paragraph text here...'
               }
-              className={`w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs leading-relaxed focus:ring-2 focus:ring-amber-500 focus:outline-none ${
-                language === 'HINDI_DEVLYS_010' ? 'font-devlys text-base' : 'font-sans'
-              }`}
+              className={`w-full p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white leading-relaxed focus:ring-2 focus:ring-amber-500 focus:outline-none transition-all ${
+                PASSAGE_EDITOR_FONT_SIZES[passageFontSizeIndex].id
+              } ${language === 'HINDI_DEVLYS_010' ? 'font-devlys' : 'font-sans'}`}
             />
 
             {/* Passage Health & Quick Formatting Toolbar */}

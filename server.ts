@@ -8,6 +8,9 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 import { createSubmissionPdfDocument } from './src/utils/pdfGenerator';
 
+// Safely derive base directory across both ESM dev (tsx) and CJS prod bundle (esbuild)
+const baseDir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
+
 dotenv.config();
 
 async function startServer() {
@@ -46,15 +49,51 @@ async function startServer() {
   });
 
   // Android RDAA .APK Direct Download Route
-  app.get(['/api/download/RDAA.apk', '/RDAA.apk'], (req, res) => {
-    const apkFile = path.join(process.cwd(), 'public', 'RDAA.apk');
-    if (fs.existsSync(apkFile)) {
+  const sendRdaaApk = (req: express.Request, res: express.Response) => {
+    const candidatePaths = [
+      path.join(process.cwd(), 'public', 'RDAA.apk'),
+      path.join(process.cwd(), 'dist', 'RDAA.apk'),
+      path.join(baseDir, 'public', 'RDAA.apk'),
+      path.join(baseDir, 'RDAA.apk'),
+      path.resolve('public', 'RDAA.apk'),
+      path.resolve('dist', 'RDAA.apk'),
+    ];
+
+    let apkPath: string | null = null;
+    for (const p of candidatePaths) {
+      if (fs.existsSync(p)) {
+        apkPath = p;
+        break;
+      }
+    }
+
+    if (apkPath) {
+      const stat = fs.statSync(apkPath);
       res.setHeader('Content-Type', 'application/vnd.android.package-archive');
       res.setHeader('Content-Disposition', 'attachment; filename="RDAA.apk"');
-      return res.sendFile(apkFile);
+      res.setHeader('Content-Length', stat.size);
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.sendFile(apkPath);
     }
-    return res.status(404).send('RDAA.apk file not found');
-  });
+    return res.status(404).json({ error: 'RDAA.apk file not found on server' });
+  };
+
+  app.get([
+    '/api/download/RDAA.apk',
+    '/api/download/rdaa.apk',
+    '/RDAA.apk',
+    '/rdaa.apk',
+    '/api/download/android-app.apk',
+  ], sendRdaaApk);
+
+  app.head([
+    '/api/download/RDAA.apk',
+    '/api/download/rdaa.apk',
+    '/RDAA.apk',
+    '/rdaa.apk',
+  ], sendRdaaApk);
 
   // Windows Desktop .EXE Setup Direct Download Route
   app.get('/api/download/rajsamand-desktop-setup.exe', (req, res) => {
