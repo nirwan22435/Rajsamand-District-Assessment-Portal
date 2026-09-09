@@ -428,7 +428,11 @@ export default function App() {
     setActiveCandidate(cand);
     setIsAuthenticated(true);
     // If registered under typing test module, navigate strictly to typing-test
-    setActiveTab(cand.typingMedium ? 'typing-test' : 'my-tests');
+    const isTypingOnly =
+      cand.registeredModule === 'TYPING' ||
+      Boolean(cand.typingMedium) ||
+      cand.id.startsWith('cand-typ-');
+    setActiveTab(isTypingOnly ? 'typing-test' : 'my-tests');
     setActiveTakingTest(null);
     setActiveViewingResult(null);
   };
@@ -555,7 +559,7 @@ export default function App() {
       />
 
       {/* Main Container Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <main className={`${activeTab === 'typing-test' ? 'w-full max-w-[1720px] px-2 sm:px-4 lg:px-6' : 'max-w-7xl px-4 sm:px-6 lg:px-8'} mx-auto pt-6`}>
         {/* Full-Screen Test Taking Mode */}
         {activeTakingTest && (role === 'CANDIDATE' || role === 'ADMIN') ? (
           <AssessmentRunner

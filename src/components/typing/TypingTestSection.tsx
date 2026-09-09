@@ -93,6 +93,12 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
   // Completed result modal state
   const [lastFinishedAttempt, setLastFinishedAttempt] = useState<TypingAttempt | null>(null);
 
+  // Candidate submission notification banner state (when performance modal is suppressed)
+  const [candidateSubmissionNotice, setCandidateSubmissionNotice] = useState<{
+    testTitle: string;
+    submittedAt: string;
+  } | null>(null);
+
   // Isolate candidates specifically registered for typing test module.
   // Candidates created on Candidate Directory module are excluded from Typing Test module.
   const typingCandidates = candidates.filter(
@@ -165,7 +171,18 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
   const handleFinishTest = async (attempt: TypingAttempt) => {
     await onSaveAttempt(attempt);
     setActiveRunningTest(null);
-    setLastFinishedAttempt(attempt);
+
+    // If candidate of typing module, do NOT show performance modal on submit / auto-submit
+    if (role === 'CANDIDATE') {
+      setLastFinishedAttempt(null);
+      setCandidateSubmissionNotice({
+        testTitle: attempt.testTitle,
+        submittedAt: attempt.submittedAt || new Date().toISOString(),
+      });
+    } else {
+      // In Admin preview mode, administrator can view the evaluated result modal
+      setLastFinishedAttempt(attempt);
+    }
   };
 
   // If a test is actively being taken, render the full screen test runner
@@ -196,7 +213,7 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="w-full max-w-[1720px] mx-auto px-2 sm:px-4 lg:px-6 py-6 sm:py-8 space-y-6">
       {/* 1. Official Header Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-amber-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-amber-500/20 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
         <div className="relative z-10 flex items-center gap-4">
@@ -657,6 +674,32 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
             </div>
           </div>
 
+          {/* Submission confirmation banner when performance modal is suppressed for typing module candidate */}
+          {candidateSubmissionNotice && (
+            <div className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center space-x-3.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-emerald-950 dark:text-emerald-100">
+                    Typing Test Submitted Successfully
+                  </h3>
+                  <p className="text-xs text-emerald-800 dark:text-emerald-300 mt-0.5">
+                    Your examination attempt for <strong>{candidateSubmissionNotice.testTitle}</strong> has been securely submitted and recorded for official administrative evaluation.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCandidateSubmissionNotice(null)}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-200/70 hover:bg-emerald-200 dark:bg-emerald-900/70 dark:hover:bg-emerald-900 text-emerald-900 dark:text-emerald-100 text-xs font-bold transition-colors cursor-pointer self-end sm:self-auto"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {candidateFilteredTests.length === 0 ? (
               <div className="col-span-full p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 text-slate-500 space-y-3">
@@ -728,22 +771,44 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
 
                       {/* Best Past Score (if attempted) */}
                       {bestAttempt && (
-                        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between text-xs">
-                          <div>
-                            <span className="text-[10px] uppercase font-bold text-slate-500 block">Your Evaluated Result</span>
-                            <span className="text-base font-black text-amber-600">{bestAttempt.netWpm} Net WPM</span>
-                          </div>
-                          <div className="text-right">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                              bestAttempt.status === 'QUALIFIED'
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                                : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
-                            }`}>
-                              {bestAttempt.status}
+                        role === 'CANDIDATE' ? (
+                          <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-between text-xs">
+                            <div className="flex items-center space-x-2.5">
+                              <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                                <CheckCircle2 className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <span className="font-bold text-emerald-900 dark:text-emerald-200 block text-xs">Test Submitted Successfully</span>
+                                <span className="text-[10px] text-emerald-700 dark:text-emerald-400">Response recorded for official evaluation</span>
+                              </div>
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                              {new Date(bestAttempt.submittedAt).toLocaleDateString('en-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
                             </span>
-                            <span className="text-[10px] text-slate-400 block mt-0.5">{bestAttempt.accuracyPercentage}% Accuracy</span>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between text-xs">
+                            <div>
+                              <span className="text-[10px] uppercase font-bold text-slate-500 block">Your Evaluated Result</span>
+                              <span className="text-base font-black text-amber-600">{bestAttempt.netWpm} Net WPM</span>
+                            </div>
+                            <div className="text-right">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                                bestAttempt.status === 'QUALIFIED'
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                  : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                              }`}>
+                                {bestAttempt.status}
+                              </span>
+                              <span className="text-[10px] text-slate-400 block mt-0.5">{bestAttempt.accuracyPercentage}% Accuracy</span>
+                            </div>
+                          </div>
+                        )
                       )}
                     </div>
 
@@ -754,17 +819,26 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
                       </div>
 
                       {hasCompletedTest ? (
-                        /* Once submitted, ONLY View Official Scorecard is shown. Retake Test option is REMOVED */
-                        <button
-                          onClick={() => {
-                            setLastFinishedAttempt(bestAttempt);
-                            setPreviewTest(test);
-                          }}
-                          className="px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-extrabold text-xs uppercase tracking-wider shadow-md shadow-emerald-600/20 transition-all flex items-center space-x-2 cursor-pointer"
-                        >
-                          <FileText className="w-4 h-4" />
-                          <span>View Official Scorecard</span>
-                        </button>
+                        role === 'CANDIDATE' ? (
+                          <div className="flex items-center space-x-2">
+                            <span className="px-4 py-2.5 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-extrabold text-xs uppercase tracking-wider border border-emerald-400/30 flex items-center space-x-1.5 shadow-xs">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                              <span>Test Completed</span>
+                            </span>
+                          </div>
+                        ) : (
+                          /* Once submitted, ONLY View Official Scorecard is shown for admin. Retake Test option is REMOVED */
+                          <button
+                            onClick={() => {
+                              setLastFinishedAttempt(bestAttempt);
+                              setPreviewTest(test);
+                            }}
+                            className="px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-extrabold text-xs uppercase tracking-wider shadow-md shadow-emerald-600/20 transition-all flex items-center space-x-2 cursor-pointer"
+                          >
+                            <FileText className="w-4 h-4" />
+                            <span>View Official Scorecard</span>
+                          </button>
+                        )
                       ) : (
                         /* Not yet submitted: Start Typing Test button */
                         <button

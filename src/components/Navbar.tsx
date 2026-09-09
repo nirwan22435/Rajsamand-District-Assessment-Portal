@@ -31,6 +31,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenDesktopModal,
   onOpenAndroidModal,
 }) => {
+  const isTypingOnlyCandidate =
+    candidate?.registeredModule === 'TYPING' ||
+    Boolean(candidate?.typingMedium) ||
+    Boolean(candidate?.id?.startsWith('cand-typ-'));
+
   return (
     <header className="w-full z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors shadow-sm">
       {/* 1. Official National Tricolor Top Accent Strip */}
@@ -46,7 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Official Emblem & Branding */}
           <div
             className="flex items-center space-x-3.5 cursor-pointer group"
-            onClick={() => setActiveTab(role === 'ADMIN' ? 'analytics' : candidate?.typingMedium ? 'typing-test' : 'my-tests')}
+            onClick={() => setActiveTab(role === 'ADMIN' ? 'analytics' : isTypingOnlyCandidate ? 'typing-test' : 'my-tests')}
           >
             {/* Official Portal Logo Badge */}
             <div className="relative flex-shrink-0">
@@ -331,8 +336,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               </>
             ) : (
               <>
-                {/* For Typing Candidates: Show ONLY Typing Test and My Performance & Scorecard */}
-                {!candidate?.typingMedium && (
+                {/* For Typing Candidates: Hide Assessments and Performance Tabs */}
+                {!isTypingOnlyCandidate && (
                   <button
                     id="tab-my-tests"
                     onClick={() => setActiveTab('my-tests')}
@@ -382,29 +387,31 @@ export const Navbar: React.FC<NavbarProps> = ({
                   )}
                 </button>
 
-                <button
-                  id="tab-my-performance"
-                  onClick={() => setActiveTab('my-performance')}
-                  className={`group flex items-center space-x-2.5 px-3.5 py-2 text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
-                    activeTab === 'my-performance'
-                      ? 'tab-active-theme bg-emerald-600 hover:bg-emerald-600 text-white shadow-sm font-black dark:bg-emerald-600 dark:text-white'
-                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700/60 font-extrabold'
-                  }`}
-                >
-                  <span
-                    className={`flex items-center justify-center w-7 h-7 rounded-lg shrink-0 transition-transform shadow-xs ${
+                {!isTypingOnlyCandidate && (
+                  <button
+                    id="tab-my-performance"
+                    onClick={() => setActiveTab('my-performance')}
+                    className={`group flex items-center space-x-2.5 px-3.5 py-2 text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
                       activeTab === 'my-performance'
-                        ? 'bg-white/20 text-white scale-105'
-                        : 'bg-amber-500/15 dark:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 group-hover:scale-110'
+                        ? 'tab-active-theme bg-emerald-600 hover:bg-emerald-600 text-white shadow-sm font-black dark:bg-emerald-600 dark:text-white'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700/60 font-extrabold'
                     }`}
                   >
-                    <Award className="w-[18px] h-[18px]" strokeWidth={2.4} />
-                  </span>
-                  <span>My Performance & Scorecard</span>
-                  {activeTab === 'my-performance' && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
-                  )}
-                </button>
+                    <span
+                      className={`flex items-center justify-center w-7 h-7 rounded-lg shrink-0 transition-transform shadow-xs ${
+                        activeTab === 'my-performance'
+                          ? 'bg-white/20 text-white scale-105'
+                          : 'bg-amber-500/15 dark:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 group-hover:scale-110'
+                      }`}
+                    >
+                      <Award className="w-[18px] h-[18px]" strokeWidth={2.4} />
+                    </span>
+                    <span>My Performance & Scorecard</span>
+                    {activeTab === 'my-performance' && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+                    )}
+                  </button>
+                )}
               </>
             )}
           </nav>

@@ -27,6 +27,8 @@ const RESULT_FONT_SIZES = [
   { id: 'text-base', label: '16px' },
   { id: 'text-lg', label: '18px' },
   { id: 'text-xl', label: '20px' },
+  { id: 'text-2xl', label: '24px' },
+  { id: 'text-3xl', label: '30px' },
 ] as const;
 
 interface TypingResultModalProps {

@@ -25,6 +25,7 @@ const PASSAGE_EDITOR_FONT_SIZES = [
   { id: 'text-lg', label: '18px' },
   { id: 'text-xl', label: '20px' },
   { id: 'text-2xl', label: '24px' },
+  { id: 'text-3xl', label: '30px' },
 ] as const;
 
 interface CreateTypingTestModalProps {
@@ -76,7 +77,7 @@ export const CreateTypingTestModal: React.FC<CreateTypingTestModalProps> = ({
   );
   const [passageText, setPassageText] = useState<string>(initialTest?.passageText || '');
   const [passageFontSizeIndex, setPassageFontSizeIndex] = useState<number>(() => {
-    return initialTest?.language === 'HINDI_DEVLYS_010' ? 3 : 2;
+    return Math.max(0, PASSAGE_EDITOR_FONT_SIZES.findIndex((f) => f.label === '30px'));
   });
   const [status, setStatus] = useState<'PUBLISHED' | 'DRAFT' | 'REVOKED'>(initialTest?.status || 'PUBLISHED');
   const [instructions, setInstructions] = useState<string>(

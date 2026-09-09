@@ -50,7 +50,17 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
     myTypingAttempts.filter((a) => a.status === 'QUALIFIED').length;
 
   // Filter available tests for candidate
-  const isTypingCandidate = !!candidate.typingMedium;
+  const isTypingCandidate =
+    candidate.registeredModule === 'TYPING' ||
+    Boolean(candidate.typingMedium) ||
+    candidate.id.startsWith('cand-typ-');
+
+  React.useEffect(() => {
+    if (isTypingCandidate && activeTab !== 'typing-test') {
+      setActiveTab('typing-test');
+    }
+  }, [isTypingCandidate, activeTab, setActiveTab]);
+
   const availableTests = isTypingCandidate
     ? []
     : tests.filter((t) => {
@@ -209,7 +219,7 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
       )}
 
       {/* TAB 2: Performance Metrics & History */}
-      {activeTab === 'my-performance' && (
+      {activeTab === 'my-performance' && !isTypingCandidate && (
         <div className="space-y-6">
           {/* Section A: Typing Test Evaluations */}
           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">

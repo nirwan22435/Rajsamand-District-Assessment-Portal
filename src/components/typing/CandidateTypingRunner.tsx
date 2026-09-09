@@ -31,6 +31,8 @@ const FONT_SIZES = [
   { id: 'text-xl', label: '20px', name: 'XL' },
   { id: 'text-2xl', label: '24px', name: '2XL' },
   { id: 'text-3xl', label: '30px', name: '3XL' },
+  { id: 'text-4xl', label: '36px', name: '4XL' },
+  { id: 'text-5xl', label: '48px', name: '5XL' },
 ] as const;
 
 interface CandidateTypingRunnerProps {
@@ -96,12 +98,20 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
   // Typed Text State
   const [typedText, setTypedText] = useState<string>('');
   const isHindi = test.language === 'HINDI_DEVLYS_010';
-  const defaultFontIdx = isHindi ? 3 : 2; // 18px for DevLys, 16px for English
 
-  // Font Size States for Reference Passage and Candidate Typing Input
+  // Check if candidate is registered on typing module
+  const isTypingModuleCandidate =
+    candidate.registeredModule === 'TYPING' ||
+    Boolean(candidate.typingMedium) ||
+    candidate.id.startsWith('cand-typ-');
+
+  // Default font index: 30px (3XL) as requested
+  const defaultFontIdx = Math.max(0, FONT_SIZES.findIndex((f) => f.label === '30px'));
+
+  // Font Size States for Reference Passage and Candidate Typing Input (Defaults to 30px)
   const [passageFontIndex, setPassageFontIndex] = useState<number>(() => {
     try {
-      const saved = localStorage.getItem('rdaa_typing_passage_font');
+      const saved = localStorage.getItem('rdaa_typing_passage_font_v30px');
       if (saved !== null) {
         const parsed = parseInt(saved, 10);
         if (!isNaN(parsed) && parsed >= 0 && parsed < FONT_SIZES.length) return parsed;
@@ -112,7 +122,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
 
   const [typingFontIndex, setTypingFontIndex] = useState<number>(() => {
     try {
-      const saved = localStorage.getItem('rdaa_typing_input_font');
+      const saved = localStorage.getItem('rdaa_typing_input_font_v30px');
       if (saved !== null) {
         const parsed = parseInt(saved, 10);
         if (!isNaN(parsed) && parsed >= 0 && parsed < FONT_SIZES.length) return parsed;
@@ -129,12 +139,12 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
     setPassageFontIndex((prev) => {
       const next = Math.min(FONT_SIZES.length - 1, prev + 1);
       try {
-        localStorage.setItem('rdaa_typing_passage_font', String(next));
+        localStorage.setItem('rdaa_typing_passage_font_v30px', String(next));
       } catch {}
       if (syncFontSizes) {
         setTypingFontIndex(next);
         try {
-          localStorage.setItem('rdaa_typing_input_font', String(next));
+          localStorage.setItem('rdaa_typing_input_font_v30px', String(next));
         } catch {}
       }
       return next;
@@ -145,12 +155,12 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
     setPassageFontIndex((prev) => {
       const next = Math.max(0, prev - 1);
       try {
-        localStorage.setItem('rdaa_typing_passage_font', String(next));
+        localStorage.setItem('rdaa_typing_passage_font_v30px', String(next));
       } catch {}
       if (syncFontSizes) {
         setTypingFontIndex(next);
         try {
-          localStorage.setItem('rdaa_typing_input_font', String(next));
+          localStorage.setItem('rdaa_typing_input_font_v30px', String(next));
         } catch {}
       }
       return next;
@@ -160,12 +170,12 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
   const handleResetPassageFont = () => {
     setPassageFontIndex(defaultFontIdx);
     try {
-      localStorage.setItem('rdaa_typing_passage_font', String(defaultFontIdx));
+      localStorage.setItem('rdaa_typing_passage_font_v30px', String(defaultFontIdx));
     } catch {}
     if (syncFontSizes) {
       setTypingFontIndex(defaultFontIdx);
       try {
-        localStorage.setItem('rdaa_typing_input_font', String(defaultFontIdx));
+        localStorage.setItem('rdaa_typing_input_font_v30px', String(defaultFontIdx));
       } catch {}
     }
   };
@@ -174,7 +184,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
     setTypingFontIndex((prev) => {
       const next = Math.min(FONT_SIZES.length - 1, prev + 1);
       try {
-        localStorage.setItem('rdaa_typing_input_font', String(next));
+        localStorage.setItem('rdaa_typing_input_font_v30px', String(next));
       } catch {}
       return next;
     });
@@ -184,7 +194,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
     setTypingFontIndex((prev) => {
       const next = Math.max(0, prev - 1);
       try {
-        localStorage.setItem('rdaa_typing_input_font', String(next));
+        localStorage.setItem('rdaa_typing_input_font_v30px', String(next));
       } catch {}
       return next;
     });
@@ -193,7 +203,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
   const handleResetTypingFont = () => {
     setTypingFontIndex(defaultFontIdx);
     try {
-      localStorage.setItem('rdaa_typing_input_font', String(defaultFontIdx));
+      localStorage.setItem('rdaa_typing_input_font_v30px', String(defaultFontIdx));
     } catch {}
   };
 
@@ -466,7 +476,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
   const isLowTime = secondsRemaining <= 60;
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-4 animate-in fade-in duration-200">
+    <div className="w-full max-w-[1720px] mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4 animate-in fade-in duration-200">
       {/* 1. Top Test Header Bar */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
@@ -534,38 +544,42 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
         </div>
       </div>
 
-      {/* 2. Live Performance Metric Highlights */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
-          <span className="block text-[10px] font-bold uppercase text-slate-500">Total Words in Para</span>
-          <span className="text-xl font-black text-slate-900 dark:text-white">{referenceWords.length}</span>
-        </div>
+      {/* 2. Live Performance Metric Highlights (Hidden for candidate registered on typing module) */}
+      {!isTypingModuleCandidate && (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
+            <span className="block text-[10px] font-bold uppercase text-slate-500">Total Words in Para</span>
+            <span className="text-xl font-black text-slate-900 dark:text-white">{referenceWords.length}</span>
+          </div>
 
-        <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-center">
-          <span className="block text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-400">Correct Words</span>
-          <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{liveEvaluation.correctWordsCount}</span>
-        </div>
+          <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-center">
+            <span className="block text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-400">Correct Words</span>
+            <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{liveEvaluation.correctWordsCount}</span>
+          </div>
 
-        <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-center">
-          <span className="block text-[10px] font-bold uppercase text-rose-700 dark:text-rose-400">Incorrect Words</span>
-          <span className="text-xl font-black text-rose-600 dark:text-rose-400">{liveEvaluation.incorrectWordsCount}</span>
-        </div>
+          <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-center">
+            <span className="block text-[10px] font-bold uppercase text-rose-700 dark:text-rose-400">Incorrect Words</span>
+            <span className="text-xl font-black text-rose-600 dark:text-rose-400">{liveEvaluation.incorrectWordsCount}</span>
+          </div>
 
-        <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-center">
-          <span className="block text-[10px] font-bold uppercase text-amber-700 dark:text-amber-400">Words Not Typed</span>
-          <span className="text-xl font-black text-amber-600 dark:text-amber-400">{liveEvaluation.untypedWordsCount}</span>
-        </div>
+          <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-center">
+            <span className="block text-[10px] font-bold uppercase text-amber-700 dark:text-amber-400">Words Not Typed</span>
+            <span className="text-xl font-black text-amber-600 dark:text-amber-400">{liveEvaluation.untypedWordsCount}</span>
+          </div>
 
-        <div className="col-span-2 sm:col-span-1 p-3 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 text-center">
-          <span className="block text-[10px] font-bold uppercase text-sky-700 dark:text-sky-400">Live Net Speed</span>
-          <span className="text-xl font-black text-sky-600 dark:text-sky-400">{liveEvaluation.netWpm} <span className="text-xs">WPM</span></span>
+          <div className="col-span-2 sm:col-span-1 p-3 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 text-center">
+            <span className="block text-[10px] font-bold uppercase text-sky-700 dark:text-sky-400">Live Net Speed</span>
+            <span className="text-xl font-black text-sky-600 dark:text-sky-400">{liveEvaluation.netWpm} <span className="text-xs">WPM</span></span>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* 3. SIDE-BY-SIDE EQUAL 2-SECTION SPLIT: Reference Passage & Typing Window */}
+      {/* 3. SIDE-BY-SIDE EQUAL 2-SECTION SPLIT: Reference Passage & Typing Window (Expanded height for maximum typing comfort) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         {/* LEFT SECTION (50%): Reference Passage with Smooth Scrolling & Error Isolation */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-[460px] overflow-hidden relative">
+        <div className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col ${
+          isTypingModuleCandidate ? 'h-[580px] sm:h-[620px] lg:h-[660px]' : 'h-[460px]'
+        } overflow-hidden relative`}>
           {/* Passage Toolbar */}
           <div className="bg-slate-100 dark:bg-slate-800/80 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center space-x-2 text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">
@@ -641,7 +655,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
           {/* Reference Paragraph Container with Precise Word Statuses */}
           <div
             ref={passageContainerRef}
-            className={`p-5 overflow-y-auto flex-1 leading-relaxed select-none typing-passage-scroll relative ${
+            className={`p-5 sm:p-6 overflow-y-auto flex-1 leading-relaxed select-none typing-passage-scroll relative ${
               isHindi ? 'font-devlys' : 'font-sans'
             } ${FONT_SIZES[passageFontIndex].id}`}
           >
@@ -657,14 +671,20 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
           </div>
 
           {/* Reference Footer Status */}
-          <div className="px-4 py-2 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 flex items-center justify-between flex-shrink-0">
+          <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 flex items-center justify-between flex-shrink-0">
             <span>Passage Progress: {liveEvaluation.correctWordsCount + liveEvaluation.incorrectWordsCount} / {referenceWords.length} Words</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{liveEvaluation.accuracyPercentage}% Accuracy</span>
+            {!isTypingModuleCandidate ? (
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{liveEvaluation.accuracyPercentage}% Accuracy</span>
+            ) : (
+              <span className="text-slate-500 font-semibold">10-Minute Official Examination</span>
+            )}
           </div>
         </div>
 
         {/* RIGHT SECTION (50%): Typing Input Box */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-amber-500/80 dark:border-amber-500/60 shadow-lg flex flex-col h-[460px] overflow-hidden">
+        <div className={`bg-white dark:bg-slate-900 rounded-2xl border-2 border-amber-500/80 dark:border-amber-500/60 shadow-lg flex flex-col ${
+          isTypingModuleCandidate ? 'h-[580px] sm:h-[620px] lg:h-[660px]' : 'h-[460px]'
+        } overflow-hidden`}>
           {/* Input Header Toolbar */}
           <div className="bg-amber-500/10 dark:bg-slate-800/80 px-4 py-2.5 border-b border-amber-500/30 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center space-x-2 text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-300">
@@ -716,7 +736,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
           </div>
 
           {/* Large Focused Typing Textarea matching full height */}
-          <div className="p-4 flex-1 flex flex-col">
+          <div className="p-4 sm:p-5 flex-1 flex flex-col">
             <textarea
               ref={textareaRef}
               value={typedText}
@@ -725,11 +745,13 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
               placeholder={
                 !isTestStarted
                   ? isHindi
-                    ? 'यहाँ टाइप करना शुरू करें (10 मिनट का टाइमर पहले अक्षर टाइप करते ही स्वतः शुरू हो जाएगा)...'
-                    : 'Start typing here (the 10-minute timer starts automatically on first keypress)...'
-                  : 'Keep typing the reference passage...'
+                    ? 'यहाँ टाइप करना शुरू करें'
+                    : 'Start typing here'
+                  : isHindi
+                    ? 'टाइप जारी रखें'
+                    : 'Keep typing the reference passage...'
               }
-              className={`w-full flex-1 p-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none leading-relaxed ${
+              className={`w-full flex-1 p-4 sm:p-5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none leading-relaxed placeholder:font-sans ${
                 isHindi ? 'font-devlys' : 'font-mono'
               } ${FONT_SIZES[typingFontIndex].id}`}
               autoFocus
@@ -811,25 +833,14 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Words Typed:</span>
-                <strong className="text-slate-900 dark:text-white font-mono">
-                  {liveEvaluation.correctWordsCount + liveEvaluation.incorrectWordsCount} / {referenceWords.length}
-                </strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Current Net Speed:</span>
-                <strong className="text-amber-600 font-mono font-bold">{liveEvaluation.netWpm} WPM</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Accuracy:</span>
-                <strong className="text-emerald-600 font-mono font-bold">{liveEvaluation.accuracyPercentage}%</strong>
-              </div>
+            <div className="p-4 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-900 dark:text-amber-200">
+              <p className="font-semibold">
+                Once submitted, your examination attempt will be finalized and securely recorded for official evaluation. You will not be able to make further edits.
+              </p>
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              Are you sure you want to finish and finalize your typing test now? Your score will be calculated and saved immediately.
+              Are you sure you want to finish and submit your typing test now?
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-2">
