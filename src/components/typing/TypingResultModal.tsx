@@ -233,7 +233,7 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
                 {analysis.accuracyPercentage}%
               </div>
               <span className="text-[10px] text-slate-400 font-medium">
-                total correctly typed words / total words in reference paragraph
+                (Correct Words Typed / Total Words Typed by Candidate) × 100
               </span>
             </div>
 

@@ -84,7 +84,48 @@ export function subscribeTypingTests(
   );
 }
 
-// Subscribe to typing attempts
+// Compute accuracy: (correct words typed / total words typed by candidate) * 100
+export function computeTypingAccuracy(correctCount: number, incorrectCount: number): number {
+  const totalTyped = (correctCount || 0) + (incorrectCount || 0);
+  if (totalTyped <= 0) return 0;
+  return Math.min(100, Math.max(0, Math.round(((correctCount || 0) / totalTyped) * 1000) / 10));
+}
+
+// Migrate all existing typing attempts in Firestore to the new accuracy formula
+export async function recalculateAndSyncExistingAttemptsAccuracy(): Promise<number> {
+  try {
+    const snapshot = await getDocs(collection(db, TYPING_ATTEMPTS_COL));
+    const updates: Promise<void>[] = [];
+    let updatedCount = 0;
+
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      const correct = Number(data.correctWordsCount) || 0;
+      const incorrect = Number(data.incorrectWordsCount) || 0;
+      const newAcc = computeTypingAccuracy(correct, incorrect);
+
+      if (data.accuracyPercentage !== newAcc) {
+        updatedCount++;
+        updates.push(
+          updateDoc(doc(db, TYPING_ATTEMPTS_COL, docSnap.id), {
+            accuracyPercentage: newAcc,
+          })
+        );
+      }
+    });
+
+    if (updates.length > 0) {
+      await Promise.all(updates);
+      console.log(`[Typing Assessment] Updated accuracy for ${updatedCount} existing candidate attempt(s).`);
+    }
+    return updatedCount;
+  } catch (err) {
+    console.warn('[Typing Assessment] Unable to auto-sync existing typing attempts accuracy:', err);
+    return 0;
+  }
+}
+
+// Subscribe to typing attempts with automatic formula harmonization
 export function subscribeTypingAttempts(
   onData: (attempts: TypingAttempt[]) => void,
   onError?: (err: any) => void
@@ -93,11 +134,34 @@ export function subscribeTypingAttempts(
     collection(db, TYPING_ATTEMPTS_COL),
     (snapshot) => {
       const list: TypingAttempt[] = [];
+      const pendingSyncs: { id: string; newAcc: number }[] = [];
+
       snapshot.forEach((docSnap) => {
-        list.push({ id: docSnap.id, ...docSnap.data() } as TypingAttempt);
+        const rawData = docSnap.data();
+        const item = { id: docSnap.id, ...rawData } as TypingAttempt;
+        const correct = Number(item.correctWordsCount) || 0;
+        const incorrect = Number(item.incorrectWordsCount) || 0;
+        const computedAcc = computeTypingAccuracy(correct, incorrect);
+
+        // Harmonize with requested accuracy formula: (correct / total typed) * 100
+        if (rawData.accuracyPercentage !== computedAcc) {
+          pendingSyncs.push({ id: docSnap.id, newAcc: computedAcc });
+        }
+        item.accuracyPercentage = computedAcc;
+        list.push(item);
       });
+
       list.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
       onData(list);
+
+      // Persist harmonized accuracy back to Firestore documents if needed
+      if (pendingSyncs.length > 0) {
+        Promise.all(
+          pendingSyncs.map(({ id, newAcc }) =>
+            updateDoc(doc(db, TYPING_ATTEMPTS_COL, id), { accuracyPercentage: newAcc }).catch(() => {})
+          )
+        ).catch(() => {});
+      }
     },
     (error) => {
       handleFirestoreError(error, OperationType.GET, TYPING_ATTEMPTS_COL);

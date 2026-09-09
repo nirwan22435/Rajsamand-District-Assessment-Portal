@@ -1130,7 +1130,7 @@ export function downloadCandidateTypingScorecardPdf(attempt: TypingAttempt, refe
     ['Skipped Words (Omitted from Paragraph)', `${analysis.skippedWordsCount} words`],
     ['Gross Typing Speed', `${attempt.grossWpm || 0} Words Per Minute (WPM)`],
     ['Net Typing Speed', `${attempt.netWpm || 0} Words Per Minute (WPM)`],
-    ['Calculated Accuracy Percentage', `${analysis.accuracyPercentage}% (Total Correctly Typed / Reference Words)`],
+    ['Calculated Accuracy Percentage', `${analysis.accuracyPercentage}% (Correct Words Typed / Total Words Typed by Candidate)`],
     ['Qualifying Criteria', 'Based on No. of correctly typed words in 10 mins only'],
     ['Official Assessment Result', attempt.status || 'EVALUATED'],
   ];

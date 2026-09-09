@@ -48,6 +48,7 @@ import {
   saveTypingAttemptToFirestore,
   deleteTypingAttemptFromFirestore,
   seedInitialDataIfEmpty,
+  recalculateAndSyncExistingAttemptsAccuracy,
 } from './services/firestoreService';
 
 export default function App() {
@@ -166,6 +167,9 @@ export default function App() {
     const unsubTypingAttempts = subscribeTypingAttempts((data) => {
       setTypingAttempts(data);
     });
+
+    // Automatically recalculate and sync accuracy for any existing attempts in database
+    recalculateAndSyncExistingAttemptsAccuracy().catch(() => {});
 
     const unsubAdmin = subscribeAdminPassword(() => {
       // Sync admin password in real-time

@@ -541,10 +541,11 @@ export function evaluateTyping(
   const netWpm = Math.max(0, Math.round((correctCount / timeInMinutes) * 10) / 10);
 
   // ACCURACY PERCENTAGE:
-  // Accuracy percentage = total correctly typed words / total words in reference paragraph
+  // Accuracy = (correct words typed / total words typed by the candidate) * 100
+  const totalTypedWordsByCandidate = correctCount + incorrectCount;
   const accuracyPercentage =
-    totalWordsInPara > 0
-      ? Math.min(100, Math.max(0, Math.round((correctCount / totalWordsInPara) * 1000) / 10))
+    totalTypedWordsByCandidate > 0
+      ? Math.min(100, Math.max(0, Math.round((correctCount / totalTypedWordsByCandidate) * 1000) / 10))
       : 0;
 
   // Qualification criteria is strictly based on Number of correctly typed words in 10 minutes only.
@@ -641,6 +642,11 @@ export function getDetailedWordAnalysis(
     attempt.skippedWordsCount ??
     Math.max(0, (attempt.totalWordsInPara || 0) - (attempt.correctWordsCount || 0) - (attempt.incorrectWordsCount || 0));
 
+  const totalTypedWords = (attempt.correctWordsCount || 0) + (attempt.incorrectWordsCount || 0);
+  const fallbackAccuracy = totalTypedWords > 0
+    ? Math.min(100, Math.max(0, Math.round(((attempt.correctWordsCount || 0) / totalTypedWords) * 1000) / 10))
+    : 0;
+
   return {
     referencePassage: '',
     refWords: [],
@@ -651,7 +657,7 @@ export function getDetailedWordAnalysis(
     correctWordsCount: attempt.correctWordsCount || 0,
     incorrectWordsCount: attempt.incorrectWordsCount || 0,
     skippedWordsCount: fallbackSkippedCount,
-    accuracyPercentage: attempt.accuracyPercentage || 0,
+    accuracyPercentage: fallbackAccuracy,
     wordStatuses: [],
   };
 }

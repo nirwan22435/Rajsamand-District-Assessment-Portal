@@ -143,7 +143,7 @@ export interface TypingAttempt {
   referencePassage?: string; // Full reference passage text
   netWpm: number; // Net typing speed per minute
   grossWpm: number; // Gross typing speed (total typed / minutes)
-  accuracyPercentage: number; // Accuracy % = total correctly typed words / total words in reference paragraph
+  accuracyPercentage: number; // Accuracy % = (total correctly typed words / total words typed by candidate) * 100
   timeTakenSeconds: number; // Total time taken in seconds (<= 600s for 10 min test)
   timeTakenMinutes: number;
   status: 'QUALIFIED' | 'DISQUALIFIED';
