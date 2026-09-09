@@ -5,9 +5,6 @@ import {
   CheckCircle2,
   Smartphone,
   Loader2,
-  Copy,
-  Check,
-  ExternalLink,
   ShieldCheck,
   AlertCircle,
 } from 'lucide-react';
@@ -29,14 +26,10 @@ export const AndroidAppModal: React.FC<AndroidAppModalProps> = ({
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
   const [downloadSuccess, setDownloadSuccess] = useState<boolean>(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
-  const [copiedLink, setCopiedLink] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
   const downloadUrl = '/api/download/RDAA.apk';
-  const fullDownloadUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}${downloadUrl}`
-    : downloadUrl;
 
   const handleConfirmDownload = async () => {
     setIsDownloading(true);
@@ -111,21 +104,9 @@ export const AndroidAppModal: React.FC<AndroidAppModalProps> = ({
     } catch (err: any) {
       console.error('Download failed:', err);
       setDownloadError(
-        'Automatic download was blocked by browser permissions. Please click "Direct Download" or copy the link below.'
+        'Automatic download was blocked by browser permissions. Please try again.'
       );
       setIsDownloading(false);
-    }
-  };
-
-  const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(fullDownloadUrl);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
-    } catch {
-      // Fallback
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
     }
   };
 
@@ -168,7 +149,7 @@ export const AndroidAppModal: React.FC<AndroidAppModalProps> = ({
 
         {/* App Title & Badges */}
         <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-          RDAA Mobile App
+          RDA Mobile App
         </h3>
         <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center justify-center gap-1">
           <Smartphone className="w-3.5 h-3.5" />
@@ -190,15 +171,9 @@ export const AndroidAppModal: React.FC<AndroidAppModalProps> = ({
         </div>
 
         {/* Confirmation Question / Instructions */}
-        <div className="mt-4 py-3 px-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 font-medium text-left space-y-1.5">
+        <div className="mt-4 py-3 px-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 font-medium text-left">
           <p>
             Download <strong className="text-slate-900 dark:text-white font-bold">RDAA.apk</strong> to install on your Android phone or tablet.
-          </p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Compatible with Android 5.0 through Android 15+. Signed with APK Scheme v1, v2 &amp; v3.
-          </p>
-          <p className="text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 p-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/60">
-            💡 <strong>Installation Tip:</strong> When opening the file, tap &quot;Settings&quot; and enable &quot;Allow from this source&quot; to permit sideloading.
           </p>
         </div>
 
@@ -245,38 +220,6 @@ export const AndroidAppModal: React.FC<AndroidAppModalProps> = ({
               <>
                 <Download className="w-4 h-4" />
                 <span>Download APK</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Secondary Direct Download Options (Ideal for iframes, mobile browsers & sharing) */}
-        <div className="mt-3.5 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs gap-2">
-          <a
-            href={downloadUrl}
-            download="RDAA.apk"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            <span>Direct Link (New Tab)</span>
-          </a>
-
-          <button
-            type="button"
-            onClick={handleCopyLink}
-            className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-medium flex items-center gap-1 cursor-pointer transition-colors"
-          >
-            {copiedLink ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-emerald-600 dark:text-emerald-400 font-bold">Copied!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                <span>Copy Link</span>
               </>
             )}
           </button>

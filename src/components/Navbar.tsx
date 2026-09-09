@@ -87,11 +87,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 id="desktop-app-btn"
                 type="button"
                 onClick={onOpenDesktopModal}
-                title="Install / Download Windows Desktop Application & .EXE Setup"
+                title="Download Windows Desktop Application (.EXE) Setup"
                 className="px-4 py-2 rounded-full bg-[#0284c7] hover:bg-[#0369a1] text-white border border-[#38bdf8]/40 shadow-xs hover:shadow-md hover:shadow-sky-500/15 transition-all duration-150 flex items-center gap-2 text-xs font-semibold cursor-pointer active:scale-95 whitespace-nowrap"
               >
                 <Monitor className="w-3.5 h-3.5 text-white/95" />
-                <span>Desktop App</span>
+                <span>Desktop App (.EXE)</span>
                 <span className="relative flex h-2 w-2 ml-0.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>

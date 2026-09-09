@@ -23,8 +23,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 }) => {
   const [selectedRole, setSelectedRole] = useState<UserRole>('ADMIN');
 
-  // Admin login fields
-  const [adminEmail, setAdminEmail] = useState('devkarannirwan01@gmail.com');
+  // Admin login fields (no hardcoded email required)
+  const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
@@ -144,6 +144,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             District Administration, Rajsamand (Rajasthan)
+          </p>
+        </div>
+
+        {/* 1-Click Direct Access */}
+        <div className="bg-sky-50 dark:bg-sky-950/50 border border-sky-200 dark:border-sky-800/80 rounded-2xl p-3 text-center">
+          <button
+            type="button"
+            onClick={() => {
+              onAdminLogin();
+              onClose();
+            }}
+            className="w-full py-2 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 active:scale-95 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer"
+          >
+            <span>Directly Open Portal (सीधे ऐप खोलें)</span>
+          </button>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+            Instant direct access without Gmail login or password.
           </p>
         </div>
 

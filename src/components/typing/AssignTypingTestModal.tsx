@@ -95,23 +95,23 @@ export const AssignTypingTestModal: React.FC<AssignTypingTestModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm overflow-y-auto">
       <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
+        <div className="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white px-6 py-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-600/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 dark:bg-amber-600/20 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-amber-400">
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-[10px] uppercase font-black tracking-widest text-amber-400">
+              <div className="text-[10px] uppercase font-black tracking-widest text-amber-700 dark:text-amber-400">
                 Candidate Assignment
               </div>
-              <h2 className="text-base font-black tracking-tight">
+              <h2 className="text-base font-black tracking-tight text-slate-900 dark:text-white">
                 Assign Typing Paragraph to Candidates
               </h2>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

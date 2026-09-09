@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Candidate, TypingTest, TypingAttempt } from '../../types';
 import { evaluateTyping, formatSecondsToTime, getWordsArray, WordComparisonItem } from '../../utils/typingUtils';
 import { auditAndRefinePassage } from '../../utils/passageSanitizer';
@@ -6,21 +6,22 @@ import { DEVLYS_KEYBOARD_LAYOUT } from '../../utils/devlysConverter';
 import {
   Clock,
   CheckCircle2,
-  AlertTriangle,
-  RotateCcw,
   Sparkles,
-  Award,
   Keyboard,
   Info,
   Type,
   Send,
-  X,
   AlertCircle,
-  HelpCircle,
-  ArrowDown,
   Plus,
   Minus,
   Link2,
+  Maximize2,
+  Minimize2,
+  Volume2,
+  VolumeX,
+  Target,
+  Check,
+  RotateCcw,
 } from 'lucide-react';
 
 const FONT_SIZES = [
@@ -49,24 +50,30 @@ interface PassageWordItemProps {
 
 const PassageWordItem = React.memo<PassageWordItemProps>(
   ({ item, isCurrent }) => {
-    let wordStyle = 'text-slate-700 dark:text-slate-300 px-1 py-0.5 rounded';
+    let wordStyle = 'text-slate-700 dark:text-slate-300 px-1 py-0.5 rounded transition-colors';
 
     if (item.status === 'CORRECT') {
       wordStyle =
-        'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 font-bold border-b-2 border-emerald-500/80 px-1.5 py-0.5 rounded shadow-2xs';
+        'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 font-bold border-b-2 border-emerald-500/80 px-1.5 py-0.5 rounded shadow-2xs';
     } else if (item.status === 'INCORRECT') {
       wordStyle =
-        'text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/80 font-bold border-b-2 border-rose-500 px-1.5 py-0.5 rounded shadow-2xs';
+        'text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/80 font-bold border-b-2 border-rose-500 px-1.5 py-0.5 rounded shadow-2xs line-through decoration-rose-500/50';
     } else if (item.status === 'CURRENT') {
       wordStyle =
-        'bg-amber-300/50 text-amber-950 dark:text-amber-200 font-extrabold border-b-2 border-amber-600 px-1.5 py-0.5 rounded shadow-xs';
+        'bg-amber-400 text-slate-950 font-black ring-2 ring-amber-500/80 shadow-md px-2 py-0.5 rounded-lg transition-all scale-[1.03] inline-block';
     } else if (item.status === 'CURRENT_MISMATCH') {
       wordStyle =
-        'bg-rose-200/70 text-rose-900 dark:text-rose-200 font-extrabold border-b-2 border-rose-600 px-1.5 py-0.5 rounded shadow-xs';
+        'bg-rose-500 text-white font-black ring-2 ring-rose-600 shadow-md px-2 py-0.5 rounded-lg transition-all scale-[1.03] inline-block';
+    } else if (item.status === 'SKIPPED') {
+      wordStyle =
+        'text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded opacity-70 line-through';
     }
 
     return (
-      <span id={`passage-word-${item.index}`} className={wordStyle}>
+      <span
+        id={`passage-word-${item.index}`}
+        className={`${wordStyle} ${isCurrent ? 'relative z-10' : ''}`}
+      >
         {item.refWord}
       </span>
     );
@@ -105,10 +112,10 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
     Boolean(candidate.typingMedium) ||
     candidate.id.startsWith('cand-typ-');
 
-  // Default font index: 30px (3XL) as requested
+  // Default font index: 30px (3XL)
   const defaultFontIdx = Math.max(0, FONT_SIZES.findIndex((f) => f.label === '30px'));
 
-  // Font Size States for Reference Passage and Candidate Typing Input (Defaults to 30px)
+  // Font Size States
   const [passageFontIndex, setPassageFontIndex] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('rdaa_typing_passage_font_v30px');
@@ -135,6 +142,87 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
   const [showKeyboardHelp, setShowKeyboardHelp] = useState<boolean>(false);
   const [showSubmitConfirmModal, setShowSubmitConfirmModal] = useState<boolean>(false);
 
+  // Ergonomic UX Enhancements: Fullscreen, Audio Click, CapsLock, Word Guide Ribbon
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [audioFeedback, setAudioFeedback] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('rdaa_typing_audio_feedback') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [isCapsLockOn, setIsCapsLockOn] = useState<boolean>(false);
+  const [showWordRibbon, setShowWordRibbon] = useState<boolean>(true);
+
+  // Synchronous State Tracking Refs (Prevents React stale closures during timer auto-finish)
+  const typedTextRef = useRef<string>('');
+  const secondsRemainingRef = useRef<number>(durationSeconds);
+  const isFinishedRef = useRef<boolean>(false);
+  const startTimeRef = useRef<number | null>(null);
+  const runnerRootRef = useRef<HTMLDivElement | null>(null);
+
+  // Audio Context Ref for instant zero-latency synthesized tactile key sound
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const playTactileClick = useCallback(() => {
+    if (!audioFeedback) return;
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(320, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.025);
+      gain.gain.setValueAtTime(0.04, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.025);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.028);
+    } catch {}
+  }, [audioFeedback]);
+
+  // Fullscreen Toggle
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      const elem = runnerRootRef.current || document.documentElement;
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(() => {});
+        setIsFullscreen(true);
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+        setIsFullscreen(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleAudioFeedback = () => {
+    setAudioFeedback((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('rdaa_typing_audio_feedback', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  // Font Size Handlers
   const handleIncreasePassageFont = () => {
     setPassageFontIndex((prev) => {
       const next = Math.min(FONT_SIZES.length - 1, prev + 1);
@@ -207,15 +295,10 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
     } catch {}
   };
 
-  // Synchronous State Tracking Refs (Prevents React stale closures during timer auto-finish)
-  const typedTextRef = useRef<string>('');
-  const secondsRemainingRef = useRef<number>(durationSeconds);
-  const isFinishedRef = useRef<boolean>(false);
-  const startTimeRef = useRef<number | null>(null);
-
   // References
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const passageContainerRef = useRef<HTMLDivElement | null>(null);
+  const lastScrolledRowTopRef = useRef<number>(-1);
 
   const sanitizedPassage = useMemo(() => {
     return auditAndRefinePassage(test.passageText, isHindi).refinedPassage || test.passageText;
@@ -226,7 +309,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
   const targetQualifyingWords =
     test.minCorrectWords || (test.minPassingWpm ? test.minPassingWpm * 10 : (isHindi ? 250 : 300));
 
-  // 1. Live word evaluation ONLY recalculates when typedText or passage changes (NOT on timer ticks)
+  // Live word evaluation with sequence alignment
   const wordEvaluation = useMemo(() => {
     return evaluateTyping(
       sanitizedPassage,
@@ -238,7 +321,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
     );
   }, [sanitizedPassage, typedText, isHindi, targetQualifyingWords, test.minPassingWpm, durationSeconds]);
 
-  // 2. High-precision dynamic live metrics calculated on-demand from wall-clock elapsed time
+  // High-precision dynamic live metrics calculated on-demand from wall-clock elapsed time
   const timeElapsedSeconds = Math.max(1, durationSeconds - secondsRemaining);
   const timeInMinutes = timeElapsedSeconds / 60;
   const liveNetWpm = Math.max(0, Math.round((wordEvaluation.correctWordsCount / timeInMinutes) * 10) / 10);
@@ -260,11 +343,34 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
     return hasTrailingSpace ? rawTokens.length : Math.max(0, rawTokens.length - 1);
   }, [wordEvaluation, typedText]);
 
+  // Current active reference word
+  const currentTargetWord = referenceWords[activeWordIndex] || '';
+
+  // Extract current word typed so far (unspaced word token at cursor)
+  const currentTypedWord = useMemo(() => {
+    if (!typedText) return '';
+    if (/\s$/.test(typedText)) return '';
+    const tokens = typedText.split(/\s+/);
+    return tokens[tokens.length - 1] || '';
+  }, [typedText]);
+
+  const currentWordMatches = useMemo(() => {
+    const activeItem = wordEvaluation.wordStatuses[activeWordIndex];
+    return activeItem?.status === 'CURRENT';
+  }, [wordEvaluation.wordStatuses, activeWordIndex]);
+
   // Fast count of typed words for toolbar
   const typedWordsCount = useMemo(() => {
     const trimmed = typedText.trim();
     return trimmed ? trimmed.split(/\s+/).length : 0;
   }, [typedText]);
+
+  // Progress percentage (0 - 100%)
+  const passageProgressPct = useMemo(() => {
+    if (referenceWords.length === 0) return 0;
+    const completed = wordEvaluation.correctWordsCount + wordEvaluation.incorrectWordsCount;
+    return Math.min(100, Math.round((completed / referenceWords.length) * 100));
+  }, [wordEvaluation.correctWordsCount, wordEvaluation.incorrectWordsCount, referenceWords.length]);
 
   // Keep refs synchronized on every render
   useEffect(() => {
@@ -298,6 +404,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
 
       const elapsed = Math.floor((Date.now() - (startTimeRef.current || Date.now())) / 1000);
       const remaining = Math.max(0, durationSeconds - elapsed);
+
       setSecondsRemaining(remaining);
       secondsRemainingRef.current = remaining;
 
@@ -312,7 +419,8 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
     };
   }, [isTestStarted, isTestFinished, durationSeconds]);
 
-  // High-performance Paragraph Auto-Scroll using requestAnimationFrame & offsetTop (zero layout reflow)
+  // High-performance Jitter-Free Auto-Scroll:
+  // Only scrolls when the active word moves to a new line or approaches viewport boundaries.
   useEffect(() => {
     if (!passageContainerRef.current) return;
 
@@ -328,9 +436,13 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
       const containerH = container.clientHeight;
       const relativeTop = wordTop - containerScrollTop;
 
-      // When the active word progresses beyond 55% of the viewport or scrolls above top
-      if (relativeTop > containerH * 0.55 || relativeTop < 20) {
-        const targetScrollTop = Math.max(0, wordTop - containerH * 0.35);
+      // Check if word row has changed or if it is outside the comfortable 20%-50% reading band
+      const rowChanged = Math.abs(wordTop - lastScrolledRowTopRef.current) > 12;
+
+      if (rowChanged && (relativeTop > containerH * 0.45 || relativeTop < 25)) {
+        lastScrolledRowTopRef.current = wordTop;
+        const targetScrollTop = Math.max(0, wordTop - containerH * 0.32);
+
         container.scrollTo({
           top: targetScrollTop,
           behavior: 'smooth',
@@ -341,7 +453,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
     return () => cancelAnimationFrame(frameId);
   }, [activeWordIndex]);
 
-  // Handle typing input change
+  // Handle typing input change with instant zero-lag response & double-space collapse protection
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (isTestFinished || isFinishedRef.current) return;
 
@@ -350,21 +462,39 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
       startTimeRef.current = Date.now();
     }
 
-    const value = e.target.value;
+    let value = e.target.value;
+
+    // Collapse accidental double spaces so candidates don't get shifted a word ahead
+    if (value.includes('  ')) {
+      value = value.replace(/ {2,}/g, ' ');
+    }
+
     typedTextRef.current = value;
     setTypedText(value);
   };
 
-  // Handle key down mapping for DevLys 010 Hindi typing
+  // Handle key down mapping for DevLys 010 Hindi typing, CapsLock detection, and Tab prevention
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (isTestFinished || isFinishedRef.current) return;
 
+    // Detect CapsLock status to prevent silent layout corruption
+    if (e.getModifierState) {
+      setIsCapsLockOn(e.getModifierState('CapsLock'));
+    }
+
+    // Play subtle auditory tactile click if enabled
+    playTactileClick();
+
+    // Prevent Tab key from dropping examination focus
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      return;
+    }
+
+    // DevLys 010 Remington special handling for physical key Z
     if (isHindi && (e.code === 'KeyZ' || e.key.toLowerCase() === 'z')) {
-      // User pressed the physical Z key:
-      // "do not map shift+Z for rakar sign, only map Z for that."
       if (e.shiftKey) {
         // Shift+Z MUST produce reph ('Z' / 'र्'), never rakar sign.
-        // If CapsLock is active, browser may emit 'z'; ensure it outputs 'Z'.
         if (e.key === 'z') {
           e.preventDefault();
           const target = e.currentTarget;
@@ -385,8 +515,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
         }
         return;
       } else {
-        // Unshifted key Z maps strictly to rakar sign ('z' / '्र', as in 'प्र')
-        // If CapsLock is active without Shift, browser emits 'Z'; ensure it outputs 'z'.
+        // Unshifted key Z maps strictly to rakar sign ('z' / '्र')
         if (e.key === 'Z') {
           e.preventDefault();
           const target = e.currentTarget;
@@ -407,6 +536,12 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
         }
         return;
       }
+    }
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.getModifierState) {
+      setIsCapsLockOn(e.getModifierState('CapsLock'));
     }
   };
 
@@ -476,8 +611,13 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
   const isLowTime = secondsRemaining <= 60;
 
   return (
-    <div className="w-full max-w-[1720px] mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-6 space-y-4 animate-in fade-in duration-200">
-      {/* 1. Top Test Header Bar */}
+    <div
+      ref={runnerRootRef}
+      className={`w-full max-w-[1720px] mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-5 space-y-3.5 animate-in fade-in duration-200 ${
+        isFullscreen ? 'fixed inset-0 z-50 bg-slate-100 dark:bg-slate-950 p-4 overflow-y-auto max-w-none' : ''
+      }`}
+    >
+      {/* 1. Top Test Header Bar with Examination Overview & Controls */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -491,11 +631,17 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
             )}
             <span className="text-xs text-slate-500 font-semibold">• 10 Mins Duration</span>
             <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">
-              • Qualifying Criterion: {targetQualifyingWords} Correctly Typed Words in 10 Mins
+              • Qualifying Criterion: {targetQualifyingWords} Correctly Typed Words
             </span>
             {!isHindi && (
               <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-200 dark:border-emerald-800">
-                Capital letter case errors ignored
+                Case errors ignored
+              </span>
+            )}
+            {isCapsLockOn && (
+              <span className="px-2 py-0.5 rounded-md bg-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-xs animate-pulse">
+                <AlertCircle className="w-3 h-3" />
+                <span>Caps Lock ON</span>
               </span>
             )}
           </div>
@@ -514,29 +660,71 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
           </p>
         </div>
 
-        {/* 10-Minute Timer & Submit Action */}
-        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+        {/* 10-Minute Timer, Ergonomic Quick Toggles & Submit Action */}
+        <div className="flex items-center gap-2.5 w-full md:w-auto justify-between md:justify-end flex-wrap">
+          {/* Quick Ergonomic Toggles */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+            {/* Audio Feedback Toggle */}
+            <button
+              type="button"
+              onClick={toggleAudioFeedback}
+              title={audioFeedback ? 'Mute keyboard sound feedback' : 'Enable keyboard tactile sound feedback'}
+              className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                audioFeedback
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              {audioFeedback ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+
+            {/* Target Word Ribbon Toggle */}
+            <button
+              type="button"
+              onClick={() => setShowWordRibbon(!showWordRibbon)}
+              title={showWordRibbon ? 'Hide live target word banner' : 'Show live target word banner'}
+              className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                showWordRibbon
+                  ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Target className="w-4 h-4" />
+            </button>
+
+            {/* Fullscreen Focus Toggle */}
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              title={isFullscreen ? 'Exit Fullscreen Focus' : 'Enter Fullscreen Focus (Zen Mode)'}
+              className="p-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+            >
+              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            </button>
+          </div>
+
           {/* Countdown Clock Display */}
-          <div className={`flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border transition-all ${
+          <div className={`flex items-center gap-2.5 px-3.5 py-2 rounded-2xl border transition-all ${
             isLowTime
               ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-300 animate-pulse'
               : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white'
           }`}>
             <Clock className={`w-5 h-5 ${isLowTime ? 'text-rose-600' : 'text-amber-600'}`} />
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-none">
                 {isTestStarted ? 'Time Remaining' : 'Auto Finish (10:00)'}
               </div>
-              <div className="text-2xl font-black font-mono tracking-wider">
+              <div className="text-xl font-black font-mono tracking-wider">
                 {formatSecondsToTime(secondsRemaining)}
               </div>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={handleRequestSubmit}
             disabled={isTestFinished}
-            className="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-700/20 transition-all flex items-center gap-2"
+            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-700/20 transition-all flex items-center gap-2 cursor-pointer"
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>Finish & Submit</span>
@@ -544,11 +732,19 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
         </div>
       </div>
 
+      {/* Progress Bar (Overall Passage Completion & Pacing) */}
+      <div className="w-full bg-slate-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+        <div
+          className="bg-gradient-to-r from-amber-500 to-emerald-500 h-full transition-all duration-300 ease-out"
+          style={{ width: `${passageProgressPct}%` }}
+        />
+      </div>
+
       {/* 2. Live Performance Metric Highlights (Hidden for candidate registered on typing module) */}
       {!isTypingModuleCandidate && (
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
-            <span className="block text-[10px] font-bold uppercase text-slate-500">Total Words in Para</span>
+            <span className="block text-[10px] font-bold uppercase text-slate-500">Total Words</span>
             <span className="text-xl font-black text-slate-900 dark:text-white">{referenceWords.length}</span>
           </div>
 
@@ -563,7 +759,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
           </div>
 
           <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-center">
-            <span className="block text-[10px] font-bold uppercase text-amber-700 dark:text-amber-400">Words Not Typed</span>
+            <span className="block text-[10px] font-bold uppercase text-amber-700 dark:text-amber-400">Words Remaining</span>
             <span className="text-xl font-black text-amber-600 dark:text-amber-400">{liveEvaluation.untypedWordsCount}</span>
           </div>
 
@@ -574,11 +770,11 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
         </div>
       )}
 
-      {/* 3. SIDE-BY-SIDE EQUAL 2-SECTION SPLIT: Reference Passage & Typing Window (Expanded height for maximum typing comfort) */}
+      {/* 3. SIDE-BY-SIDE EQUAL 2-SECTION SPLIT: Reference Passage & Typing Window */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
         {/* LEFT SECTION (50%): Reference Passage with Smooth Scrolling & Error Isolation */}
         <div className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col ${
-          isTypingModuleCandidate ? 'h-[580px] sm:h-[620px] lg:h-[660px]' : 'h-[460px]'
+          isFullscreen ? 'h-[75vh]' : isTypingModuleCandidate ? 'h-[580px] sm:h-[620px] lg:h-[660px]' : 'h-[460px]'
         } overflow-hidden relative`}>
           {/* Passage Toolbar */}
           <div className="bg-slate-100 dark:bg-slate-800/80 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
@@ -606,7 +802,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
                   type="button"
                   onClick={handleResetPassageFont}
                   title={`Click to reset font size to default (${FONT_SIZES[defaultFontIdx].label})`}
-                  className="px-2 py-0.5 font-mono text-[11px] font-extrabold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded transition-colors"
+                  className="px-2 py-0.5 font-mono text-[11px] font-extrabold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded transition-colors cursor-pointer"
                 >
                   {FONT_SIZES[passageFontIndex].label}
                 </button>
@@ -642,8 +838,9 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
               {/* DevLys Keyboard Helper Toggle */}
               {isHindi && (
                 <button
+                  type="button"
                   onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
-                  className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center gap-1 hover:bg-amber-100 transition-colors"
+                  className="px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center gap-1 hover:bg-amber-100 transition-colors cursor-pointer"
                 >
                   <Keyboard className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Key Map</span>
@@ -652,7 +849,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
             </div>
           </div>
 
-          {/* Reference Paragraph Container with Precise Word Statuses */}
+          {/* Reference Paragraph Container with Precise Word Statuses & Smooth Auto-Scroll */}
           <div
             ref={passageContainerRef}
             className={`p-5 sm:p-6 overflow-y-auto flex-1 leading-relaxed select-none typing-passage-scroll relative ${
@@ -672,7 +869,9 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
 
           {/* Reference Footer Status */}
           <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 flex items-center justify-between flex-shrink-0">
-            <span>Passage Progress: {liveEvaluation.correctWordsCount + liveEvaluation.incorrectWordsCount} / {referenceWords.length} Words</span>
+            <span>
+              Passage Progress: <strong>{wordEvaluation.correctWordsCount + wordEvaluation.incorrectWordsCount}</strong> / {referenceWords.length} Words ({passageProgressPct}%)
+            </span>
             {!isTypingModuleCandidate ? (
               <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{liveEvaluation.accuracyPercentage}% Accuracy</span>
             ) : (
@@ -681,10 +880,13 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
           </div>
         </div>
 
-        {/* RIGHT SECTION (50%): Typing Input Box */}
-        <div className={`bg-white dark:bg-slate-900 rounded-2xl border-2 border-amber-500/80 dark:border-amber-500/60 shadow-lg flex flex-col ${
-          isTypingModuleCandidate ? 'h-[580px] sm:h-[620px] lg:h-[660px]' : 'h-[460px]'
-        } overflow-hidden`}>
+        {/* RIGHT SECTION (50%): Typing Input Box with Ergonomic Guidance */}
+        <div
+          onClick={() => textareaRef.current?.focus()}
+          className={`bg-white dark:bg-slate-900 rounded-2xl border-2 border-amber-500/80 dark:border-amber-500/60 shadow-lg flex flex-col ${
+            isFullscreen ? 'h-[75vh]' : isTypingModuleCandidate ? 'h-[580px] sm:h-[620px] lg:h-[660px]' : 'h-[460px]'
+          } overflow-hidden cursor-text`}
+        >
           {/* Input Header Toolbar */}
           <div className="bg-amber-500/10 dark:bg-slate-800/80 px-4 py-2.5 border-b border-amber-500/30 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
             <div className="flex items-center space-x-2 text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-300">
@@ -697,7 +899,10 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
               <div className="flex items-center bg-white dark:bg-slate-900 rounded-xl p-0.5 border border-slate-200 dark:border-slate-700 shadow-2xs">
                 <button
                   type="button"
-                  onClick={handleDecreaseTypingFont}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDecreaseTypingFont();
+                  }}
                   disabled={typingFontIndex <= 0}
                   title="Decrease typing text area font size"
                   aria-label="Decrease typing text area font size"
@@ -709,16 +914,22 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
 
                 <button
                   type="button"
-                  onClick={handleResetTypingFont}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleResetTypingFont();
+                  }}
                   title={`Click to reset font size to default (${FONT_SIZES[defaultFontIdx].label})`}
-                  className="px-2 py-0.5 font-mono text-[11px] font-extrabold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded transition-colors"
+                  className="px-2 py-0.5 font-mono text-[11px] font-extrabold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded transition-colors cursor-pointer"
                 >
                   {FONT_SIZES[typingFontIndex].label}
                 </button>
 
                 <button
                   type="button"
-                  onClick={handleIncreaseTypingFont}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleIncreaseTypingFont();
+                  }}
                   disabled={typingFontIndex >= FONT_SIZES.length - 1}
                   title="Increase typing text area font size"
                   aria-label="Increase typing text area font size"
@@ -735,6 +946,46 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
             </div>
           </div>
 
+          {/* Optional Live Target Word Spotlight Ribbon: Reduces Head Movement & Eye Strain */}
+          {showWordRibbon && currentTargetWord && (
+            <div className="bg-amber-50/80 dark:bg-slate-800/90 px-4 py-2 border-b border-amber-200 dark:border-slate-700/80 flex items-center justify-between text-xs flex-shrink-0 animate-in fade-in duration-150">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
+                  Target Word:
+                </span>
+                <span className={`px-2 py-0.5 rounded-md font-black bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 text-slate-900 dark:text-white shadow-2xs ${
+                  isHindi ? 'font-devlys text-base' : 'font-mono'
+                }`}>
+                  {currentTargetWord}
+                </span>
+
+                {currentTypedWord && (
+                  <span className={`text-xs px-2 py-0.5 rounded-md font-bold flex items-center gap-1 ${
+                    currentWordMatches
+                      ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                      : 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
+                  }`}>
+                    {currentWordMatches ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-600" />
+                        <span>Matching</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertCircle className="w-3 h-3 text-rose-600" />
+                        <span>Typo (Backspace to fix)</span>
+                      </>
+                    )}
+                  </span>
+                )}
+              </div>
+
+              <span className="text-[10px] text-slate-400 font-mono hidden md:inline">
+                Word {Math.min(referenceWords.length, activeWordIndex + 1)} of {referenceWords.length}
+              </span>
+            </div>
+          )}
+
           {/* Large Focused Typing Textarea matching full height */}
           <div className="p-4 sm:p-5 flex-1 flex flex-col">
             <textarea
@@ -742,14 +993,15 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
               value={typedText}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
+              onKeyUp={handleKeyUp}
               placeholder={
                 !isTestStarted
                   ? isHindi
-                    ? 'यहाँ टाइप करना शुरू करें'
-                    : 'Start typing here'
+                    ? 'यहाँ टाइप करना शुरू करें...'
+                    : 'Start typing here...'
                   : isHindi
-                    ? 'टाइप जारी रखें'
-                    : 'Keep typing the reference passage...'
+                  ? 'टाइप जारी रखें...'
+                  : 'Keep typing the reference passage...'
               }
               className={`w-full flex-1 p-4 sm:p-5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none leading-relaxed placeholder:font-sans ${
                 isHindi ? 'font-devlys' : 'font-mono'
@@ -766,19 +1018,21 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
           <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between flex-shrink-0 text-xs">
             <div className="flex items-center gap-1.5 text-slate-500 text-[11px]">
               <Info className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-              <span className="hidden sm:inline">Press space after each word. Backspace is allowed.</span>
+              <span className="hidden sm:inline">Press space after each word. Backspace allowed for corrections.</span>
             </div>
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={onCancel}
-                className="px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white text-xs font-bold transition-colors"
+                className="px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-white text-xs font-bold transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleRequestSubmit}
-                className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-extrabold text-xs transition-all shadow-sm flex items-center gap-1.5"
+                className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-extrabold text-xs transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Submit Now</span>
@@ -797,8 +1051,9 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
               <span>DevLys 010 / Remington Keyboard Quick Guide</span>
             </h4>
             <button
+              type="button"
               onClick={() => setShowKeyboardHelp(false)}
-              className="text-xs font-bold text-amber-800 dark:text-amber-400 hover:underline"
+              className="text-xs font-bold text-amber-800 dark:text-amber-400 hover:underline cursor-pointer"
             >
               Close
             </button>
@@ -815,7 +1070,7 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
         </div>
       )}
 
-      {/* In-App Confirmation Modal for Finishing/Submitting Test (Replaces browser window.confirm) */}
+      {/* In-App Confirmation Modal for Finishing/Submitting Test */}
       {showSubmitConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full space-y-5 animate-in zoom-in-95 duration-150">
@@ -845,17 +1100,19 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
+                type="button"
                 onClick={() => {
                   setShowSubmitConfirmModal(false);
                   if (textareaRef.current) textareaRef.current.focus();
                 }}
-                className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
+                className="px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-colors cursor-pointer"
               >
                 Continue Typing
               </button>
               <button
+                type="button"
                 onClick={handleConfirmSubmit}
-                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-700/20 transition-all flex items-center gap-1.5"
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-700/20 transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Yes, Submit Test</span>

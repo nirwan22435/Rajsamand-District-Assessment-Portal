@@ -170,23 +170,23 @@ export const RegisterTypingCandidateModal: React.FC<RegisterTypingCandidateModal
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs overflow-y-auto">
       <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-150">
         {/* Modal Top Header */}
-        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-amber-950 text-white px-6 py-5 flex items-center justify-between border-b border-slate-800">
+        <div className="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white px-6 py-5 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-400">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-amber-700 dark:text-amber-400">
               <User className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-[10px] uppercase font-black tracking-widest text-amber-400">
+              <div className="text-[10px] uppercase font-black tracking-widest text-amber-700 dark:text-amber-400">
                 District Administration • Rajsamand
               </div>
-              <h2 className="text-lg font-black tracking-tight">
+              <h2 className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
                 {candidateToEdit ? 'Edit Typing Candidate Registration' : 'Register Candidate for Typing Test'}
               </h2>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

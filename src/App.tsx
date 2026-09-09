@@ -23,7 +23,6 @@ import { TypingTestSection } from './components/typing/TypingTestSection';
 import { ThemePreviewModal, APP_THEMES } from './components/ThemePreviewModal';
 import { DesktopSetupModal } from './components/DesktopSetupModal';
 import { AndroidAppModal } from './components/AndroidAppModal';
-import { downloadWindowsSetupScript } from './utils/desktopAppDownloader';
 import { applyThemeToDOM } from './utils/themeManager';
 import { safeStorage } from './utils/safeStorage';
 import { Monitor } from 'lucide-react';
@@ -76,23 +75,8 @@ export default function App() {
     return () => window.removeEventListener('beforeinstallprompt', promptHandler);
   }, []);
 
-  // Direct 1-Click Install Trigger Handler
-  const handleTriggerDesktopInstall = async () => {
-    // 1. If native PWA browser install prompt is available, trigger it
-    if (deferredPrompt) {
-      try {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-          setDeferredPrompt(null);
-          return;
-        }
-      } catch (err) {
-        console.warn('Native install prompt error:', err);
-      }
-    }
-
-    // 2. Open the desktop setup modal with 1-click Windows installer options
+  // Open Windows Desktop Confirmation Modal
+  const handleTriggerDesktopInstall = () => {
     setIsDesktopModalOpen(true);
   };
 
@@ -116,8 +100,8 @@ export default function App() {
     }
   }, [themeId, darkMode]);
 
-  // Auth State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  // Auth State - Defaults to true so users directly open into the portal without any login or Gmail requirement
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
   const [role, setRole] = useState<UserRole>('ADMIN');
   const [activeCandidate, setActiveCandidate] = useState<Candidate | undefined>(undefined);
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);

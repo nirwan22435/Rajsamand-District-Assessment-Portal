@@ -122,6 +122,15 @@ export function areWordsEquivalent(refNorm: string, typedNorm: string, isHindi: 
 // Cache for word normalization to avoid expensive repeated DevLys & Unicode conversions
 const normalizeCacheHindi = new Map<string, string>();
 const normalizeCacheEnglish = new Map<string, string>();
+const passageRefNormsCache = new Map<string, string[]>();
+
+let reusableDpBuffer = new Float32Array(131072); // 128K floats reusable buffer (zero GC pressure)
+function getDpBuffer(size: number): Float32Array {
+  if (reusableDpBuffer.length < size) {
+    reusableDpBuffer = new Float32Array(Math.max(size, reusableDpBuffer.length * 2));
+  }
+  return reusableDpBuffer;
+}
 
 /**
  * Clears normalization and alignment caches
@@ -129,6 +138,7 @@ const normalizeCacheEnglish = new Map<string, string>();
 export function clearTypingCaches(): void {
   normalizeCacheHindi.clear();
   normalizeCacheEnglish.clear();
+  passageRefNormsCache.clear();
   lastAlignmentCache = null;
 }
 
@@ -230,10 +240,18 @@ function alignWordsSequence(
     };
   }
 
-  // Pre-normalize all reference words and typed tokens ONCE
-  const refNorms: string[] = new Array(n);
-  for (let i = 0; i < n; i++) {
-    refNorms[i] = normalizeWordForEvaluation(refWords[i], isHindiDevLys);
+  // Pre-normalize all reference words (cached per passage) and typed tokens
+  const passageKey = `${n}_${isHindiDevLys}_${refWords[0] || ''}_${refWords[n - 1] || ''}`;
+  let refNorms = passageRefNormsCache.get(passageKey);
+  if (!refNorms || refNorms.length !== n) {
+    refNorms = new Array(n);
+    for (let i = 0; i < n; i++) {
+      refNorms[i] = normalizeWordForEvaluation(refWords[i], isHindiDevLys);
+    }
+    if (passageRefNormsCache.size > 20) {
+      passageRefNormsCache.clear();
+    }
+    passageRefNormsCache.set(passageKey, refNorms);
   }
 
   const tokenNorms: string[] = new Array(m);
@@ -248,10 +266,11 @@ function alignWordsSequence(
   const GAP_REF_PENALTY = -3;
   const GAP_TYPED_PENALTY = -3;
 
-  // Contiguous 1D flat Float32Array for DP table (O(1) memory allocation)
+  // Contiguous 1D flat Float32Array from reusable pool (O(1) memory, 0 heap allocations)
   const stride = m + 1;
-  const dp = new Float32Array((n + 1) * stride);
-  dp.fill(-1e9);
+  const totalCells = (n + 1) * stride;
+  const dp = getDpBuffer(totalCells);
+  dp.fill(-1e9, 0, totalCells);
   dp[0] = 0;
 
   // Base cases within band

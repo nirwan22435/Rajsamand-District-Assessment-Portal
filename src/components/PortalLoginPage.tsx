@@ -49,8 +49,8 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
 }) => {
   const [selectedRole, setSelectedRole] = useState<UserRole>('ADMIN');
 
-  // Admin login credentials
-  const [adminEmail, setAdminEmail] = useState('devkarannirwan01@gmail.com');
+  // Admin login credentials (no hardcoded email required)
+  const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
@@ -182,11 +182,11 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
               <button
                 type="button"
                 onClick={onOpenDesktopModal}
-                title="Install / Download Windows Desktop Application & .EXE Setup"
+                title="Download Windows Desktop Application (.EXE) Setup"
                 className="px-4 py-2 rounded-full bg-[#0284c7] hover:bg-[#0369a1] text-white border border-[#38bdf8]/40 shadow-xs hover:shadow-md hover:shadow-sky-500/15 transition-all duration-150 flex items-center gap-2 text-xs font-semibold cursor-pointer active:scale-95 whitespace-nowrap"
               >
                 <Monitor className="w-3.5 h-3.5 text-white/95" />
-                <span>Desktop App</span>
+                <span>Desktop App (.EXE)</span>
                 <span className="relative flex h-2 w-2 ml-0.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
@@ -229,10 +229,13 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
       <div className="w-full max-w-[500px] mx-auto px-4 py-8 relative z-10 flex-1 flex items-center justify-center">
         <div className="w-full sm:w-[500px] min-h-[500px] bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-6 flex flex-col justify-center">
           {/* Card Top Title */}
-          <div className="text-center">
+          <div className="text-center space-y-1">
             <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-              Sign In to Portal
+              Sign In / Open Portal
             </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Rajsamand District Assessment Portal
+            </p>
           </div>
 
           {/* Role Toggle Tabs */}

@@ -271,6 +271,9 @@ export function applyThemeToDOM(themeId: string, darkMode: boolean) {
   const theme = APP_THEMES.find((t) => t.id === themeId) || APP_THEMES[0];
   const root = document.documentElement;
 
+  // Ensure root .dark class matches darkMode parameter exactly
+  root.classList.toggle('dark', darkMode);
+
   // Set standard CSS variables
   root.style.setProperty('--theme-accent', theme.accentHex);
   root.style.setProperty('--theme-accent-hover', theme.accentHoverHex);
