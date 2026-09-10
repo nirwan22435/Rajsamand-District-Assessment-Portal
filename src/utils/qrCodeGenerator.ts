@@ -13,7 +13,15 @@ export function generateQRCodeSvgUri(text: string, size: number = 220): string {
 
 export function getPortalMobileUrl(): string {
   if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    // If on Netlify or custom domain, use that exact origin
+    if (window.location.origin.includes('netlify.app')) {
+      return window.location.origin;
+    }
+    // If running on dev origin (ais-dev), prefer the user's live Netlify production URL
+    if (window.location.origin.includes('ais-dev-')) {
+      return 'https://rajsamandassessment.netlify.app';
+    }
     return window.location.origin;
   }
-  return 'https://ais-dev-ipslj2ssag6j65tfrompqs-957343451703.asia-east1.run.app';
+  return 'https://rajsamandassessment.netlify.app';
 }

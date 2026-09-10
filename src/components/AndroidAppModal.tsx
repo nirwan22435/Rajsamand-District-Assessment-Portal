@@ -175,6 +175,10 @@ export const AndroidAppModal: React.FC<AndroidAppModalProps> = ({
           <p>
             Download <strong className="text-slate-900 dark:text-white font-bold">RDAA.apk</strong> to install on your Android phone or tablet.
           </p>
+          <p className="mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-semibold">
+            <span>●</span>
+            <span>Target: rajsamandassessment.netlify.app</span>
+          </p>
         </div>
 
         {/* Download Error Notice if any */}

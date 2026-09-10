@@ -25,7 +25,7 @@ public class MainActivity extends Activity {
     private ProgressBar mProgressBar;
     private ValueCallback<Uri[]> mFilePathCallback;
     private static final int FILECHOOSER_RESULTCODE = 1001;
-    private static final String DEFAULT_URL = "https://ais-dev-ipslj2ssag6j65tfrompqs-957343451703.asia-east1.run.app";
+    private static final String DEFAULT_URL = "https://rajsamandassessment.netlify.app/?source=rajsamand_district_app";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
