@@ -1,7 +1,9 @@
 import React from 'react';
 import { UserRole, Candidate } from '../types';
-import { Sun, Moon, ShieldCheck, User, LogOut, FileText, BarChart3, Users, Mail, Compass, Building2, PhoneCall, BookOpen, Keyboard, Palette, Monitor, Smartphone, Award } from 'lucide-react';
+import { Sun, Moon, ShieldCheck, User, LogOut, FileText, BarChart3, Users, Mail, Compass, Building2, PhoneCall, BookOpen, Keyboard, Palette, Award } from 'lucide-react';
 import { PortalLogo } from './PortalLogo';
+import { LiveISTClock } from './LiveISTClock';
+import { isCandidateRegisteredForTyping, isCandidateTypingOnly } from '../utils/candidateUtils';
 
 interface NavbarProps {
   darkMode: boolean;
@@ -31,10 +33,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenDesktopModal,
   onOpenAndroidModal,
 }) => {
-  const isTypingOnlyCandidate =
-    candidate?.registeredModule === 'TYPING' ||
-    Boolean(candidate?.typingMedium) ||
-    Boolean(candidate?.id?.startsWith('cand-typ-'));
+  const isTypingCandidate = isCandidateRegisteredForTyping(candidate);
+  const isTypingOnlyCandidate = isCandidateTypingOnly(candidate);
 
   return (
     <header className="w-full z-40 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors shadow-sm">
@@ -81,41 +81,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* User Profile, Theme Switcher & Actions */}
           <div className="flex items-center justify-between md:justify-end gap-2.5 border-t md:border-t-0 border-slate-200 dark:border-slate-800 pt-2 md:pt-0 flex-wrap sm:flex-nowrap">
-            {/* Desktop App / .EXE Setup Button */}
-            {onOpenDesktopModal && (
-              <button
-                id="desktop-app-btn"
-                type="button"
-                onClick={onOpenDesktopModal}
-                title="Download Windows Desktop Application (.EXE) Setup"
-                className="px-4 py-2 rounded-full bg-[#0284c7] hover:bg-[#0369a1] text-white border border-[#38bdf8]/40 shadow-xs hover:shadow-md hover:shadow-sky-500/15 transition-all duration-150 flex items-center gap-2 text-xs font-semibold cursor-pointer active:scale-95 whitespace-nowrap"
-              >
-                <Monitor className="w-3.5 h-3.5 text-white/95" />
-                <span>Desktop App (.EXE)</span>
-                <span className="relative flex h-2 w-2 ml-0.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-                </span>
-              </button>
-            )}
-
-            {/* Android App (RDAA) Button */}
-            {onOpenAndroidModal && (
-              <button
-                id="android-app-btn"
-                type="button"
-                onClick={onOpenAndroidModal}
-                title="Download RDAA Android APK"
-                className="px-4 py-2 rounded-full bg-[#0284c7] hover:bg-[#0369a1] text-white border border-[#38bdf8]/40 shadow-xs hover:shadow-md hover:shadow-sky-500/15 transition-all duration-150 flex items-center gap-2 text-xs font-semibold cursor-pointer active:scale-95 whitespace-nowrap"
-              >
-                <Smartphone className="w-3.5 h-3.5 text-white/95" />
-                <span>Android App</span>
-                <span className="relative flex h-2 w-2 ml-0.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
-                </span>
-              </button>
-            )}
+            {/* Live Indian Standard Time (IST) Clock */}
+            <LiveISTClock />
 
             {/* Light / Dark Mode Toggle on White Bar */}
             <button
@@ -363,29 +330,32 @@ export const Navbar: React.FC<NavbarProps> = ({
                   </button>
                 )}
 
-                <button
-                  id="tab-typing-test"
-                  onClick={() => setActiveTab('typing-test')}
-                  className={`group flex items-center space-x-2.5 px-3.5 py-2 text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
-                    activeTab === 'typing-test'
-                      ? 'tab-active-theme bg-emerald-600 hover:bg-emerald-600 text-white shadow-sm font-black dark:bg-emerald-600 dark:text-white'
-                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700/60 font-extrabold'
-                  }`}
-                >
-                  <span
-                    className={`flex items-center justify-center w-7 h-7 rounded-lg shrink-0 transition-transform shadow-xs ${
+                {/* Candidate Typing Test Tab: strictly visible ONLY to candidates registered for typing test */}
+                {isTypingCandidate && (
+                  <button
+                    id="tab-typing-test"
+                    onClick={() => setActiveTab('typing-test')}
+                    className={`group flex items-center space-x-2.5 px-3.5 py-2 text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
                       activeTab === 'typing-test'
-                        ? 'bg-white/20 text-white scale-105'
-                        : 'bg-rose-500/15 dark:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/30 group-hover:scale-110'
+                        ? 'tab-active-theme bg-emerald-600 hover:bg-emerald-600 text-white shadow-sm font-black dark:bg-emerald-600 dark:text-white'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700/60 font-extrabold'
                     }`}
                   >
-                    <Keyboard className="w-[18px] h-[18px]" strokeWidth={2.4} />
-                  </span>
-                  <span>Typing Test</span>
-                  {activeTab === 'typing-test' && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
-                  )}
-                </button>
+                    <span
+                      className={`flex items-center justify-center w-7 h-7 rounded-lg shrink-0 transition-transform shadow-xs ${
+                        activeTab === 'typing-test'
+                          ? 'bg-white/20 text-white scale-105'
+                          : 'bg-rose-500/15 dark:bg-rose-500/25 text-rose-600 dark:text-rose-400 border border-rose-500/30 group-hover:scale-110'
+                      }`}
+                    >
+                      <Keyboard className="w-[18px] h-[18px]" strokeWidth={2.4} />
+                    </span>
+                    <span>Typing Test</span>
+                    {activeTab === 'typing-test' && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+                    )}
+                  </button>
+                )}
 
                 {!isTypingOnlyCandidate && (
                   <button

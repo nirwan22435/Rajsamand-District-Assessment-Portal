@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Candidate, DistrictBlock, EmailLog } from '../types';
 import { sendEmailAPI } from '../services/api';
 import { CandidateSuccessModal } from './CandidateSuccessModal';
-import { Users, UserPlus, Search, Filter, Mail, Shield, CheckCircle2, XCircle, Key, RefreshCw, Send, AlertCircle, Edit3, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { Users, UserPlus, Search, Filter, Mail, Shield, CheckCircle2, XCircle, Key, RefreshCw, Send, AlertCircle, Edit3, Eye, EyeOff, Trash2, Keyboard } from 'lucide-react';
+import { isCandidateRegisteredForTyping, isCandidateTypingOnly } from '../utils/candidateUtils';
 
 interface CandidateManagementProps {
   candidates: Candidate[];
@@ -34,6 +35,8 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('Pass@1234');
   const [sendCredentialsEmail, setSendCredentialsEmail] = useState(true);
+  const [registerForTyping, setRegisterForTyping] = useState(false);
+  const [typingMedium, setTypingMedium] = useState<'HINDI_DEVLYS_010' | 'ENGLISH'>('HINDI_DEVLYS_010');
 
   // Edit Candidate Form State
   const [editName, setEditName] = useState('');
@@ -44,6 +47,8 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
   const [editActiveStatus, setEditActiveStatus] = useState(true);
   const [showEditPassword, setShowEditPassword] = useState(false);
   const [notifyCandidateOnUpdate, setNotifyCandidateOnUpdate] = useState(true);
+  const [editRegisterForTyping, setEditRegisterForTyping] = useState(false);
+  const [editTypingMedium, setEditTypingMedium] = useState<'HINDI_DEVLYS_010' | 'ENGLISH'>('HINDI_DEVLYS_010');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
@@ -67,6 +72,8 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
     setEditPassword(cand.password || 'Pass@1234');
     setEditActiveStatus(cand.activeStatus);
     setShowEditPassword(false);
+    setEditRegisterForTyping(isCandidateRegisteredForTyping(cand));
+    setEditTypingMedium(cand.typingMedium || 'HINDI_DEVLYS_010');
   };
 
   // Submit Edit Candidate Handler
@@ -85,6 +92,12 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
       phone: editPhone,
       password: editPassword,
       activeStatus: editActiveStatus,
+      registeredForTyping: editRegisterForTyping,
+      registeredForAssessment: true,
+      registeredModule: editRegisterForTyping
+        ? (editingCandidate.registeredModule === 'TYPING' ? 'TYPING' : 'BOTH')
+        : 'ASSESSMENT',
+      typingMedium: editRegisterForTyping ? editTypingMedium : undefined,
     };
 
     if (onUpdateCandidate) {
@@ -131,10 +144,8 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
   };
 
   // Only candidates registered for General/District Assessment belong to Candidate Directory.
-  // Candidates registered on Typing Test module are strictly visible only on Typing Test module.
-  const directoryCandidates = candidates.filter(
-    (c) => c.registeredModule !== 'TYPING' && !c.typingMedium && !c.id.startsWith('cand-typ-')
-  );
+  // Candidates registered strictly on Typing Test module are visible only on Typing Test module.
+  const directoryCandidates = candidates.filter((c) => !isCandidateTypingOnly(c));
 
   // Filter candidates for display table
   const filteredCandidates = directoryCandidates.filter((c) => {
@@ -162,7 +173,10 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
       email,
       phone: phone || '+91 98000 00000',
       activeStatus: true,
-      registeredModule: 'ASSESSMENT',
+      registeredModule: registerForTyping ? 'BOTH' : 'ASSESSMENT',
+      registeredForTyping: registerForTyping,
+      registeredForAssessment: true,
+      typingMedium: registerForTyping ? typingMedium : undefined,
       password,
       createdAt: new Date().toISOString(),
     };
@@ -219,6 +233,7 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
     setName('');
     setEmail('');
     setPhone('');
+    setRegisterForTyping(false);
   };
 
   // Dispatch Credential Email Manual Trigger
@@ -350,6 +365,7 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
                 <th className="px-5 py-3.5">Reg ID</th>
                 <th className="px-5 py-3.5">Candidate Name</th>
                 <th className="px-5 py-3.5">Contact & Email</th>
+                <th className="px-5 py-3.5 text-center">Modules Enrolled</th>
                 <th className="px-5 py-3.5 text-center">Account Status</th>
                 <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
@@ -367,6 +383,22 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
                     <td className="px-5 py-4 text-slate-600 dark:text-slate-300">
                       <div className="font-medium">{cand.email}</div>
                       <div className="text-[10px] text-slate-400 mt-0.5">{cand.phone || 'No phone added'}</div>
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      <div className="inline-flex flex-col items-center gap-1">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          <CheckCircle2 className="w-2.5 h-2.5" /> MCQ Assessment
+                        </span>
+                        {isCandidateRegisteredForTyping(cand) ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            <Keyboard className="w-2.5 h-2.5" /> Typing ({cand.typingMedium === 'HINDI_DEVLYS_010' ? 'Hindi' : 'English'})
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700">
+                            Typing: Not Registered
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-4 text-center">
                       <button
@@ -515,6 +547,68 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
                 </p>
               </div>
 
+              {/* Typing Assessment Module Enrollment */}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3">
+                <div className="flex items-start space-x-2.5">
+                  <input
+                    type="checkbox"
+                    id="registerTypingCheck"
+                    checked={registerForTyping}
+                    onChange={(e) => setRegisterForTyping(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 text-amber-600 rounded focus:ring-amber-500 cursor-pointer"
+                  />
+                  <div>
+                    <label htmlFor="registerTypingCheck" className="text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer flex items-center gap-1.5">
+                      <Keyboard className="w-3.5 h-3.5 text-amber-600" />
+                      Register for Computer Typing Test Module
+                    </label>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Default is disabled (MCQ assessment only). If checked, candidate is also registered for the Typing Speed Test module.
+                    </p>
+                  </div>
+                </div>
+
+                {registerForTyping && (
+                  <div className="pl-6 pt-1 space-y-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      Typing Medium & Font
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
+                        typingMedium === 'HINDI_DEVLYS_010'
+                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="newCandTypingMedium"
+                          value="HINDI_DEVLYS_010"
+                          checked={typingMedium === 'HINDI_DEVLYS_010'}
+                          onChange={() => setTypingMedium('HINDI_DEVLYS_010')}
+                          className="text-amber-600 focus:ring-amber-500"
+                        />
+                        <span>Hindi (DevLys 010)</span>
+                      </label>
+                      <label className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
+                        typingMedium === 'ENGLISH'
+                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="newCandTypingMedium"
+                          value="ENGLISH"
+                          checked={typingMedium === 'ENGLISH'}
+                          onChange={() => setTypingMedium('ENGLISH')}
+                          className="text-amber-600 focus:ring-amber-500"
+                        />
+                        <span>English Medium</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Temporary Password
@@ -650,6 +744,68 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
                   onChange={(e) => setEditPhone(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
+              </div>
+
+              {/* Typing Assessment Module Enrollment */}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-3">
+                <div className="flex items-start space-x-2.5">
+                  <input
+                    type="checkbox"
+                    id="editRegisterTypingCheck"
+                    checked={editRegisterForTyping}
+                    onChange={(e) => setEditRegisterForTyping(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 text-amber-600 rounded focus:ring-amber-500 cursor-pointer"
+                  />
+                  <div>
+                    <label htmlFor="editRegisterTypingCheck" className="text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer flex items-center gap-1.5">
+                      <Keyboard className="w-3.5 h-3.5 text-amber-600" />
+                      Enrolled in Computer Typing Test Module
+                    </label>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Toggle to grant or remove typing test module access for this candidate. If disabled, typing test is completely hidden and inaccessible from the candidate's account.
+                    </p>
+                  </div>
+                </div>
+
+                {editRegisterForTyping && (
+                  <div className="pl-6 pt-1 space-y-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      Typing Medium & Font
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
+                        editTypingMedium === 'HINDI_DEVLYS_010'
+                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="editCandidateTypingMedium"
+                          value="HINDI_DEVLYS_010"
+                          checked={editTypingMedium === 'HINDI_DEVLYS_010'}
+                          onChange={() => setEditTypingMedium('HINDI_DEVLYS_010')}
+                          className="text-amber-600 focus:ring-amber-500"
+                        />
+                        <span>Hindi (DevLys 010)</span>
+                      </label>
+                      <label className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-2 cursor-pointer transition-colors ${
+                        editTypingMedium === 'ENGLISH'
+                          ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300'
+                      }`}>
+                        <input
+                          type="radio"
+                          name="editCandidateTypingMedium"
+                          value="ENGLISH"
+                          checked={editTypingMedium === 'ENGLISH'}
+                          onChange={() => setEditTypingMedium('ENGLISH')}
+                          className="text-amber-600 focus:ring-amber-500"
+                        />
+                        <span>English Medium</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Password Management */}

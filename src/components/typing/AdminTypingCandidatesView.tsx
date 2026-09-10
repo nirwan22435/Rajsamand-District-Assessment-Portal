@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Candidate, TypingLanguage } from '../../types';
+import { isCandidateRegisteredForTyping } from '../../utils/candidateUtils';
 import {
   UserPlus,
   Search,
@@ -39,10 +40,8 @@ export const AdminTypingCandidatesView: React.FC<AdminTypingCandidatesViewProps>
   const [deletingCandidateId, setDeletingCandidateId] = useState<string | null>(null);
 
   // Only candidates specifically registered for typing test are shown here.
-  // Candidates created in Candidate Directory module MUST NOT be registered or visible for typing test.
-  const typingCandidates = candidates.filter((c) => {
-    return c.registeredModule === 'TYPING' || Boolean(c.typingMedium) || c.id.startsWith('cand-typ-');
-  });
+  // Candidates created in Candidate Directory module who have not registered for typing test are strictly excluded.
+  const typingCandidates = candidates.filter(isCandidateRegisteredForTyping);
 
   // Filter candidates specifically registered or eligible for typing test
   const filteredCandidates = typingCandidates.filter((c) => {

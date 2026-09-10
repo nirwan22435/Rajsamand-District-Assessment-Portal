@@ -19,7 +19,9 @@ export interface Candidate {
   designation?: string; // e.g. LDC / Clerk Grade-II, Jr Assistant, IA, Stenographer, DEO
   officeName?: string; // e.g. District Collectorate Rajsamand, SDM Office, Tehsil Office
   typingMedium?: TypingLanguage; // Medium of typing: ENGLISH or HINDI_DEVLYS_010
-  registeredModule?: 'ASSESSMENT' | 'TYPING'; // Target registration module
+  registeredModule?: 'ASSESSMENT' | 'TYPING' | 'BOTH'; // Target registration module
+  registeredForTyping?: boolean; // True if candidate officially registered for typing test module
+  registeredForAssessment?: boolean; // True if candidate registered for MCQ assessment module
   email: string;
   phone: string;
   category?: string;

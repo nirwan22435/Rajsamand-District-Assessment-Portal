@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { TypingAttempt, TypingTest, DistrictBlock } from '../../types';
 import { exportTypingReportToCSV, formatSecondsToTime } from '../../utils/typingUtils';
 import { downloadTypingMeritReportPdf, downloadCandidateTypingScorecardPdf } from '../../utils/pdfGenerator';
+import { formatISTDate, formatISTDateTime, getISTDateKey } from '../../utils/dateTimeUtils';
 import { TypingResultModal } from './TypingResultModal';
 import {
   BarChart3,
@@ -73,9 +74,7 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
     });
     attempts.forEach((a) => {
       if (a.submittedAt) {
-        const d = new Date(a.submittedAt);
-        const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        dates.add(ymd);
+        dates.add(getISTDateKey(a.submittedAt));
       }
     });
     return Array.from(dates).sort().reverse();
@@ -89,20 +88,12 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
       if (selectedBlock !== 'ALL' && att.block !== selectedBlock) return false;
       if (selectedStatus !== 'ALL' && att.status !== selectedStatus) return false;
 
-      // Filter by Date of Typing Test
+      // Filter by Date of Typing Test in standard IST
       if (selectedDate) {
-        const attemptDate = att.submittedAt ? new Date(att.submittedAt) : null;
-        const attemptDateStr = attemptDate
-          ? `${attemptDate.getFullYear()}-${String(attemptDate.getMonth() + 1).padStart(2, '0')}-${String(attemptDate.getDate()).padStart(2, '0')}`
-          : '';
-        const attemptIsoDate = att.submittedAt ? att.submittedAt.slice(0, 10) : '';
+        const attemptDateStr = att.submittedAt ? getISTDateKey(att.submittedAt) : '';
         const testExamDate = tests.find((t) => t.id === att.typingTestId)?.examDate || '';
 
-        const matchesDate =
-          attemptDateStr === selectedDate ||
-          attemptIsoDate === selectedDate ||
-          testExamDate === selectedDate;
-
+        const matchesDate = attemptDateStr === selectedDate || testExamDate === selectedDate;
         if (!matchesDate) return false;
       }
 
@@ -155,9 +146,7 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
       const paperAttempts = attempts.filter((att) => {
         if (att.typingTestId !== test.id) return false;
         if (selectedDate) {
-          const rawDate = att.submittedAt || (att as any).examDate || '';
-          if (!rawDate) return false;
-          const attemptDateStr = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate.substring(0, 10);
+          const attemptDateStr = att.submittedAt ? getISTDateKey(att.submittedAt) : '';
           if (attemptDateStr !== selectedDate) return false;
         }
         return true;
@@ -186,32 +175,15 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
     });
   }, [tests, attempts, selectedDate]);
 
-  // Determine current exam date for heading
+  // Determine current exam date for heading in IST
   const currentExamDateFormatted = useMemo(() => {
     if (selectedDate) {
-      try {
-        const [year, month, day] = selectedDate.split('-').map(Number);
-        if (year && month && day) {
-          return new Date(year, month - 1, day).toLocaleDateString('en-IN', {
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-          });
-        }
-      } catch {}
+      return formatISTDate(selectedDate, 'long');
     }
     if (filteredAttempts.length > 0 && filteredAttempts[0].submittedAt) {
-      return new Date(filteredAttempts[0].submittedAt).toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      });
+      return formatISTDate(filteredAttempts[0].submittedAt, 'long');
     }
-    return new Date().toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
+    return formatISTDate(new Date(), 'long');
   }, [selectedDate, filteredAttempts]);
 
   const handleExportCSV = () => {
@@ -699,11 +671,7 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
                   const isHindi = attempt.language === 'HINDI_DEVLYS_010';
                   const isQualified = attempt.status === 'QUALIFIED';
                   const dateDisplay = attempt.submittedAt
-                    ? new Date(attempt.submittedAt).toLocaleDateString('en-IN', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                      })
+                    ? formatISTDateTime(attempt.submittedAt, { monthFormat: 'short' })
                     : currentExamDateFormatted;
 
                   return (

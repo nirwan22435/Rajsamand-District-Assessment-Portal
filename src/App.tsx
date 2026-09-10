@@ -25,6 +25,7 @@ import { DesktopSetupModal } from './components/DesktopSetupModal';
 import { AndroidAppModal } from './components/AndroidAppModal';
 import { applyThemeToDOM } from './utils/themeManager';
 import { safeStorage } from './utils/safeStorage';
+import { isCandidateRegisteredForTyping, isCandidateTypingOnly } from './utils/candidateUtils';
 import { Monitor } from 'lucide-react';
 import { sendEmailAPI } from './services/api';
 import {
@@ -100,9 +101,9 @@ export default function App() {
     }
   }, [themeId, darkMode]);
 
-  // Auth State - Defaults to true so users directly open into the portal without any login or Gmail requirement
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
-  const [role, setRole] = useState<UserRole>('ADMIN');
+  // Auth State - Opens on the official Sign In Home screen by default
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [role, setRole] = useState<UserRole>('CANDIDATE');
   const [activeCandidate, setActiveCandidate] = useState<Candidate | undefined>(undefined);
   const [showLoginModal, setShowLoginModal] = useState<boolean>(false);
 
@@ -415,15 +416,21 @@ export default function App() {
     setRole('CANDIDATE');
     setActiveCandidate(cand);
     setIsAuthenticated(true);
-    // If registered under typing test module, navigate strictly to typing-test
-    const isTypingOnly =
-      cand.registeredModule === 'TYPING' ||
-      Boolean(cand.typingMedium) ||
-      cand.id.startsWith('cand-typ-');
+    // If registered strictly under typing test module, navigate to typing-test, otherwise default to available assessments
+    const isTypingOnly = isCandidateTypingOnly(cand);
     setActiveTab(isTypingOnly ? 'typing-test' : 'my-tests');
     setActiveTakingTest(null);
     setActiveViewingResult(null);
   };
+
+  // Guard: If candidate is not registered for typing test, automatically redirect away from typing-test
+  useEffect(() => {
+    if (role === 'CANDIDATE' && activeCandidate) {
+      if (!isCandidateRegisteredForTyping(activeCandidate) && activeTab === 'typing-test') {
+        setActiveTab('my-tests');
+      }
+    }
+  }, [role, activeCandidate, activeTab]);
 
   const handleLogout = () => {
     setIsAuthenticated(false);
@@ -679,7 +686,7 @@ export default function App() {
         ) : (
           /* Candidate Portal View */
           activeCandidate && (
-            activeTab === 'typing-test' ? (
+            activeTab === 'typing-test' && isCandidateRegisteredForTyping(activeCandidate) ? (
               <TypingTestSection
                 role={role}
                 activeCandidate={activeCandidate}
@@ -704,7 +711,7 @@ export default function App() {
                 onStartTest={(test) => setActiveTakingTest(test)}
                 onReviewAttempt={handleReviewAttempt}
                 onRequestEmailResult={handleRequestEmailResult}
-                activeTab={activeTab}
+                activeTab={activeTab === 'typing-test' ? 'my-tests' : activeTab}
                 setActiveTab={setActiveTab}
               />
             )

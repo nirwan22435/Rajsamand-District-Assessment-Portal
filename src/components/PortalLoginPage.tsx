@@ -21,6 +21,7 @@ import {
 import { getStoredAdminPassword } from '../services/firestoreService';
 import { AdminForgotPasswordModal } from './AdminForgotPasswordModal';
 import { PortalLogo } from './PortalLogo';
+import { LiveISTClock } from './LiveISTClock';
 
 interface PortalLoginPageProps {
   candidates: Candidate[];
@@ -178,8 +179,12 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
 
           {/* Actions: Themes Button & Dark Mode Toggle on Header Bar */}
           <div className="flex items-center gap-2.5 self-end md:self-auto flex-wrap sm:flex-nowrap">
+            {/* Live Indian Standard Time (IST) Clock */}
+            <LiveISTClock />
+
             {onOpenDesktopModal && (
               <button
+                id="desktop-app-btn"
                 type="button"
                 onClick={onOpenDesktopModal}
                 title="Download Windows Desktop Application (.EXE) Setup"
@@ -197,6 +202,7 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({
             {/* Android App (RDAA) Button */}
             {onOpenAndroidModal && (
               <button
+                id="android-app-btn"
                 type="button"
                 onClick={onOpenAndroidModal}
                 title="Download RDAA Android APK"

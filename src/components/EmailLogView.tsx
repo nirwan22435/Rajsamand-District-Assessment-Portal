@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { EmailLog, Candidate } from '../types';
 import { Mail, CheckCircle2, Send, Filter, RefreshCw, ExternalLink } from 'lucide-react';
 import { sendEmailAPI } from '../services/api';
+import { formatISTDateTime } from '../utils/dateTimeUtils';
 
 interface EmailLogViewProps {
   logs: EmailLog[];
@@ -210,12 +211,7 @@ export const EmailLogView: React.FC<EmailLogViewProps> = ({ logs, candidates = [
                       </span>
                     </td>
                     <td className="px-5 py-4 text-center text-slate-500 dark:text-slate-400 text-[11px] font-semibold">
-                      {new Date(log.sentAt).toLocaleString('en-IN', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {formatISTDateTime(log.sentAt, { monthFormat: 'short' })}
                     </td>
                     <td className="px-5 py-4 text-right space-x-2 whitespace-nowrap">
                       {log.previewUrl && (

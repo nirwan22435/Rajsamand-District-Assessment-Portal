@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Candidate, TestPaper, TestAttempt, TypingTest, TypingAttempt } from '../types';
 import { Compass, BarChart3, Clock, FileCheck, Award, ArrowRight, CheckCircle2, AlertTriangle, Mail, ShieldCheck, Play, Key, Download, Keyboard, FileText } from 'lucide-react';
 import { generateAndDownloadSubmissionPdf, downloadCandidateTypingScorecardPdf } from '../utils/pdfGenerator';
+import { formatISTDateTime } from '../utils/dateTimeUtils';
 import { TypingResultModal } from './typing/TypingResultModal';
+import { isCandidateRegisteredForTyping, isCandidateTypingOnly } from '../utils/candidateUtils';
 
 interface CandidatePortalProps {
   candidate: Candidate;
@@ -39,29 +41,32 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
     (a) => a.candidateId === candidate.id || a.candidateEmail === candidate.email
   );
 
-  const completedCount = myAttempts.length + myTypingAttempts.length;
+  // Registration checks
+  const isTypingRegistered = isCandidateRegisteredForTyping(candidate);
+  const isTypingOnlyCandidate = isCandidateTypingOnly(candidate);
+
+  const completedCount = isTypingRegistered
+    ? myAttempts.length + myTypingAttempts.length
+    : myAttempts.length;
   const avgScore =
     myAttempts.length > 0
       ? Math.round(myAttempts.reduce((sum, a) => sum + a.scorePercentage, 0) / myAttempts.length)
       : 0;
 
-  const passedCount =
-    myAttempts.filter((a) => a.status === 'PASSED').length +
-    myTypingAttempts.filter((a) => a.status === 'QUALIFIED').length;
-
-  // Filter available tests for candidate
-  const isTypingCandidate =
-    candidate.registeredModule === 'TYPING' ||
-    Boolean(candidate.typingMedium) ||
-    candidate.id.startsWith('cand-typ-');
+  const passedCount = isTypingRegistered
+    ? myAttempts.filter((a) => a.status === 'PASSED').length +
+      myTypingAttempts.filter((a) => a.status === 'QUALIFIED').length
+    : myAttempts.filter((a) => a.status === 'PASSED').length;
 
   React.useEffect(() => {
-    if (isTypingCandidate && activeTab !== 'typing-test') {
+    if (isTypingOnlyCandidate && activeTab !== 'typing-test') {
       setActiveTab('typing-test');
+    } else if (!isTypingRegistered && activeTab === 'typing-test') {
+      setActiveTab('my-tests');
     }
-  }, [isTypingCandidate, activeTab, setActiveTab]);
+  }, [isTypingOnlyCandidate, isTypingRegistered, activeTab, setActiveTab]);
 
-  const availableTests = isTypingCandidate
+  const availableTests = isTypingOnlyCandidate
     ? []
     : tests.filter((t) => {
         if (t.status !== 'PUBLISHED') return false;
@@ -97,7 +102,7 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-400/30">
                 {candidate.registrationId}
               </span>
-              {candidate.typingMedium && (
+              {isTypingRegistered && candidate.typingMedium && (
                 <span className="px-2.5 py-0.5 rounded-md bg-amber-400/20 text-amber-300 text-[10px] font-extrabold uppercase border border-amber-400/30">
                   {candidate.typingMedium === 'HINDI_DEVLYS_010' ? 'Hindi (DevLys 010)' : 'English Medium'}
                 </span>
@@ -119,10 +124,10 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
           </div>
           <div>
             <span className="text-slate-400 block text-[10px] uppercase">
-              {isTypingCandidate ? 'Top Speed' : 'Avg Score'}
+              {isTypingOnlyCandidate ? 'Top Speed' : 'Avg Score'}
             </span>
             <span className="text-lg font-bold text-amber-400">
-              {isTypingCandidate
+              {isTypingOnlyCandidate
                 ? myTypingAttempts.length > 0
                   ? `${Math.max(...myTypingAttempts.map((a) => a.netWpm))} WPM`
                   : '0 WPM'
@@ -137,7 +142,7 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
       </div>
 
       {/* TAB 1: Available Assessments List (for General Candidates) */}
-      {activeTab === 'my-tests' && !isTypingCandidate && (
+      {activeTab === 'my-tests' && !isTypingOnlyCandidate && (
         <div className="space-y-4">
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">Active District Assessments</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -219,124 +224,130 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
       )}
 
       {/* TAB 2: Performance Metrics & History */}
-      {activeTab === 'my-performance' && !isTypingCandidate && (
+      {activeTab === 'my-performance' && !isTypingOnlyCandidate && (
         <div className="space-y-6">
-          {/* Section A: Typing Test Evaluations */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Keyboard className="w-5 h-5 text-amber-600" />
-                  <span>Typing Speed Assessments & Scorecards</span>
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Official 10-minute speed evaluation records in Hindi (DevLys 010) and English.
-                </p>
+          {/* Section A: Typing Test Evaluations - strictly ONLY for candidates registered for typing test */}
+          {isTypingRegistered && (
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Keyboard className="w-5 h-5 text-amber-600" />
+                    <span>Typing Speed Assessments & Scorecards</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Official 10-minute speed evaluation records in Hindi (DevLys 010) and English.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveTab('typing-test')}
+                  className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold cursor-pointer"
+                >
+                  Take Typing Test
+                </button>
               </div>
-              <button
-                onClick={() => setActiveTab('typing-test')}
-                className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold cursor-pointer"
-              >
-                Take Typing Test
-              </button>
-            </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-semibold border-b border-slate-200 dark:border-slate-800">
-                  <tr>
-                    <th className="px-4 py-3">Typing Test Paper</th>
-                    <th className="px-3 py-3 text-center">Medium</th>
-                    <th className="px-3 py-3 text-center text-emerald-600">Correct</th>
-                    <th className="px-3 py-3 text-center text-rose-600">Incorrect</th>
-                    <th className="px-3 py-3 text-center text-amber-600">Skipped</th>
-                    <th className="px-3 py-3 text-center">Net WPM</th>
-                    <th className="px-3 py-3 text-center">Accuracy</th>
-                    <th className="px-3 py-3 text-center">Status</th>
-                    <th className="px-4 py-3 text-right">Scorecard & Report</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                  {myTypingAttempts.length > 0 ? (
-                    myTypingAttempts.map((att) => (
-                      <tr key={att.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                        <td className="px-4 py-4 font-bold text-slate-900 dark:text-white max-w-xs truncate">
-                          {att.testTitle}
-                        </td>
-                        <td className="px-3 py-4 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
-                            att.language === 'HINDI_DEVLYS_010'
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                              : 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300'
-                          }`}>
-                            {att.language === 'HINDI_DEVLYS_010' ? 'Hindi' : 'English'}
-                          </span>
-                        </td>
-                        <td className="px-3 py-4 text-center font-mono font-black text-emerald-600 dark:text-emerald-400">
-                          {att.correctWordsCount ?? 0}
-                        </td>
-                        <td className="px-3 py-4 text-center font-mono font-black text-rose-600 dark:text-rose-400">
-                          {att.incorrectWordsCount ?? 0}
-                        </td>
-                        <td className="px-3 py-4 text-center font-mono font-bold text-amber-600 dark:text-amber-400">
-                          {att.skippedWordsCount ?? att.untypedWordsCount ?? 0}
-                        </td>
-                        <td className="px-3 py-4 text-center font-mono font-black text-amber-600 dark:text-amber-400">
-                          {att.netWpm} WPM
-                        </td>
-                        <td className="px-3 py-4 text-center font-mono font-bold text-slate-900 dark:text-white">
-                          {att.accuracyPercentage}%
-                        </td>
-                        <td className="px-5 py-4 text-center">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                              att.status === 'QUALIFIED'
-                                ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
-                                : 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300'
-                            }`}
-                          >
-                            {att.status === 'QUALIFIED' ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-                            {att.status}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-right space-x-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const foundTest = typingTests.find((t) => t.id === att.typingTestId);
-                              downloadCandidateTypingScorecardPdf(att, att.referencePassage || foundTest?.passageText);
-                            }}
-                            className="p-1.5 rounded-lg text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
-                            title="Download Official Typing Report PDF"
-                          >
-                            <Download className="w-3.5 h-3.5" /> Download Report
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setViewingTypingAttempt(att)}
-                            className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] transition-colors cursor-pointer inline-flex items-center gap-1"
-                          >
-                            <FileText className="w-3 h-3" /> Scorecard
-                          </button>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-semibold border-b border-slate-200 dark:border-slate-800">
+                    <tr>
+                      <th className="px-4 py-3">Typing Test Paper</th>
+                      <th className="px-3 py-3 text-center">Medium</th>
+                      <th className="px-3 py-3 text-center text-emerald-600">Correct</th>
+                      <th className="px-3 py-3 text-center text-rose-600">Incorrect</th>
+                      <th className="px-3 py-3 text-center text-amber-600">Skipped</th>
+                      <th className="px-3 py-3 text-center">Net WPM</th>
+                      <th className="px-3 py-3 text-center">Accuracy</th>
+                      <th className="px-3 py-3 text-center">Status</th>
+                      <th className="px-4 py-3 text-right">Scorecard & Report</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                    {myTypingAttempts.length > 0 ? (
+                      myTypingAttempts.map((att) => (
+                        <tr key={att.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-4 py-4 font-bold text-slate-900 dark:text-white max-w-xs truncate">
+                            <div>{att.testTitle}</div>
+                            {att.submittedAt && (
+                              <div className="text-[11px] font-normal text-slate-500 dark:text-slate-400 mt-0.5">
+                                Submitted: {formatISTDateTime(att.submittedAt, { monthFormat: 'short' })}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-4 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
+                              att.language === 'HINDI_DEVLYS_010'
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                : 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300'
+                            }`}>
+                              {att.language === 'HINDI_DEVLYS_010' ? 'Hindi' : 'English'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-4 text-center font-mono font-black text-emerald-600 dark:text-emerald-400">
+                            {att.correctWordsCount ?? 0}
+                          </td>
+                          <td className="px-3 py-4 text-center font-mono font-black text-rose-600 dark:text-rose-400">
+                            {att.incorrectWordsCount ?? 0}
+                          </td>
+                          <td className="px-3 py-4 text-center font-mono font-bold text-amber-600 dark:text-amber-400">
+                            {att.skippedWordsCount ?? att.untypedWordsCount ?? 0}
+                          </td>
+                          <td className="px-3 py-4 text-center font-mono font-black text-amber-600 dark:text-amber-400">
+                            {att.netWpm} WPM
+                          </td>
+                          <td className="px-3 py-4 text-center font-mono font-bold text-slate-900 dark:text-white">
+                            {att.accuracyPercentage}%
+                          </td>
+                          <td className="px-5 py-4 text-center">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                                att.status === 'QUALIFIED'
+                                  ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
+                                  : 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300'
+                              }`}
+                            >
+                              {att.status === 'QUALIFIED' ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+                              {att.status}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 text-right space-x-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const foundTest = typingTests.find((t) => t.id === att.typingTestId);
+                                downloadCandidateTypingScorecardPdf(att, att.referencePassage || foundTest?.passageText);
+                              }}
+                              className="p-1.5 rounded-lg text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                              title="Download Official Typing Report PDF"
+                            >
+                              <Download className="w-3.5 h-3.5" /> Download Report
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setViewingTypingAttempt(att)}
+                              className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] transition-colors cursor-pointer inline-flex items-center gap-1"
+                            >
+                              <FileText className="w-3 h-3" /> Scorecard
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={8} className="px-5 py-8 text-center text-slate-500 dark:text-slate-400">
+                          No typing tests submitted yet. Go to <strong className="text-amber-600">Typing Test</strong> tab to attempt your assigned paragraph.
                         </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={8} className="px-5 py-8 text-center text-slate-500 dark:text-slate-400">
-                        No typing tests submitted yet. Go to <strong className="text-amber-600">Typing Test</strong> tab to attempt your assigned paragraph.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Section B: MCQ Assessments History (if any) */}
-          {!isTypingCandidate && (
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">My MCQ Assessment History</h3>
+          {/* Section B: MCQ Assessments History */}
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">My MCQ Assessment History</h3>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -355,7 +366,12 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
                       myAttempts.map((att) => (
                         <tr key={att.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="px-5 py-4 font-bold text-slate-900 dark:text-white max-w-xs truncate">
-                            {att.testTitle}
+                            <div>{att.testTitle}</div>
+                            {att.submittedAt && (
+                              <div className="text-[11px] font-normal text-slate-500 dark:text-slate-400 mt-0.5">
+                                Submitted: {formatISTDateTime(att.submittedAt, { monthFormat: 'short' })}
+                              </div>
+                            )}
                           </td>
                           <td className="px-5 py-4 text-center font-bold text-slate-900 dark:text-white">
                             {att.scoreObtained} / {att.totalMarks}
@@ -434,7 +450,6 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
                 </table>
               </div>
             </div>
-          )}
         </div>
       )}
 

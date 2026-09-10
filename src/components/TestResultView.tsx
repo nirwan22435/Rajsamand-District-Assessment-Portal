@@ -3,6 +3,7 @@ import { TestAttempt, TestPaper } from '../types';
 import { sendEmailAPI } from '../services/api';
 import { Award, CheckCircle2, AlertTriangle, Mail, Download, ArrowLeft, Clock, BookOpen, FileText } from 'lucide-react';
 import { generateAndDownloadSubmissionPdf } from '../utils/pdfGenerator';
+import { formatISTDateTime } from '../utils/dateTimeUtils';
 
 interface TestResultViewProps {
   attempt: TestAttempt;
@@ -134,6 +135,11 @@ export const TestResultView: React.FC<TestResultViewProps> = ({
           <h1 className="text-2xl sm:text-3xl font-black">{attempt.testTitle}</h1>
           <p className="text-xs text-white/80 mt-1">
             Candidate: <strong>{attempt.candidateName}</strong>
+            {attempt.submittedAt && (
+              <span className="ml-2 pl-2 border-l border-white/30">
+                Submitted: <strong>{formatISTDateTime(attempt.submittedAt)}</strong>
+              </span>
+            )}
           </p>
         </div>
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TypingTest, Candidate } from '../../types';
+import { isCandidateRegisteredForTyping } from '../../utils/candidateUtils';
 import { UserCheck, CheckSquare, Square, X, Search, Users, ShieldCheck, Ban } from 'lucide-react';
 
 interface AssignTypingTestModalProps {
@@ -20,11 +21,9 @@ export const AssignTypingTestModal: React.FC<AssignTypingTestModalProps> = ({
   if (!isOpen || !test) return null;
 
   // Only candidates specifically registered for typing test module are eligible.
-  // Candidates created in Candidate Directory module are excluded.
+  // Candidates who have not registered for typing test are strictly excluded.
   const eligibleCandidates = candidates.filter((c) => {
-    const isTypingCandidate =
-      c.registeredModule === 'TYPING' || Boolean(c.typingMedium) || c.id.startsWith('cand-typ-');
-    if (!isTypingCandidate) return false;
+    if (!isCandidateRegisteredForTyping(c)) return false;
     return !c.typingMedium || c.typingMedium === test.language;
   });
 

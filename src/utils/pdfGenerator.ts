@@ -4,6 +4,7 @@ import { TestAttempt, TestPaper, MCQQuestion, Candidate, TypingAttempt } from '.
 import { getDetailedWordAnalysis } from './typingUtils';
 import { DEVLYS_010_FONT_BASE64 } from './devlysFontBase64';
 import { convertUnicodeToDevlys } from './devlysConverter';
+import { formatISTDateTime, formatISTDate, formatISTTime } from './dateTimeUtils';
 
 export interface SubmissionPdfData {
   candidateName: string;
@@ -57,12 +58,7 @@ export function createSubmissionPdfDocument(data: SubmissionPdfData): jsPDF {
   doc.text('Government of Rajasthan • District Administration, Rajsamand', pageWidth / 2, 23, { align: 'center' });
 
   // Status Badge below banner
-  const submittedDateStr = data.submittedAt
-    ? new Date(data.submittedAt).toLocaleString('en-IN', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      })
-    : new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+  const submittedDateStr = formatISTDateTime(data.submittedAt, { monthFormat: 'short' });
 
   let y = 36;
 
@@ -814,16 +810,8 @@ export function downloadTypingMeritReportPdf(data: TypingMeritReportPdfData) {
   const formattedExamDate = data.examDateStr
     ? data.examDateStr
     : data.attempts.length > 0 && data.attempts[0].submittedAt
-    ? new Date(data.attempts[0].submittedAt).toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      })
-    : new Date().toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      });
+    ? formatISTDate(data.attempts[0].submittedAt, 'long')
+    : formatISTDate(new Date(), 'long');
 
   // Top National Header Ribbon
   doc.setFillColor(255, 153, 51); // Saffron
@@ -890,11 +878,7 @@ export function downloadTypingMeritReportPdf(data: TypingMeritReportPdfData) {
     const langLabel = att.language === 'HINDI_DEVLYS_010' ? 'Hindi (DevLys 010)' : 'English';
     const analysis = getDetailedWordAnalysis(att);
     const dateStr = att.submittedAt
-      ? new Date(att.submittedAt).toLocaleDateString('en-IN', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-        })
+      ? formatISTDateTime(att.submittedAt, { monthFormat: 'short' })
       : formattedExamDate;
 
     return [
@@ -1011,24 +995,8 @@ export function downloadCandidateTypingScorecardPdf(attempt: TypingAttempt, refe
     doc.addFont('DevLys010.ttf', 'DevLys010', 'bold');
   }
 
-  const examDateFormatted = attempt.submittedAt
-    ? new Date(attempt.submittedAt).toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      })
-    : new Date().toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      });
-
-  const examTimeFormatted = attempt.submittedAt
-    ? new Date(attempt.submittedAt).toLocaleTimeString('en-IN', {
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : '';
+  const examDateFormatted = formatISTDate(attempt.submittedAt, 'long');
+  const examTimeFormatted = formatISTTime(attempt.submittedAt);
 
   // Top National Header Ribbon
   doc.setFillColor(255, 153, 51); // Saffron

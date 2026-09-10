@@ -6,6 +6,7 @@ import { sendEmailAPI } from '../services/api';
 import { TestSummaryReportModal } from './TestSummaryReportModal';
 import { PublishSuccessModal } from './PublishSuccessModal';
 import { generateAndDownloadTestPaperSummaryPdf, generateAndDownloadCandidateAnalyticsPdf } from '../utils/pdfGenerator';
+import { formatISTDateTime, getISTDateKey } from '../utils/dateTimeUtils';
 
 interface AdminDashboardProps {
   candidates: Candidate[];
@@ -305,7 +306,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         const pct = hasAttempted ? `${candAttempt.scorePercentage}%` : 'N/A';
         const isPassed = hasAttempted && candAttempt.scoreObtained >= activeTestPaper.passingMarks;
         const status = !hasAttempted ? 'UNASSESSED' : isPassed ? 'PASSED' : 'NOT_QUALIFIED';
-        const attemptDate = hasAttempted ? new Date(candAttempt.submittedAt).toLocaleDateString('en-IN') : 'N/A';
+        const attemptDate = hasAttempted ? formatISTDateTime(candAttempt.submittedAt) : 'N/A';
 
         return [
           c.registrationId,
@@ -327,7 +328,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       const link = document.createElement('a');
       link.setAttribute('href', encodedUri);
       const safeTitle = activeTestPaper.title.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 30);
-      link.setAttribute('download', `Rajsamand_${safeTitle}_Analytics_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.setAttribute('download', `Rajsamand_${safeTitle}_Analytics_${getISTDateKey(new Date())}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -371,7 +372,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement('a');
       link.setAttribute('href', encodedUri);
-      link.setAttribute('download', `Rajsamand_Candidate_Analytics_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+      link.setAttribute('download', `Rajsamand_Candidate_Analytics_Report_${getISTDateKey(new Date())}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -998,12 +999,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         )}
                       </td>
                       <td className="px-5 py-3.5 text-center text-slate-500 dark:text-slate-400 text-[11px]">
-                        {new Date(att.submittedAt).toLocaleString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {formatISTDateTime(att.submittedAt, { monthFormat: 'short' })}
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         <button

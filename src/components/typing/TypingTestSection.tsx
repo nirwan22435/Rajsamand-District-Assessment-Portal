@@ -13,6 +13,7 @@ import { RegisterTypingCandidateModal } from './RegisterTypingCandidateModal';
 import { AdminTypingCandidatesView } from './AdminTypingCandidatesView';
 import { AssignTypingTestModal } from './AssignTypingTestModal';
 import { PassageSanitizerModal } from './PassageSanitizerModal';
+import { isCandidateRegisteredForTyping } from '../../utils/candidateUtils';
 import {
   Keyboard,
   Plus,
@@ -100,10 +101,10 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
   } | null>(null);
 
   // Isolate candidates specifically registered for typing test module.
-  // Candidates created on Candidate Directory module are excluded from Typing Test module.
-  const typingCandidates = candidates.filter(
-    (c) => c.registeredModule === 'TYPING' || Boolean(c.typingMedium) || c.id.startsWith('cand-typ-')
-  );
+  const typingCandidates = candidates.filter(isCandidateRegisteredForTyping);
+
+  // Strict check if candidate is registered for typing test module
+  const isCandidateRegistered = role === 'ADMIN' || isCandidateRegisteredForTyping(activeCandidate);
 
   // Filter attempts for candidate
   const candidateAttempts = activeCandidate
@@ -114,9 +115,11 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
   // 1. Must be PUBLISHED (not REVOKED or DRAFT)
   // 2. Must match registered typing medium
   // 3. Must be assigned to this candidate.
-  // CRITICAL: If assignment has been removed (empty or contains __UNASSIGNED__), paragraph is removed from candidate's login!
+  // CRITICAL: If candidate is not registered for typing test, list is strictly empty!
   const candidateTypingMedium = activeCandidate?.typingMedium;
-  const candidateFilteredTests = tests.filter((t) => {
+  const candidateFilteredTests = !isCandidateRegistered
+    ? []
+    : tests.filter((t) => {
     if (t.status !== 'PUBLISHED') return false;
     if (candidateTypingMedium && t.language !== candidateTypingMedium) return false;
     if (activeCandidate) {
@@ -209,6 +212,29 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
         onFinishTest={handleFinishTest}
         onCancel={() => setActiveRunningTest(null)}
       />
+    );
+  }
+
+  // Strict access guard: candidates not registered for typing test cannot view or access typing test section
+  if (role === 'CANDIDATE' && activeCandidate && !isCandidateRegistered) {
+    return (
+      <div className="w-full max-w-2xl mx-auto my-12 p-8 bg-white dark:bg-slate-900 rounded-3xl border border-rose-200 dark:border-rose-900 shadow-xl text-center space-y-5">
+        <div className="w-16 h-16 rounded-2xl bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto shadow-sm">
+          <Ban className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-black text-slate-900 dark:text-white">
+            Typing Assessment Not Registered
+          </h2>
+          <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-md mx-auto">
+            Your candidate account (<strong>{activeCandidate.registrationId}</strong>) is not enrolled in the Computer Typing Assessment module. Access to typing passages, speed evaluations, and scorecards is restricted to candidates registered for this module.
+          </p>
+        </div>
+        <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+          Candidate: <strong className="text-slate-800 dark:text-slate-200">{activeCandidate.name}</strong> • Registered Module:{' '}
+          <span className="font-bold text-amber-600">{activeCandidate.registeredModule || 'ASSESSMENT ONLY'}</span>
+        </div>
+      </div>
     );
   }
 

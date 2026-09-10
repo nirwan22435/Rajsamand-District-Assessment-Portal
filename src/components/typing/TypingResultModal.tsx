@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TypingAttempt } from '../../types';
 import { formatSecondsToTime, getDetailedWordAnalysis } from '../../utils/typingUtils';
 import { downloadCandidateTypingScorecardPdf } from '../../utils/pdfGenerator';
+import { formatISTDate, formatISTTime } from '../../utils/dateTimeUtils';
 import {
   Award,
   CheckCircle2,
@@ -59,17 +60,8 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
 
   const isQualified = attempt.status === 'QUALIFIED';
 
-  const examDateFormatted = attempt.submittedAt
-    ? new Date(attempt.submittedAt).toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      })
-    : new Date().toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      });
+  const examDateFormatted = formatISTDate(attempt.submittedAt, 'long');
+  const examTimeFormatted = formatISTTime(attempt.submittedAt);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm overflow-y-auto">
@@ -90,7 +82,7 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
                 </h2>
                 <span className="px-2 py-0.5 rounded bg-amber-500/10 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 text-[11px] font-bold border border-amber-500/30 flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
-                  <span>Exam Date: {examDateFormatted}</span>
+                  <span>Exam Date: {examDateFormatted} ({examTimeFormatted})</span>
                 </span>
               </div>
             </div>
@@ -129,8 +121,8 @@ export const TypingResultModal: React.FC<TypingResultModalProps> = ({
               </span>
             </div>
             <div>
-              <span className="block text-[10px] font-bold text-slate-500 uppercase">Exam Date</span>
-              <span className="font-bold text-amber-700 dark:text-amber-400">{examDateFormatted}</span>
+              <span className="block text-[10px] font-bold text-slate-500 uppercase">Exam Date & Time</span>
+              <span className="font-bold text-amber-700 dark:text-amber-400">{examDateFormatted} at {examTimeFormatted}</span>
             </div>
             <div>
               <span className="block text-[10px] font-bold text-slate-500 uppercase">Language Medium</span>
