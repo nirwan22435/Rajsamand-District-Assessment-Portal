@@ -15,12 +15,6 @@ import {
   Plus,
   Minus,
   Link2,
-  Maximize2,
-  Minimize2,
-  Volume2,
-  VolumeX,
-  Target,
-  Check,
   RotateCcw,
 } from 'lucide-react';
 
@@ -346,19 +340,6 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
   // Current active reference word
   const currentTargetWord = referenceWords[activeWordIndex] || '';
 
-  // Extract current word typed so far (unspaced word token at cursor)
-  const currentTypedWord = useMemo(() => {
-    if (!typedText) return '';
-    if (/\s$/.test(typedText)) return '';
-    const tokens = typedText.split(/\s+/);
-    return tokens[tokens.length - 1] || '';
-  }, [typedText]);
-
-  const currentWordMatches = useMemo(() => {
-    const activeItem = wordEvaluation.wordStatuses[activeWordIndex];
-    return activeItem?.status === 'CURRENT';
-  }, [wordEvaluation.wordStatuses, activeWordIndex]);
-
   // Fast count of typed words for toolbar
   const typedWordsCount = useMemo(() => {
     const trimmed = typedText.trim();
@@ -660,49 +641,8 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
           </p>
         </div>
 
-        {/* 10-Minute Timer, Ergonomic Quick Toggles & Submit Action */}
+        {/* 10-Minute Timer & Submit Action */}
         <div className="flex items-center gap-2.5 w-full md:w-auto justify-between md:justify-end flex-wrap">
-          {/* Quick Ergonomic Toggles */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-            {/* Audio Feedback Toggle */}
-            <button
-              type="button"
-              onClick={toggleAudioFeedback}
-              title={audioFeedback ? 'Mute keyboard sound feedback' : 'Enable keyboard tactile sound feedback'}
-              className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                audioFeedback
-                  ? 'bg-amber-500 text-white shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              {audioFeedback ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-            </button>
-
-            {/* Target Word Ribbon Toggle */}
-            <button
-              type="button"
-              onClick={() => setShowWordRibbon(!showWordRibbon)}
-              title={showWordRibbon ? 'Hide live target word banner' : 'Show live target word banner'}
-              className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                showWordRibbon
-                  ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Target className="w-4 h-4" />
-            </button>
-
-            {/* Fullscreen Focus Toggle */}
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              title={isFullscreen ? 'Exit Fullscreen Focus' : 'Enter Fullscreen Focus (Zen Mode)'}
-              className="p-1.5 rounded-lg text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-            >
-              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </button>
-          </div>
-
           {/* Countdown Clock Display */}
           <div className={`flex items-center gap-2.5 px-3.5 py-2 rounded-2xl border transition-all ${
             isLowTime
@@ -945,46 +885,6 @@ export const CandidateTypingRunner: React.FC<CandidateTypingRunnerProps> = ({
               </div>
             </div>
           </div>
-
-          {/* Optional Live Target Word Spotlight Ribbon: Reduces Head Movement & Eye Strain */}
-          {showWordRibbon && currentTargetWord && (
-            <div className="bg-amber-50/80 dark:bg-slate-800/90 px-4 py-2 border-b border-amber-200 dark:border-slate-700/80 flex items-center justify-between text-xs flex-shrink-0 animate-in fade-in duration-150">
-              <div className="flex items-center gap-2 overflow-hidden">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
-                  Target Word:
-                </span>
-                <span className={`px-2 py-0.5 rounded-md font-black bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 text-slate-900 dark:text-white shadow-2xs ${
-                  isHindi ? 'font-devlys text-base' : 'font-mono'
-                }`}>
-                  {currentTargetWord}
-                </span>
-
-                {currentTypedWord && (
-                  <span className={`text-xs px-2 py-0.5 rounded-md font-bold flex items-center gap-1 ${
-                    currentWordMatches
-                      ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
-                      : 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
-                  }`}>
-                    {currentWordMatches ? (
-                      <>
-                        <Check className="w-3 h-3 text-emerald-600" />
-                        <span>Matching</span>
-                      </>
-                    ) : (
-                      <>
-                        <AlertCircle className="w-3 h-3 text-rose-600" />
-                        <span>Typo (Backspace to fix)</span>
-                      </>
-                    )}
-                  </span>
-                )}
-              </div>
-
-              <span className="text-[10px] text-slate-400 font-mono hidden md:inline">
-                Word {Math.min(referenceWords.length, activeWordIndex + 1)} of {referenceWords.length}
-              </span>
-            </div>
-          )}
 
           {/* Large Focused Typing Textarea matching full height */}
           <div className="p-4 sm:p-5 flex-1 flex flex-col">
