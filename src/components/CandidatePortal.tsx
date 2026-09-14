@@ -426,8 +426,9 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
                               type="button"
                               onClick={() => onRequestEmailResult(att)}
                               className="p-1.5 rounded-lg text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/50 text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer"
+                              title="Email Assessment Report PDF to registered email"
                             >
-                              <Mail className="w-3.5 h-3.5" /> Email Result
+                              <Mail className="w-3.5 h-3.5" /> Email PDF
                             </button>
                             <button
                               type="button"

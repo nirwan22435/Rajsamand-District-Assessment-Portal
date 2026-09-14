@@ -5,7 +5,7 @@ import { Users, FileCheck, Award, TrendingUp, Download, FileText, Search, CheckC
 import { sendEmailAPI } from '../services/api';
 import { TestSummaryReportModal } from './TestSummaryReportModal';
 import { PublishSuccessModal } from './PublishSuccessModal';
-import { generateAndDownloadTestPaperSummaryPdf, generateAndDownloadCandidateAnalyticsPdf } from '../utils/pdfGenerator';
+import { generateAndDownloadTestPaperSummaryPdf, generateAndDownloadCandidateAnalyticsPdf, createSubmissionPdfDocument } from '../utils/pdfGenerator';
 import { formatISTDateTime, getISTDateKey } from '../utils/dateTimeUtils';
 
 interface AdminDashboardProps {
@@ -130,12 +130,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setResendingAttemptId(att.id);
     setResendAttemptToast(null);
     try {
-      const res = await sendEmailAPI({
-        type: 'TEST_RESULT_NOTIFICATION',
-        candidateEmail: att.candidateEmail,
-        candidateName: att.candidateName,
-        details: {
+      const testPaper = tests.find((t) => t.id === att.testId);
+      let pdfBase64: string | undefined = undefined;
+      const cleanCandName = (att.candidateName || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_');
+      const cleanTestTitle = (att.testTitle || 'Assessment').replace(/[^a-zA-Z0-9]/g, '_');
+      const pdfFilename = `Assessment_Report_${cleanCandName}_${cleanTestTitle}.pdf`;
+
+      try {
+        const pdfDoc = createSubmissionPdfDocument({
+          candidateName: att.candidateName,
+          candidateEmail: att.candidateEmail,
+          registrationId: 'RJ-CAND-2026',
+          block: att.block,
           testTitle: att.testTitle,
+          subject: testPaper?.subject,
           scoreObtained: att.scoreObtained,
           totalMarks: att.totalMarks,
           scorePercentage: att.scorePercentage,
@@ -143,11 +151,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           wrongCount: att.wrongCount,
           unattemptedCount: att.unattemptedCount,
           timeTakenMinutes: att.timeTakenMinutes,
+          submittedAt: att.submittedAt,
+          questions: testPaper?.questions,
+          answers: att.answers,
+        });
+
+        const dataUri = pdfDoc.output('datauristring');
+        if (dataUri && dataUri.includes(',')) {
+          pdfBase64 = dataUri.split(',')[1];
+        }
+      } catch (pdfErr) {
+        console.warn('PDF generation error on resend:', pdfErr);
+      }
+
+      const res = await sendEmailAPI({
+        type: 'TEST_RESULT_NOTIFICATION',
+        candidateEmail: att.candidateEmail,
+        candidateName: att.candidateName,
+        details: {
+          testTitle: att.testTitle,
+          subject: testPaper?.subject,
+          scoreObtained: att.scoreObtained,
+          totalMarks: att.totalMarks,
+          scorePercentage: att.scorePercentage,
+          correctCount: att.correctCount,
+          wrongCount: att.wrongCount,
+          unattemptedCount: att.unattemptedCount,
+          timeTakenMinutes: att.timeTakenMinutes,
+          submittedAt: att.submittedAt,
+          questions: testPaper?.questions,
+          answers: att.answers,
+          block: att.block,
+          pdfBase64,
+          pdfFilename,
         },
       });
 
       setResendAttemptToast(
-        res.message || `Scorecard email successfully resent to ${att.candidateEmail}`
+        res.message || `Assessment Report PDF successfully sent to ${att.candidateEmail}`
       );
     } catch (e: any) {
       setResendAttemptToast(`Scorecard email logged for ${att.candidateEmail}`);

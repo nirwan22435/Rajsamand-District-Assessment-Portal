@@ -412,7 +412,6 @@ EXTRACTION RULES:
               <p style="margin: 0 0 8px 0; color: #1e293b; font-weight: bold;">Login Credentials:</p>
               <p style="margin: 4px 0; color: #334155;"><strong>Registration ID / Email:</strong> ${details?.registrationId || candidateEmail}</p>
               <p style="margin: 4px 0; color: #334155;"><strong>Temporary Password:</strong> <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${details?.password || 'Pass@1234'}</code></p>
-              <p style="margin: 4px 0; color: #334155;"><strong>Assigned Block/Tehsil:</strong> ${details?.block || 'Rajsamand'}</p>
             </div>
 
             <div style="text-align: center; margin: 28px 0;">
@@ -470,7 +469,7 @@ EXTRACTION RULES:
         `;
       } else if (type === 'TEST_RESULT_NOTIFICATION') {
         const isPassed = (details?.scorePercentage || 0) >= 40;
-        subject = `📊 Test Submission Report: ${details?.testTitle || 'District Assessment'} (${details?.scorePercentage || 0}%)`;
+        subject = `📊 Assessment Report PDF: ${details?.testTitle || 'District Assessment'} (${details?.scorePercentage || 0}%)`;
         htmlContent = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; background-color: #ffffff;">
             <div style="background-color: ${isPassed ? '#15803d' : '#b91c1c'}; padding: 16px; border-radius: 6px; text-align: center; color: #ffffff; margin-bottom: 20px;">
@@ -496,7 +495,6 @@ EXTRACTION RULES:
               <p style="margin: 4px 0;">• <strong>Incorrect Answers:</strong> ${details?.wrongCount || 0}</p>
               <p style="margin: 4px 0;">• <strong>Unattempted:</strong> ${details?.unattemptedCount || 0}</p>
               <p style="margin: 4px 0;">• <strong>Time Taken:</strong> ${details?.timeTakenMinutes || 0} mins</p>
-              <p style="margin: 4px 0;">• <strong>District Block:</strong> ${details?.block || 'Rajsamand'}</p>
             </div>
 
             <div style="background-color: #e0f2fe; border: 1px solid #bae6fd; padding: 12px 16px; border-radius: 6px; margin: 20px 0; color: #0369a1; font-size: 13px;">
@@ -550,38 +548,46 @@ EXTRACTION RULES:
       let mailAttachments: any[] | undefined = undefined;
       if (type === 'TEST_RESULT_NOTIFICATION') {
         try {
-          const pdfDoc = createSubmissionPdfDocument({
-            candidateName: candidateName || 'Candidate',
-            candidateEmail: targetRecipient,
-            registrationId: details?.registrationId || 'RJ-CAND-2026',
-            block: details?.block || 'Rajsamand',
-            testTitle: details?.testTitle || 'District Assessment',
-            subject: details?.subject,
-            scoreObtained: details?.scoreObtained || 0,
-            totalMarks: details?.totalMarks || 100,
-            scorePercentage: details?.scorePercentage || 0,
-            correctCount: details?.correctCount || 0,
-            wrongCount: details?.wrongCount || 0,
-            unattemptedCount: details?.unattemptedCount || 0,
-            timeTakenMinutes: details?.timeTakenMinutes || 0,
-            submittedAt: details?.submittedAt,
-            questions: details?.questions,
-            answers: details?.answers,
-          });
-
-          const pdfArrayBuffer = pdfDoc.output('arraybuffer');
-          const pdfBuffer = Buffer.from(pdfArrayBuffer);
-
           const cleanCandName = (candidateName || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_');
           const cleanTestTitle = (details?.testTitle || 'Test').replace(/[^a-zA-Z0-9]/g, '_');
+          const attachmentFilename = details?.pdfFilename || `Assessment_Report_${cleanCandName}_${cleanTestTitle}.pdf`;
 
-          mailAttachments = [
-            {
-              filename: `Test_Submission_Report_${cleanCandName}_${cleanTestTitle}.pdf`,
-              content: pdfBuffer,
-              contentType: 'application/pdf',
-            },
-          ];
+          let pdfBuffer: Buffer | null = null;
+          if (details?.pdfBase64) {
+            pdfBuffer = Buffer.from(details.pdfBase64, 'base64');
+          } else {
+            const pdfDoc = createSubmissionPdfDocument({
+              candidateName: candidateName || 'Candidate',
+              candidateEmail: targetRecipient,
+              registrationId: details?.registrationId || 'RJ-CAND-2026',
+              block: details?.block || 'Rajsamand',
+              testTitle: details?.testTitle || 'District Assessment',
+              subject: details?.subject,
+              scoreObtained: details?.scoreObtained || 0,
+              totalMarks: details?.totalMarks || 100,
+              scorePercentage: details?.scorePercentage || 0,
+              correctCount: details?.correctCount || 0,
+              wrongCount: details?.wrongCount || 0,
+              unattemptedCount: details?.unattemptedCount || 0,
+              timeTakenMinutes: details?.timeTakenMinutes || 0,
+              submittedAt: details?.submittedAt,
+              questions: details?.questions,
+              answers: details?.answers,
+            });
+
+            const pdfArrayBuffer = pdfDoc.output('arraybuffer');
+            pdfBuffer = Buffer.from(pdfArrayBuffer);
+          }
+
+          if (pdfBuffer && pdfBuffer.length > 0) {
+            mailAttachments = [
+              {
+                filename: attachmentFilename,
+                content: pdfBuffer,
+                contentType: 'application/pdf',
+              },
+            ];
+          }
         } catch (pdfErr) {
           console.warn('[PDF Generation Error]:', pdfErr);
         }

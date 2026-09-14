@@ -38,6 +38,8 @@ export interface SendEmailParams {
     otpCode?: string;
     questions?: MCQQuestion[];
     answers?: QuestionAnswer[];
+    pdfBase64?: string;
+    pdfFilename?: string;
   };
 }
 
@@ -494,8 +496,7 @@ export async function sendEmailAPI(params: SendEmailParams) {
             ${params.type === 'CREDENTIALS' ? `
               <div style="background-color: #f8fafc; padding: 12px; border-radius: 6px; font-family: monospace;">
                 <strong>Registration ID:</strong> ${params.details?.registrationId || 'N/A'}<br/>
-                <strong>Password:</strong> ${params.details?.password || 'N/A'}<br/>
-                <strong>Block:</strong> ${params.details?.block || 'Rajsamand District'}
+                <strong>Password:</strong> ${params.details?.password || 'N/A'}
               </div>
               <div style="text-align: center; margin: 24px 0;">
                 <a href="${params.details?.portalLoginUrl || window.location.origin}" target="_blank" style="background-color: #0284c7; color: #ffffff !important; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">🔑 Log In to Candidate Portal</a>
@@ -523,18 +524,31 @@ export async function sendEmailAPI(params: SendEmailParams) {
           </div>
         `;
 
+        const resendPayload: any = {
+          from: 'Rajsamand District Portal <onboarding@resend.dev>',
+          to: [params.candidateEmail],
+          subject,
+          html,
+        };
+
+        if (params.details?.pdfBase64) {
+          const cleanCandName = (params.candidateName || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_');
+          const cleanTestTitle = (params.details?.testTitle || 'Test').replace(/[^a-zA-Z0-9]/g, '_');
+          resendPayload.attachments = [
+            {
+              filename: params.details.pdfFilename || `Assessment_Report_${cleanCandName}_${cleanTestTitle}.pdf`,
+              content: params.details.pdfBase64,
+            },
+          ];
+        }
+
         const resendRes = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${resendApiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            from: 'Rajsamand District Portal <onboarding@resend.dev>',
-            to: [params.candidateEmail],
-            subject,
-            html,
-          }),
+          body: JSON.stringify(resendPayload),
         });
 
         if (resendRes.ok) {

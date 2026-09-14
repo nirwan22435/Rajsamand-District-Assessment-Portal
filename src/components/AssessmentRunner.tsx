@@ -334,8 +334,8 @@ export const AssessmentRunner: React.FC<AssessmentRunnerProps> = ({
             </div>
 
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Submit Assessment?</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              You have answered <strong>{answeredCount}</strong> out of <strong>{test.questions.length}</strong> questions. Automated grading will evaluate your result instantly.
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              You have answered <strong>{answeredCount}</strong> out of <strong>{test.questions.length}</strong> questions. Automated grading will evaluate your result instantly, and an official <strong>Assessment Report PDF</strong> will be dispatched to <strong>{candidate.email}</strong>.
             </p>
 
             <div className="flex items-center justify-center space-x-3 pt-2">

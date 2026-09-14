@@ -28,6 +28,7 @@ import { safeStorage } from './utils/safeStorage';
 import { isCandidateRegisteredForTyping, isCandidateTypingOnly } from './utils/candidateUtils';
 import { Monitor } from 'lucide-react';
 import { sendEmailAPI } from './services/api';
+import { createSubmissionPdfDocument } from './utils/pdfGenerator';
 import {
   subscribeCandidates,
   subscribeTests,
@@ -350,19 +351,59 @@ export default function App() {
 
   // Submit Test Handler
   const handleSubmitTestAttempt = async (newAttempt: TestAttempt) => {
-    setAttempts((prev) => [newAttempt, ...prev]);
-    setActiveTakingTest(null);
-    await saveAttemptToFirestore(newAttempt);
-
     const testPaper = tests.find((t) => t.id === newAttempt.testId);
+
+    // 1. Generate client-side Assessment Report PDF base64 for instant, reliable attachment
+    let pdfBase64: string | undefined = undefined;
+    const cleanCandName = (newAttempt.candidateName || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_');
+    const cleanTestTitle = (newAttempt.testTitle || 'Assessment').replace(/[^a-zA-Z0-9]/g, '_');
+    const pdfFilename = `Assessment_Report_${cleanCandName}_${cleanTestTitle}.pdf`;
+
+    try {
+      const pdfDoc = createSubmissionPdfDocument({
+        candidateName: newAttempt.candidateName,
+        candidateEmail: newAttempt.candidateEmail,
+        registrationId: activeCandidate?.registrationId || 'RJ-CAND-2026',
+        block: newAttempt.block,
+        testTitle: newAttempt.testTitle,
+        subject: testPaper?.subject,
+        scoreObtained: newAttempt.scoreObtained,
+        totalMarks: newAttempt.totalMarks,
+        scorePercentage: newAttempt.scorePercentage,
+        correctCount: newAttempt.correctCount,
+        wrongCount: newAttempt.wrongCount,
+        unattemptedCount: newAttempt.unattemptedCount,
+        timeTakenMinutes: newAttempt.timeTakenMinutes,
+        submittedAt: newAttempt.submittedAt,
+        questions: testPaper?.questions,
+        answers: newAttempt.answers,
+      });
+
+      const dataUri = pdfDoc.output('datauristring');
+      if (dataUri && dataUri.includes(',')) {
+        pdfBase64 = dataUri.split(',')[1];
+      }
+    } catch (pdfErr) {
+      console.warn('Could not generate client-side PDF for submission email:', pdfErr);
+    }
+
+    const initialAttemptToSave: TestAttempt = {
+      ...newAttempt,
+      emailSent: false,
+    };
+
+    setAttempts((prev) => [initialAttemptToSave, ...prev]);
+    setActiveTakingTest(null);
+    await saveAttemptToFirestore(initialAttemptToSave);
+
     if (testPaper) {
       setActiveViewingResult({
-        attempt: newAttempt,
+        attempt: initialAttemptToSave,
         test: testPaper,
       });
     }
 
-    // Auto-send submission scorecard email with attached PDF
+    // Auto-send submission assessment report PDF to candidate email
     try {
       const res = await sendEmailAPI({
         type: 'TEST_RESULT_NOTIFICATION',
@@ -382,15 +423,31 @@ export default function App() {
           registrationId: activeCandidate?.registrationId || 'RJ-CAND-2026',
           questions: testPaper?.questions,
           answers: newAttempt.answers,
+          pdfBase64,
+          pdfFilename,
         },
       });
+
+      const updatedAttempt: TestAttempt = {
+        ...initialAttemptToSave,
+        emailSent: true,
+      };
+
+      setAttempts((prev) => prev.map((a) => (a.id === updatedAttempt.id ? updatedAttempt : a)));
+      await saveAttemptToFirestore(updatedAttempt);
+
+      setActiveViewingResult((prev) =>
+        prev && prev.attempt.id === updatedAttempt.id
+          ? { ...prev, attempt: updatedAttempt }
+          : prev
+      );
 
       const log: EmailLog = {
         id: `log-${Date.now()}`,
         toEmail: newAttempt.candidateEmail,
         toName: newAttempt.candidateName,
         type: 'TEST_RESULT_NOTIFICATION',
-        subject: `📊 Test Submission Report: ${newAttempt.testTitle} (${newAttempt.scorePercentage}%)`,
+        subject: `📊 Assessment Report PDF: ${newAttempt.testTitle} (${newAttempt.scorePercentage}%)`,
         sentAt: new Date().toISOString(),
         status: (res.sentRealEmail || res.smtpMessageId || res.etherealPreviewUrl) ? 'SENT' : 'SIMULATED',
         previewUrl: res.etherealPreviewUrl || undefined,
@@ -454,6 +511,40 @@ export default function App() {
 
   // Request scorecard email manually
   const handleRequestEmailResult = async (attempt: TestAttempt) => {
+    const testPaper = tests.find((t) => t.id === attempt.testId);
+    let pdfBase64: string | undefined = undefined;
+    const cleanCandName = (attempt.candidateName || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_');
+    const cleanTestTitle = (attempt.testTitle || 'Assessment').replace(/[^a-zA-Z0-9]/g, '_');
+    const pdfFilename = `Assessment_Report_${cleanCandName}_${cleanTestTitle}.pdf`;
+
+    try {
+      const pdfDoc = createSubmissionPdfDocument({
+        candidateName: attempt.candidateName,
+        candidateEmail: attempt.candidateEmail,
+        registrationId: activeCandidate?.registrationId || 'RJ-CAND-2026',
+        block: attempt.block,
+        testTitle: attempt.testTitle,
+        subject: testPaper?.subject,
+        scoreObtained: attempt.scoreObtained,
+        totalMarks: attempt.totalMarks,
+        scorePercentage: attempt.scorePercentage,
+        correctCount: attempt.correctCount,
+        wrongCount: attempt.wrongCount,
+        unattemptedCount: attempt.unattemptedCount,
+        timeTakenMinutes: attempt.timeTakenMinutes,
+        submittedAt: attempt.submittedAt,
+        questions: testPaper?.questions,
+        answers: attempt.answers,
+      });
+
+      const dataUri = pdfDoc.output('datauristring');
+      if (dataUri && dataUri.includes(',')) {
+        pdfBase64 = dataUri.split(',')[1];
+      }
+    } catch (pdfErr) {
+      console.warn('Could not generate client-side PDF for requested email:', pdfErr);
+    }
+
     try {
       const res = await sendEmailAPI({
         type: 'TEST_RESULT_NOTIFICATION',
@@ -461,6 +552,7 @@ export default function App() {
         candidateName: attempt.candidateName,
         details: {
           testTitle: attempt.testTitle,
+          subject: testPaper?.subject,
           scoreObtained: attempt.scoreObtained,
           totalMarks: attempt.totalMarks,
           scorePercentage: attempt.scorePercentage,
@@ -468,18 +560,38 @@ export default function App() {
           wrongCount: attempt.wrongCount,
           unattemptedCount: attempt.unattemptedCount,
           timeTakenMinutes: attempt.timeTakenMinutes,
+          submittedAt: attempt.submittedAt,
+          registrationId: activeCandidate?.registrationId || 'RJ-CAND-2026',
+          questions: testPaper?.questions,
+          answers: attempt.answers,
           block: attempt.block,
+          pdfBase64,
+          pdfFilename,
         },
       });
+
+      const updatedAttempt: TestAttempt = {
+        ...attempt,
+        emailSent: true,
+      };
+
+      setAttempts((prev) => prev.map((a) => (a.id === updatedAttempt.id ? updatedAttempt : a)));
+      await saveAttemptToFirestore(updatedAttempt);
+
+      setActiveViewingResult((prev) =>
+        prev && prev.attempt.id === updatedAttempt.id
+          ? { ...prev, attempt: updatedAttempt }
+          : prev
+      );
 
       const log: EmailLog = {
         id: `log-${Date.now()}`,
         toEmail: attempt.candidateEmail,
         toName: attempt.candidateName,
         type: 'TEST_RESULT_NOTIFICATION',
-        subject: `📊 Test Scorecard: ${attempt.testTitle}`,
+        subject: `📊 Assessment Report PDF: ${attempt.testTitle} (${attempt.scorePercentage}%)`,
         sentAt: new Date().toISOString(),
-        status: res.sentRealEmail ? 'SENT' : 'SIMULATED',
+        status: (res.sentRealEmail || res.smtpMessageId || res.etherealPreviewUrl) ? 'SENT' : 'SIMULATED',
         previewUrl: res.etherealPreviewUrl || undefined,
       };
       setEmailLogs((prev) => [log, ...prev]);

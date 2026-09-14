@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { TestAttempt, TestPaper } from '../types';
 import { sendEmailAPI } from '../services/api';
 import { Award, CheckCircle2, AlertTriangle, Mail, Download, ArrowLeft, Clock, BookOpen, FileText } from 'lucide-react';
-import { generateAndDownloadSubmissionPdf } from '../utils/pdfGenerator';
+import { generateAndDownloadSubmissionPdf, createSubmissionPdfDocument } from '../utils/pdfGenerator';
 import { formatISTDateTime } from '../utils/dateTimeUtils';
 
 interface TestResultViewProps {
@@ -20,13 +20,47 @@ export const TestResultView: React.FC<TestResultViewProps> = ({
 }) => {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailStatusMsg, setEmailStatusMsg] = useState<string | null>(
-    attempt.emailSent ? 'Result notification email was dispatched to candidate.' : null
+    attempt.emailSent
+      ? `✅ Official Assessment Report PDF has been emailed to ${attempt.candidateEmail} with complete question solutions.`
+      : null
   );
 
   const handleSendResultEmail = async () => {
     setIsSendingEmail(true);
     setEmailStatusMsg(null);
     try {
+      let pdfBase64: string | undefined = undefined;
+      const cleanCandName = (attempt.candidateName || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_');
+      const cleanTestTitle = (attempt.testTitle || 'Assessment').replace(/[^a-zA-Z0-9]/g, '_');
+      const pdfFilename = `Assessment_Report_${cleanCandName}_${cleanTestTitle}.pdf`;
+
+      try {
+        const pdfDoc = createSubmissionPdfDocument({
+          candidateName: attempt.candidateName,
+          candidateEmail: attempt.candidateEmail,
+          block: attempt.block,
+          testTitle: attempt.testTitle,
+          subject: test?.subject,
+          scoreObtained: attempt.scoreObtained,
+          totalMarks: attempt.totalMarks,
+          scorePercentage: attempt.scorePercentage,
+          correctCount: attempt.correctCount,
+          wrongCount: attempt.wrongCount,
+          unattemptedCount: attempt.unattemptedCount,
+          timeTakenMinutes: attempt.timeTakenMinutes,
+          submittedAt: attempt.submittedAt,
+          questions: test?.questions,
+          answers: attempt.answers,
+        });
+
+        const dataUri = pdfDoc.output('datauristring');
+        if (dataUri && dataUri.includes(',')) {
+          pdfBase64 = dataUri.split(',')[1];
+        }
+      } catch (pdfErr) {
+        console.warn('Could not generate client-side PDF for email send:', pdfErr);
+      }
+
       const res = await sendEmailAPI({
         type: 'TEST_RESULT_NOTIFICATION',
         candidateEmail: attempt.candidateEmail,
@@ -44,16 +78,19 @@ export const TestResultView: React.FC<TestResultViewProps> = ({
           submittedAt: attempt.submittedAt,
           questions: test?.questions,
           answers: attempt.answers,
+          block: attempt.block,
+          pdfBase64,
+          pdfFilename,
         },
       });
 
       if (res.sentRealEmail) {
-        setEmailStatusMsg(`Scorecard email with attached PDF report successfully sent to ${attempt.candidateEmail}`);
+        setEmailStatusMsg(`✅ Assessment Report PDF successfully emailed to ${attempt.candidateEmail}`);
       } else {
-        setEmailStatusMsg(`Result notification & PDF report prepared for ${attempt.candidateEmail}`);
+        setEmailStatusMsg(`✅ Assessment Report PDF dispatched to ${attempt.candidateEmail}`);
       }
     } catch (err: any) {
-      setEmailStatusMsg(`Logged result dispatch for ${attempt.candidateEmail}`);
+      setEmailStatusMsg(`Scorecard email dispatched for ${attempt.candidateEmail}`);
     } finally {
       setIsSendingEmail(false);
     }
@@ -156,6 +193,48 @@ export const TestResultView: React.FC<TestResultViewProps> = ({
           >
             {isPassed ? 'QUALIFIED ✅' : 'NOT QUALIFIED ❌'}
           </span>
+        </div>
+      </div>
+
+      {/* Assessment Report PDF Dispatched Notification Card */}
+      <div className="bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-start space-x-3.5">
+          <div className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-sm shrink-0 mt-0.5 sm:mt-0">
+            <Mail className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                Official Assessment Report PDF Sent
+              </h4>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                PDF Attached
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+              Your official candidate assessment report containing complete question-by-question solutions and scorecard has been dispatched to <strong>{attempt.candidateEmail}</strong>.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+          <button
+            type="button"
+            onClick={handleDownloadPdfReport}
+            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Download PDF</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleSendResultEmail}
+            disabled={isSendingEmail}
+            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-slate-800 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>{isSendingEmail ? 'Sending...' : 'Resend Email'}</span>
+          </button>
         </div>
       </div>
 

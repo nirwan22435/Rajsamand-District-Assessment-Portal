@@ -43,7 +43,7 @@ export const handler = async function (event, context) {
     } else if (type === 'TEST_ASSIGNED') {
       subject = `📝 Assessment Assigned: ${details.testTitle || 'District Assessment'}`;
     } else if (type === 'TEST_RESULT_NOTIFICATION') {
-      subject = `📊 Assessment Result: ${details.testTitle || 'District Assessment'} (${details.scorePercentage || 0}%)`;
+      subject = `📊 Assessment Report PDF: ${details.testTitle || 'District Assessment'} (${details.scorePercentage || 0}%)`;
     }
 
     const registrationId = details.registrationId || 'REG_N/A';
@@ -94,7 +94,6 @@ export const handler = async function (event, context) {
                    <div class="cred-box">
                      <div class="cred-row"><strong>Registration ID:</strong> <span style="color: #0284c7; font-weight: bold;">${registrationId}</span></div>
                      <div class="cred-row"><strong>Temporary Password:</strong> <code style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">${password}</code></div>
-                     <div class="cred-row"><strong>Assigned Block:</strong> ${block}</div>
                    </div>
                    
                    <div style="text-align: center; margin: 28px 0;">
@@ -171,6 +170,24 @@ export const handler = async function (event, context) {
     const cleanSmtpPass = rawSmtpPass ? rawSmtpPass.trim().replace(/\s+/g, '') : '';
     const smtpFrom = process.env.SMTP_FROM || `District Admin <${smtpUser}>`;
 
+    let mailAttachments = undefined;
+    if (details.pdfBase64) {
+      try {
+        const cleanCandName = (candidateName || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_');
+        const cleanTestTitle = (details.testTitle || 'Test').replace(/[^a-zA-Z0-9]/g, '_');
+        const filename = details.pdfFilename || `Assessment_Report_${cleanCandName}_${cleanTestTitle}.pdf`;
+        mailAttachments = [
+          {
+            filename,
+            content: Buffer.from(details.pdfBase64, 'base64'),
+            contentType: 'application/pdf',
+          },
+        ];
+      } catch (attErr) {
+        console.warn('[Netlify PDF Attachment Error]:', attErr);
+      }
+    }
+
     let sentSuccess = false;
     let errorMessage = '';
 
@@ -189,6 +206,7 @@ export const handler = async function (event, context) {
           to: candidateEmail,
           subject,
           html: htmlContent,
+          attachments: mailAttachments,
         });
 
         return {
@@ -239,6 +257,7 @@ export const handler = async function (event, context) {
         to: candidateEmail,
         subject,
         html: htmlContent,
+        attachments: mailAttachments,
       });
 
       const previewUrl = nodemailer.getTestMessageUrl(info) || '';
