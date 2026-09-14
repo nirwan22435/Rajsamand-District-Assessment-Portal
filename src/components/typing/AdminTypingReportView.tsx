@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { TypingAttempt, TypingTest, DistrictBlock } from '../../types';
+import { TypingAttempt, TypingTest, DistrictBlock, Candidate } from '../../types';
 import { exportTypingReportToCSV, formatSecondsToTime } from '../../utils/typingUtils';
 import { downloadTypingMeritReportPdf, downloadCandidateTypingScorecardPdf } from '../../utils/pdfGenerator';
 import { formatISTDate, formatISTDateTime, getISTDateKey } from '../../utils/dateTimeUtils';
+import { isCandidateRegisteredForTyping } from '../../utils/candidateUtils';
 import { TypingResultModal } from './TypingResultModal';
 import {
   BarChart3,
@@ -32,6 +33,7 @@ import {
 interface AdminTypingReportViewProps {
   attempts: TypingAttempt[];
   tests: TypingTest[];
+  candidates?: Candidate[];
   onDeleteAttempt?: (attemptId: string) => void;
   onViewScorecard?: (attempt: TypingAttempt) => void;
 }
@@ -51,6 +53,7 @@ const DISTRICT_BLOCKS: (DistrictBlock | 'ALL')[] = [
 export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
   attempts,
   tests,
+  candidates = [],
   onDeleteAttempt,
   onViewScorecard,
 }) => {
@@ -152,12 +155,55 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
         return true;
       });
 
-      const appeared = paperAttempts.length;
+      const totalSubmissions = paperAttempts.length;
+      const appearedCandidates = new Set(
+        paperAttempts.map((a) => a.candidateId || a.candidateEmail?.toLowerCase().trim()).filter(Boolean)
+      ).size;
+      const appeared = appearedCandidates > 0 ? appearedCandidates : totalSubmissions;
+
       const qualified = paperAttempts.filter((a) => a.status === 'QUALIFIED').length;
       const passRate = appeared > 0 ? Math.round((qualified / appeared) * 100) : 0;
       const avgNet = appeared > 0 ? Math.round((paperAttempts.reduce((acc, a) => acc + (a.netWpm || 0), 0) / appeared) * 10) / 10 : 0;
       const highestNet = appeared > 0 ? Math.max(...paperAttempts.map((a) => a.netWpm || 0)) : 0;
       const avgAcc = appeared > 0 ? Math.round((paperAttempts.reduce((acc, a) => acc + (a.accuracyPercentage || 0), 0) / appeared) * 10) / 10 : 0;
+
+      // Calculate Assigned Candidates
+      const isUnassigned =
+        test.assignedCandidateIds?.includes('__UNASSIGNED__') ||
+        test.assignedCandidateIds?.includes('__NONE__') ||
+        test.assignedCandidateIds?.length === 0;
+
+      let assignedCount = 0;
+      let isTargeted = false;
+
+      if (isUnassigned) {
+        assignedCount = 0;
+      } else if (
+        test.assignedCandidateIds &&
+        test.assignedCandidateIds.length > 0 &&
+        !test.assignedCandidateIds.includes('ALL')
+      ) {
+        isTargeted = true;
+        const validIds = test.assignedCandidateIds.filter(
+          (id) => id !== '__UNASSIGNED__' && id !== '__NONE__' && id !== 'ALL'
+        );
+        assignedCount = validIds.length;
+      } else {
+        // Assigned to all eligible candidates for this typing paper
+        const eligibleCandidates = candidates.filter((c) => {
+          if (c.activeStatus === false) return false;
+          if (!isCandidateRegisteredForTyping(c)) return false;
+          if (c.typingMedium && c.typingMedium !== test.language) return false;
+          return true;
+        });
+        assignedCount = eligibleCandidates.length > 0
+          ? eligibleCandidates.length
+          : candidates.filter((c) => c.activeStatus !== false).length;
+      }
+
+      const turnoutRate = assignedCount > 0
+        ? Math.min(100, Math.round((appeared / assignedCount) * 100))
+        : (totalSubmissions > 0 ? 100 : 0);
 
       return {
         testId: test.id,
@@ -165,7 +211,11 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
         language: test.language,
         durationMinutes: test.durationMinutes,
         minPassingWpm: test.minPassingWpm,
+        assignedCount,
+        isTargeted,
+        totalSubmissions,
         totalAppeared: appeared,
+        turnoutPercentage: turnoutRate,
         totalQualified: qualified,
         passPercentage: passRate,
         avgNetWpm: avgNet,
@@ -173,7 +223,7 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
         avgAccuracy: avgAcc,
       };
     });
-  }, [tests, attempts, selectedDate]);
+  }, [tests, attempts, candidates, selectedDate]);
 
   // Determine current exam date for heading in IST
   const currentExamDateFormatted = useMemo(() => {
@@ -384,14 +434,41 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
                               {paper.durationMinutes}m • Pass: ≥{paper.minPassingWpm} WPM
                             </span>
                           </div>
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate" title={paper.title}>
+                          <h4 className="text-xs font-bold text-slate-900 dark:text-white break-words leading-snug" title={paper.title}>
                             {paper.title}
                           </h4>
                         </div>
                       </div>
 
-                      {/* 4 Mini Metric Badges */}
-                      <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-200/80 dark:border-slate-700/60">
+                      {/* 6 Metric Badges: Assigned, Submission, Turnout, Qualified, Avg Speed, Highest */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-200/80 dark:border-slate-700/60">
+                        {/* 1. Assigned */}
+                        <div className="p-2 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60">
+                          <span className="block text-[9px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                            Assigned
+                          </span>
+                          <span className="text-base font-black text-amber-900 dark:text-amber-200">
+                            {paper.assignedCount}
+                          </span>
+                          <span className="block text-[9px] text-amber-600 dark:text-amber-400 truncate">
+                            {paper.isTargeted ? 'Targeted' : 'Candidates'}
+                          </span>
+                        </div>
+
+                        {/* 2. Submission */}
+                        <div className="p-2 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/60">
+                          <span className="block text-[9px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-400">
+                            Submission
+                          </span>
+                          <span className="text-base font-black text-blue-900 dark:text-blue-200">
+                            {paper.totalSubmissions}
+                          </span>
+                          <span className="block text-[9px] text-blue-600 dark:text-blue-400">
+                            {paper.totalSubmissions === 1 ? 'Attempt' : 'Attempts'}
+                          </span>
+                        </div>
+
+                        {/* 3. Turnout */}
                         <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
                           <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400">
                             Turnout
@@ -399,9 +476,12 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
                           <span className="text-base font-black text-slate-900 dark:text-white">
                             {paper.totalAppeared}
                           </span>
-                          <span className="block text-[9px] text-slate-500">Appeared</span>
+                          <span className="block text-[9px] text-slate-500">
+                            {paper.turnoutPercentage}% Rate
+                          </span>
                         </div>
 
+                        {/* 4. Qualified */}
                         <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/60">
                           <span className="block text-[9px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                             Qualified
@@ -413,6 +493,7 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
                           <span className="block text-[9px] text-emerald-600 dark:text-emerald-400">Pass Rate</span>
                         </div>
 
+                        {/* 5. Avg Speed */}
                         <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/50 border border-sky-200/80 dark:border-sky-800/60">
                           <span className="block text-[9px] font-black uppercase tracking-wider text-sky-700 dark:text-sky-400">
                             Avg Speed
@@ -423,6 +504,7 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
                           <span className="block text-[9px] text-sky-600 dark:text-sky-400">{paper.avgAccuracy}% Acc</span>
                         </div>
 
+                        {/* 6. Highest */}
                         <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 border border-purple-200/80 dark:border-purple-800/60">
                           <span className="block text-[9px] font-black uppercase tracking-wider text-purple-700 dark:text-purple-400">
                             Highest

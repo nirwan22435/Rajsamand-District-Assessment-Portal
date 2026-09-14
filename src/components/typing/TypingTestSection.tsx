@@ -395,6 +395,7 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
                 );
               })}
               tests={tests}
+              candidates={candidates}
               onDeleteAttempt={onDeleteAttempt}
               onViewScorecard={(attempt) => {
                 const foundTest = tests.find((t) => t.id === attempt.typingTestId);

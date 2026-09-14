@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Candidate, TestPaper, TestAttempt, DistrictBlock } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, PieChart, Pie, Legend } from 'recharts';
-import { Users, FileCheck, Award, TrendingUp, Download, FileText, Search, CheckCircle2, AlertTriangle, UserCheck, RefreshCw, FileSpreadsheet, ExternalLink, Mail, Send, Edit3, BarChart3, BookOpen, Key, Copy, Check, Trash2, Globe, Filter } from 'lucide-react';
+import { Users, FileCheck, Award, TrendingUp, Download, FileText, Search, CheckCircle2, XCircle, AlertTriangle, UserCheck, RefreshCw, FileSpreadsheet, ExternalLink, Mail, Send, Edit3, BarChart3, BookOpen, Key, Copy, Check, Trash2, Globe, Filter } from 'lucide-react';
 import { sendEmailAPI } from '../services/api';
 import { TestSummaryReportModal } from './TestSummaryReportModal';
 import { PublishSuccessModal } from './PublishSuccessModal';
@@ -202,26 +202,76 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const publishedTestsCount = tests.filter((t) => t.status === 'PUBLISHED').length;
   const totalAttemptsCount = activeAttempts.length;
 
-  // Assessed candidates: count strictly active, existing candidates who have submitted at least 1 attempt
-  // (Guarantees candidates deleted from app are never counted)
-  const assessedCandidateIds = new Set<string>();
-  activeCandidatesInScope.forEach((c) => {
-    const cEmail = c.email?.toLowerCase().trim();
-    const hasAttempt = activeAttempts.some(
-      (a) => a.candidateId === c.id || (cEmail && a.candidateEmail?.toLowerCase().trim() === cEmail)
-    );
-    if (hasAttempt) {
-      assessedCandidateIds.add(c.id);
+  // Helper to determine if an attempt meets qualification cutoff
+  const isAttemptQualified = (att: TestAttempt, testPaper?: TestPaper | null): boolean => {
+    if (testPaper && typeof testPaper.passingMarks === 'number' && testPaper.passingMarks > 0) {
+      return att.scoreObtained >= testPaper.passingMarks;
     }
-  });
-  const assessedCandidatesCount = assessedCandidateIds.size;
+    const matchedTest = tests.find((t) => t.id === att.testId || t.title === att.testTitle);
+    if (matchedTest && typeof matchedTest.passingMarks === 'number' && matchedTest.passingMarks > 0) {
+      return att.scoreObtained >= matchedTest.passingMarks;
+    }
+    return att.status === 'PASSED' || (att as any).status === 'QUALIFIED' || att.scorePercentage >= 40;
+  };
 
-  const passedAttemptsCount = activeAttempts.filter((a) => {
-    if (activeTestPaper) {
-      return a.scoreObtained >= activeTestPaper.passingMarks;
-    }
-    return a.status === 'PASSED';
-  }).length;
+  // Detailed qualification classification for each candidate in scope
+  const candidateQualificationSummary = useMemo(() => {
+    let qualifiedCount = 0;
+    let notQualifiedCount = 0;
+    let unassessedCount = 0;
+
+    const qualifiedIds = new Set<string>();
+    const notQualifiedIds = new Set<string>();
+    const unassessedIds = new Set<string>();
+
+    activeCandidatesInScope.forEach((cand) => {
+      const cEmail = cand.email?.toLowerCase().trim();
+      const candAttempts = activeAttempts.filter(
+        (a) => a.candidateId === cand.id || (cEmail && a.candidateEmail?.toLowerCase().trim() === cEmail)
+      );
+
+      if (candAttempts.length === 0) {
+        unassessedCount++;
+        unassessedIds.add(cand.id);
+      } else {
+        const hasPassed = candAttempts.some((a) => isAttemptQualified(a, activeTestPaper));
+        if (hasPassed) {
+          qualifiedCount++;
+          qualifiedIds.add(cand.id);
+        } else {
+          notQualifiedCount++;
+          notQualifiedIds.add(cand.id);
+        }
+      }
+    });
+
+    const assessedCount = qualifiedCount + notQualifiedCount;
+    const qualifiedPctOfAssessed = assessedCount > 0 ? Math.round((qualifiedCount / assessedCount) * 100) : 0;
+    const notQualifiedPctOfAssessed = assessedCount > 0 ? Math.round((notQualifiedCount / assessedCount) * 100) : 0;
+    const qualifiedPctOfTotal = activeCandidatesInScope.length > 0 ? Math.round((qualifiedCount / activeCandidatesInScope.length) * 100) : 0;
+    const notQualifiedPctOfTotal = activeCandidatesInScope.length > 0 ? Math.round((notQualifiedCount / activeCandidatesInScope.length) * 100) : 0;
+
+    return {
+      qualifiedCount,
+      notQualifiedCount,
+      unassessedCount,
+      assessedCount,
+      qualifiedPctOfAssessed,
+      notQualifiedPctOfAssessed,
+      qualifiedPctOfTotal,
+      notQualifiedPctOfTotal,
+      qualifiedIds,
+      notQualifiedIds,
+      unassessedIds,
+    };
+  }, [activeCandidatesInScope, activeAttempts, activeTestPaper, tests]);
+
+  const assessedCandidatesCount = candidateQualificationSummary.assessedCount;
+  const passedCandidatesCount = candidateQualificationSummary.qualifiedCount;
+  const notQualifiedCandidatesCount = candidateQualificationSummary.notQualifiedCount;
+  const unassessedCandidatesCount = candidateQualificationSummary.unassessedCount;
+
+  const passedAttemptsCount = activeAttempts.filter((a) => isAttemptQualified(a, activeTestPaper)).length;
 
   const overallPassRate = totalAttemptsCount > 0 ? Math.round((passedAttemptsCount / totalAttemptsCount) * 100) : 0;
 
@@ -249,20 +299,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     else scoreDistribution[4].count++;
   });
 
-  // 3. Donut Chart Data: Candidate Qualification
-  const passedCandidatesCount = Array.from(assessedCandidateIds).filter((candId) => {
-    const candAttempts = activeAttempts.filter((a) => a.candidateId === candId);
-    return candAttempts.some((a) => (activeTestPaper ? a.scoreObtained >= activeTestPaper.passingMarks : a.status === 'PASSED'));
-  }).length;
+  // 3. Donut Chart Data: Candidate Qualification Breakdown
+  const pieData = useMemo(() => {
+    const list: { name: string; value: number; color: string }[] = [];
 
-  const needsImprovementCandidatesCount = assessedCandidatesCount - passedCandidatesCount;
-  const unassessedCandidatesCount = Math.max(0, totalCandidates - assessedCandidatesCount);
+    if (candidateQualificationSummary.qualifiedCount > 0) {
+      list.push({
+        name: 'Qualified Candidates',
+        value: candidateQualificationSummary.qualifiedCount,
+        color: '#10b981', // Emerald
+      });
+    }
 
-  const pieData = [
-    { name: 'Qualified Candidates', value: passedCandidatesCount, color: '#10b981' },
-    { name: 'Not Qualified', value: needsImprovementCandidatesCount, color: '#f43f5e' },
-    { name: 'Unassessed Candidates', value: unassessedCandidatesCount, color: '#64748b' },
-  ];
+    if (candidateQualificationSummary.notQualifiedCount > 0) {
+      list.push({
+        name: 'Not Qualified Candidates',
+        value: candidateQualificationSummary.notQualifiedCount,
+        color: '#f43f5e', // Rose
+      });
+    }
+
+    if (candidateQualificationSummary.unassessedCount > 0) {
+      list.push({
+        name: 'Unassessed Candidates',
+        value: candidateQualificationSummary.unassessedCount,
+        color: '#64748b', // Slate
+      });
+    }
+
+    // Fallback if list is empty so PieChart doesn't crash
+    if (list.length === 0) {
+      list.push(
+        { name: 'Qualified Candidates', value: 0, color: '#10b981' },
+        { name: 'Not Qualified Candidates', value: 0, color: '#f43f5e' }
+      );
+    }
+
+    return list;
+  }, [candidateQualificationSummary]);
 
   // 4. Filtered Candidate Records for Individual Analytics Table
   const filteredCandidates = activeCandidatesInScope.filter((c) => {
@@ -300,12 +374,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       ];
 
       const rows = activeCandidatesInScope.map((c) => {
-        const candAttempt = activeAttempts.find((a) => a.candidateId === c.id || a.candidateEmail === c.email);
+        const candEmail = c.email?.toLowerCase().trim();
+        const candAttempt = activeAttempts.find(
+          (a) => a.candidateId === c.id || (candEmail && a.candidateEmail?.toLowerCase().trim() === candEmail)
+        );
         const hasAttempted = !!candAttempt;
         const score = hasAttempted ? candAttempt.scoreObtained : 'N/A';
         const pct = hasAttempted ? `${candAttempt.scorePercentage}%` : 'N/A';
-        const isPassed = hasAttempted && candAttempt.scoreObtained >= activeTestPaper.passingMarks;
-        const status = !hasAttempted ? 'UNASSESSED' : isPassed ? 'PASSED' : 'NOT_QUALIFIED';
+        const isPassed = hasAttempted && isAttemptQualified(candAttempt!, activeTestPaper);
+        const status = !hasAttempted ? 'UNASSESSED' : isPassed ? 'QUALIFIED' : 'NOT_QUALIFIED';
         const attemptDate = hasAttempted ? formatISTDateTime(candAttempt.submittedAt) : 'N/A';
 
         return [
@@ -345,8 +422,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       ];
 
       const rows = assessmentCandidates.map((c) => {
+        const candEmail = c.email?.toLowerCase().trim();
         const candAttempts = validDirectoryAttempts.filter(
-          (a) => a.candidateId === c.id || (c.email && a.candidateEmail?.toLowerCase() === c.email.toLowerCase())
+          (a) => a.candidateId === c.id || (candEmail && a.candidateEmail?.toLowerCase().trim() === candEmail)
         );
         const attemptsCount = candAttempts.length;
         const highestScore = attemptsCount > 0 ? Math.max(...candAttempts.map((a) => a.scorePercentage)) : 0;
@@ -354,8 +432,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           attemptsCount > 0
             ? Math.round(candAttempts.reduce((sum, a) => sum + a.scorePercentage, 0) / attemptsCount)
             : 0;
-        const hasPassed = candAttempts.some((a) => a.status === 'PASSED');
-        const status = attemptsCount === 0 ? 'UNASSESSED' : hasPassed ? 'PASSED' : 'NOT_QUALIFIED';
+        const hasPassed = candAttempts.some((a) => isAttemptQualified(a, null));
+        const status = attemptsCount === 0 ? 'UNASSESSED' : hasPassed ? 'QUALIFIED' : 'NOT_QUALIFIED';
 
         return [
           c.registrationId,
@@ -520,17 +598,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* Metric Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1 */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+        <div id="admin-card-assessed-candidates" className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                {activeTestPaper ? 'Active Assessed Candidates' : 'Total Candidates'}
+                Assessed Candidates
               </p>
               <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
                 {assessedCandidatesCount}
               </h3>
               <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1">
-                <UserCheck className="w-3 h-3" /> Active assessed candidates
+                <UserCheck className="w-3 h-3" /> {assessedCandidatesCount} of {totalCandidates} assessed ({unassessedCandidatesCount} pending)
               </p>
             </div>
             <div className="p-3.5 rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-xs">
@@ -557,38 +635,48 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
 
-        {/* Card 3 */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+        {/* Card 3: Qualified Candidates */}
+        <div id="admin-card-qualified-candidates" className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                {activeTestPaper ? 'Mean Score on Test' : 'Candidate Mean Score'}
+                Qualified Candidates
               </p>
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">{candidateMeanScore}%</h3>
+              <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                {passedCandidatesCount}
+              </h3>
               <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1">
-                <TrendingUp className="w-3 h-3" /> {activeTestPaper ? `Target Block: ${activeTestPaper.targetBlock || 'District-Wide'}` : 'Across all attempts'}
+                <CheckCircle2 className="w-3 h-3" />
+                {assessedCandidatesCount > 0
+                  ? `${candidateQualificationSummary.qualifiedPctOfAssessed}% of assessed (${passedCandidatesCount}/${assessedCandidatesCount})`
+                  : '0 assessed candidates'}
               </p>
             </div>
-            <div className="p-3.5 rounded-2xl bg-amber-500/15 dark:bg-amber-500/25 border border-amber-500/30 text-amber-600 dark:text-amber-400 shadow-xs">
-              <TrendingUp className="w-7 h-7" />
+            <div className="p-3.5 rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-xs">
+              <CheckCircle2 className="w-7 h-7" />
             </div>
           </div>
         </div>
 
-        {/* Card 4 */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+        {/* Card 4: Not Qualified Candidates */}
+        <div id="admin-card-not-qualified-candidates" className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                {activeTestPaper ? 'Test Pass Rate' : 'Pass Rate'}
+                Not Qualified Candidates
               </p>
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">{overallPassRate}%</h3>
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> {passedAttemptsCount} qualified submissions
+              <h3 className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">
+                {notQualifiedCandidatesCount}
+              </h3>
+              <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 font-medium flex items-center gap-1">
+                <XCircle className="w-3 h-3" />
+                {assessedCandidatesCount > 0
+                  ? `${candidateQualificationSummary.notQualifiedPctOfAssessed}% of assessed (${notQualifiedCandidatesCount}/${assessedCandidatesCount})`
+                  : '0 assessed candidates'}
               </p>
             </div>
-            <div className="p-3.5 rounded-2xl bg-purple-500/15 dark:bg-purple-500/25 border border-purple-500/30 text-purple-600 dark:text-purple-400 shadow-xs">
-              <Award className="w-7 h-7" />
+            <div className="p-3.5 rounded-2xl bg-rose-500/15 dark:bg-rose-500/25 border border-rose-500/30 text-rose-600 dark:text-rose-400 shadow-xs">
+              <XCircle className="w-7 h-7" />
             </div>
           </div>
         </div>
@@ -672,6 +760,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </Pie>
                     <Tooltip
                       contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#fff' }}
+                      formatter={(val: any, name: any) => [
+                        `${val} Candidate${Number(val) === 1 ? '' : 's'} (${totalCandidates > 0 ? Math.round((Number(val) / totalCandidates) * 100) : 0}%)`,
+                        name,
+                      ]}
                     />
                     <Legend verticalAlign="bottom" height={36} iconType="circle" />
                   </PieChart>
@@ -685,11 +777,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-medium">
+          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs font-medium">
             <span className="text-slate-500 dark:text-slate-400">
               {activeTestPaper ? `Pass Cutoff: ≥${activeTestPaper.passingMarks} Marks` : 'Pass Cutoff: ≥40% Score'}
             </span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold">{passedCandidatesCount} / {totalCandidates} Qualified</span>
+            <div className="flex items-center gap-2">
+              <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                {passedCandidatesCount} Qualified
+              </span>
+              <span className="text-slate-400">/</span>
+              <span className="text-rose-600 dark:text-rose-400 font-bold">
+                {notQualifiedCandidatesCount} Not Qualified
+              </span>
+              {unassessedCandidatesCount > 0 && (
+                <>
+                  <span className="text-slate-400">/</span>
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">
+                    {unassessedCandidatesCount} Pending
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -754,11 +862,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 filteredCandidates.map((cand) => {
                   if (activeTestPaper) {
                     // Test-Paper-Wise candidate row
+                    const candEmail = cand.email?.toLowerCase().trim();
                     const candAttempt = activeAttempts.find(
-                      (a) => a.candidateId === cand.id || a.candidateEmail === cand.email
+                      (a) => a.candidateId === cand.id || (candEmail && a.candidateEmail?.toLowerCase().trim() === candEmail)
                     );
                     const hasAttempted = Boolean(candAttempt);
-                    const isPassed = hasAttempted && candAttempt!.scoreObtained >= activeTestPaper.passingMarks;
+                    const isPassed = hasAttempted && isAttemptQualified(candAttempt!, activeTestPaper);
 
                     return (
                       <tr key={cand.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
@@ -788,7 +897,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <span className={`inline-block px-2 py-0.5 rounded ${
                               candAttempt!.scorePercentage >= 75
                                 ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
-                                : candAttempt!.scorePercentage >= activeTestPaper.passingMarks
+                                : candAttempt!.scorePercentage >= (activeTestPaper?.passingMarks ? Math.round((activeTestPaper.passingMarks / activeTestPaper.totalMarks) * 100) : 40)
                                 ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
                                 : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
                             }`}>
@@ -809,7 +918,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-semibold">
-                              <AlertTriangle className="w-3.5 h-3.5" /> Not Qualified
+                              <XCircle className="w-3.5 h-3.5" /> Not Qualified
                             </span>
                           )}
                         </td>
@@ -831,8 +940,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   }
 
                   // Default All-Tests view
+                  const candEmail = cand.email?.toLowerCase().trim();
                   const candAttempts = validDirectoryAttempts.filter(
-                    (a) => a.candidateId === cand.id || (cand.email && a.candidateEmail?.toLowerCase() === cand.email.toLowerCase())
+                    (a) => a.candidateId === cand.id || (candEmail && a.candidateEmail?.toLowerCase().trim() === candEmail)
                   );
                   const attemptsCount = candAttempts.length;
                   const highestScore = attemptsCount > 0 ? Math.max(...candAttempts.map((a) => a.scorePercentage)) : 0;
@@ -840,7 +950,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     attemptsCount > 0
                       ? Math.round(candAttempts.reduce((sum, a) => sum + a.scorePercentage, 0) / attemptsCount)
                       : 0;
-                  const hasPassed = candAttempts.some((a) => a.status === 'PASSED');
+                  const hasPassed = candAttempts.some((a) => isAttemptQualified(a, null));
 
                   return (
                     <tr key={cand.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
@@ -883,7 +993,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 font-semibold">
-                            <AlertTriangle className="w-3.5 h-3.5" /> Not Qualified
+                            <XCircle className="w-3.5 h-3.5" /> Not Qualified
                           </span>
                         )}
                       </td>
