@@ -386,16 +386,14 @@ export const CandidateManagement: React.FC<CandidateManagementProps> = ({
                     </td>
                     <td className="px-5 py-4 text-center">
                       <div className="inline-flex flex-col items-center gap-1">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                          <CheckCircle2 className="w-2.5 h-2.5" /> MCQ Assessment
-                        </span>
-                        {isCandidateRegisteredForTyping(cand) ? (
+                        {!isCandidateTypingOnly(cand) && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            <CheckCircle2 className="w-2.5 h-2.5" /> MCQ Assessment
+                          </span>
+                        )}
+                        {isCandidateRegisteredForTyping(cand) && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                             <Keyboard className="w-2.5 h-2.5" /> Typing ({cand.typingMedium === 'HINDI_DEVLYS_010' ? 'Hindi' : 'English'})
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700">
-                            Typing: Not Registered
                           </span>
                         )}
                       </div>

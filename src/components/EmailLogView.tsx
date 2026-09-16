@@ -71,7 +71,7 @@ export const EmailLogView: React.FC<EmailLogViewProps> = ({ logs, candidates = [
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Notification & Email Audit Logs</h1>
             <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
-              Audit log of credentials, assessment assignments, and PDF scorecards dispatched via SMTP.
+              Audit log of credentials, assessment assignments, and PDF scorecards dispatched.
             </p>
           </div>
         </div>
@@ -152,7 +152,7 @@ export const EmailLogView: React.FC<EmailLogViewProps> = ({ logs, candidates = [
             Dispatched Notification Logs ({filteredLogs.length})
           </span>
           <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-            Delivery Protocol: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">Standard SMTP / API</strong>
+            Delivery Protocol: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">Standard Delivery / API</strong>
           </span>
         </div>
 
@@ -207,7 +207,7 @@ export const EmailLogView: React.FC<EmailLogViewProps> = ({ logs, candidates = [
                         }`}
                       >
                         <CheckCircle2 className="w-3 h-3" />
-                        <span>{log.status === 'SENT' ? 'Sent via SMTP' : 'Delivered'}</span>
+                        <span>{log.status === 'SENT' ? 'Sent' : 'Delivered'}</span>
                       </span>
                     </td>
                     <td className="px-5 py-4 text-center text-slate-500 dark:text-slate-400 text-[11px] font-semibold">

@@ -248,7 +248,7 @@ export const PublishedTestPapersView: React.FC<PublishedTestPapersViewProps> = (
                               <div className="flex items-center gap-2 text-rose-800 dark:text-rose-200 font-bold text-xs">
                                 <Trash2 className="w-4 h-4 text-rose-600 shrink-0" />
                                 <span>
-                                  Permanently delete <span className="underline">{test.title}</span>? All questions will be removed.
+                                  Permanently delete <span className="underline">{test.title}</span>? All questions and associated candidate statistics/submissions will be removed.
                                 </span>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
@@ -528,7 +528,7 @@ export const PublishedTestPapersView: React.FC<PublishedTestPapersViewProps> = (
                   {isDeleting ? (
                     <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/80 border border-rose-300 dark:border-rose-800 space-y-2">
                       <p className="text-[11px] font-extrabold text-rose-800 dark:text-rose-200 text-center">
-                        Permanently delete test paper?
+                        Delete test paper and all its submission statistics?
                       </p>
                       <div className="flex items-center gap-2">
                         <button

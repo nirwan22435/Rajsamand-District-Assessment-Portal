@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Candidate, TestPaper, TestAttempt, DistrictBlock } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, PieChart, Pie, Legend } from 'recharts';
 import { Users, FileCheck, Award, TrendingUp, Download, FileText, Search, CheckCircle2, XCircle, AlertTriangle, UserCheck, RefreshCw, FileSpreadsheet, ExternalLink, Mail, Send, Edit3, BarChart3, BookOpen, Key, Copy, Check, Trash2, Globe, Filter } from 'lucide-react';
@@ -32,6 +32,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onResetData,
 }) => {
   const [selectedTestFilter, setSelectedTestFilter] = useState<string>('ALL');
+
+  // Auto reset selected test filter if the selected test paper was deleted
+  useEffect(() => {
+    if (selectedTestFilter !== 'ALL' && !tests.some((t) => t.id === selectedTestFilter)) {
+      setSelectedTestFilter('ALL');
+    }
+  }, [tests, selectedTestFilter]);
   const [copiedCodeTestId, setCopiedCodeTestId] = useState<string | null>(null);
   const [deletingTestId, setDeletingTestId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -213,14 +220,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       .map((c) => c.email?.toLowerCase().trim())
       .filter(Boolean) as string[]
   );
+  const validTestIds = new Set(tests.map((t) => t.id));
+  const validTestTitles = new Set(tests.map((t) => t.title));
 
-  // Active attempts belonging strictly to candidates currently existing in the candidate directory
-  // (Removes candidate data from test submission in district analytics if candidate has been deleted from directory)
+  // Active attempts belonging strictly to candidates currently existing in the candidate directory AND existing tests
+  // (Removes candidate and test data from test submission in district analytics if candidate or test has been deleted)
   const validDirectoryAttempts = attempts.filter((a) => {
     const hasValidId = a.candidateId && validCandidateIds.has(a.candidateId);
     const hasValidEmail =
       a.candidateEmail && validCandidateEmails.has(a.candidateEmail.toLowerCase().trim());
-    return Boolean(hasValidId || hasValidEmail);
+    const hasValidTest = validTestIds.has(a.testId) || (a.testTitle && validTestTitles.has(a.testTitle));
+    return Boolean((hasValidId || hasValidEmail) && hasValidTest);
   });
 
   // Active test paper object if filtered
@@ -232,11 +242,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     : validDirectoryAttempts.filter((a) => a.testId === selectedTestFilter || (activeTestPaper && a.testTitle === activeTestPaper.title));
 
   // Determine candidates eligible / in scope for the active filter
-  const activeCandidatesInScope = activeTestPaper
-    ? (activeTestPaper.assignedCandidateIds && activeTestPaper.assignedCandidateIds.length > 0 && !activeTestPaper.assignedCandidateIds.includes('ALL')
-        ? assessmentCandidates.filter((c) => activeTestPaper.assignedCandidateIds!.includes(c.id))
-        : assessmentCandidates)
-    : assessmentCandidates;
+  const activeCandidatesInScope = useMemo(() => {
+    if (!activeTestPaper) return assessmentCandidates;
+
+    const assigned = activeTestPaper.assignedCandidateIds;
+    let baseList = assessmentCandidates;
+
+    if (assigned !== undefined) {
+      if (
+        assigned.length === 0 ||
+        assigned.includes('__UNASSIGNED__') ||
+        assigned.includes('__NONE__')
+      ) {
+        baseList = [];
+      } else if (!assigned.includes('ALL')) {
+        const validIds = assigned.filter((id) => !id.startsWith('__'));
+        baseList = assessmentCandidates.filter((c) => validIds.includes(c.id));
+      }
+    }
+
+    // Also include any candidate who already took this test attempt so their record is accounted for
+    const attemptCandidateIds = new Set(
+      activeAttempts.map((a) => a.candidateId).filter(Boolean)
+    );
+    if (attemptCandidateIds.size > 0) {
+      const extraCandidates = assessmentCandidates.filter(
+        (c) => attemptCandidateIds.has(c.id) && !baseList.some((b) => b.id === c.id)
+      );
+      return [...baseList, ...extraCandidates];
+    }
+
+    return baseList;
+  }, [activeTestPaper, assessmentCandidates, activeAttempts]);
 
   // 1. High-level Summary Metrics (Test Paper Filtered)
   const totalCandidates = activeCandidatesInScope.length;
@@ -638,18 +675,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       {/* Metric Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1 */}
+        {/* Card 1: Total Candidates Assigned */}
         <div id="admin-card-assessed-candidates" className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Assessed Candidates
+                Total Candidates
               </p>
               <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-                {assessedCandidatesCount}
+                {totalCandidates}
               </h3>
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium flex items-center gap-1">
-                <UserCheck className="w-3 h-3" /> {assessedCandidatesCount} of {totalCandidates} assessed ({unassessedCandidatesCount} pending)
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium flex items-center gap-1">
+                <UserCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{assessedCandidatesCount} assessed</span>
+                <span>•</span>
+                <span>{unassessedCandidatesCount} pending</span>
               </p>
             </div>
             <div className="p-3.5 rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-xs">

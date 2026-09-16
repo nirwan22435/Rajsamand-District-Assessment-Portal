@@ -634,7 +634,7 @@ Correct Answer: A`);
               {editingTest ? `Edit Assessment: ${editingTest.title}` : 'Create New Assessment Paper'}
             </h1>
             <p className="text-emerald-100/80 text-sm mt-1 max-w-2xl">
-              Upload question documents for AI extraction or construct MCQ assessments manually.
+              Upload Question paper in specific format or manually enter questions
             </p>
           </div>
         </div>

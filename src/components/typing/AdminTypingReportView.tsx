@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { TypingAttempt, TypingTest, DistrictBlock, Candidate } from '../../types';
 import { exportTypingReportToCSV, formatSecondsToTime } from '../../utils/typingUtils';
 import { downloadTypingMeritReportPdf, downloadCandidateTypingScorecardPdf } from '../../utils/pdfGenerator';
 import { formatISTDate, formatISTDateTime, getISTDateKey } from '../../utils/dateTimeUtils';
 import { isCandidateRegisteredForTyping } from '../../utils/candidateUtils';
 import { TypingResultModal } from './TypingResultModal';
+import { TypingTestCandidatesModal } from './TypingTestCandidatesModal';
 import {
   BarChart3,
   Download,
@@ -58,25 +59,43 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
   onViewScorecard,
 }) => {
   const [selectedTestId, setSelectedTestId] = useState<string>('ALL');
+
+  // Auto reset selected test filter if the selected typing test was deleted
+  useEffect(() => {
+    if (selectedTestId !== 'ALL' && !tests.some((t) => t.id === selectedTestId)) {
+      setSelectedTestId('ALL');
+    }
+  }, [tests, selectedTestId]);
+
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedLanguage, setSelectedLanguage] = useState<'ALL' | 'ENGLISH' | 'HINDI_DEVLYS_010'>('ALL');
   const [selectedBlock, setSelectedBlock] = useState<DistrictBlock | 'ALL'>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<'ALL' | 'QUALIFIED' | 'DISQUALIFIED'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [deletingAttemptId, setDeletingAttemptId] = useState<string | null>(null);
-  const [showPaperSummary, setShowPaperSummary] = useState<boolean>(true);
+  const [showPaperSummary, setShowPaperSummary] = useState<boolean>(false);
 
   // Selected attempt for detailed scorecard inspection modal
   const [viewingAttempt, setViewingAttempt] = useState<TypingAttempt | null>(null);
 
+  // State for viewing Assigned / Submitted candidates list modal
+  const [activeCandidatesModal, setActiveCandidatesModal] = useState<{
+    type: 'ASSIGNED' | 'SUBMISSION';
+    test: TypingTest;
+  } | null>(null);
+
   // Extract distinct exam dates from tests and attempts for quick selector
   const distinctExamDates = useMemo(() => {
     const dates = new Set<string>();
+    const validTestIds = new Set(tests.map((t) => t.id));
+    const validTestTitles = new Set(tests.map((t) => t.title));
+
     tests.forEach((t) => {
       if (t.examDate) dates.add(t.examDate);
     });
     attempts.forEach((a) => {
-      if (a.submittedAt) {
+      const isValid = validTestIds.has(a.typingTestId) || (a.testTitle && validTestTitles.has(a.testTitle));
+      if (isValid && a.submittedAt) {
         dates.add(getISTDateKey(a.submittedAt));
       }
     });
@@ -85,7 +104,14 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
 
   // Filter attempts
   const filteredAttempts = useMemo(() => {
+    const validTestIds = new Set(tests.map((t) => t.id));
+    const validTestTitles = new Set(tests.map((t) => t.title));
+
     return attempts.filter((att) => {
+      // Exclude attempts belonging to deleted tests
+      const isValidTest = validTestIds.has(att.typingTestId) || (att.testTitle && validTestTitles.has(att.testTitle));
+      if (!isValidTest) return false;
+
       if (selectedTestId !== 'ALL' && att.typingTestId !== selectedTestId) return false;
       if (selectedLanguage !== 'ALL' && att.language !== selectedLanguage) return false;
       if (selectedBlock !== 'ALL' && att.block !== selectedBlock) return false;
@@ -121,6 +147,8 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
         totalAppeared: 0,
         totalQualified: 0,
         qualifiedPercentage: 0,
+        totalDisqualified: 0,
+        disqualifiedPercentage: 0,
         avgNetWpm: 0,
         avgAccuracy: 0,
         highestNetWpm: 0,
@@ -128,6 +156,7 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
     }
 
     const qualifiedCount = filteredAttempts.filter((a) => a.status === 'QUALIFIED').length;
+    const disqualifiedCount = filteredAttempts.filter((a) => a.status === 'DISQUALIFIED').length;
     const totalNetWpm = filteredAttempts.reduce((acc, a) => acc + (a.netWpm || 0), 0);
     const totalAcc = filteredAttempts.reduce((acc, a) => acc + (a.accuracyPercentage || 0), 0);
     const highestSpeed = Math.max(...filteredAttempts.map((a) => a.netWpm || 0));
@@ -136,6 +165,8 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
       totalAppeared,
       totalQualified: qualifiedCount,
       qualifiedPercentage: Math.round((qualifiedCount / totalAppeared) * 100),
+      totalDisqualified: disqualifiedCount,
+      disqualifiedPercentage: Math.round((disqualifiedCount / totalAppeared) * 100),
       avgNetWpm: Math.round((totalNetWpm / totalAppeared) * 10) / 10,
       avgAccuracy: Math.round((totalAcc / totalAppeared) * 10) / 10,
       highestNetWpm: highestSpeed,
@@ -326,6 +357,18 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
           </span>
         </div>
 
+        <div className="p-4 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/80 shadow-2xs">
+          <span className="block text-[10px] font-black uppercase tracking-wider text-rose-700 dark:text-rose-400">
+            Disqualified
+          </span>
+          <span className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1 block">
+            {summaryStats.totalDisqualified}
+          </span>
+          <span className="text-[10px] text-rose-700 dark:text-rose-400 font-semibold">
+            {summaryStats.disqualifiedPercentage}% Not Qualified
+          </span>
+        </div>
+
         <div className="p-4 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/80 shadow-2xs">
           <span className="block text-[10px] font-black uppercase tracking-wider text-sky-700 dark:text-sky-400">
             Avg Net Speed
@@ -355,21 +398,16 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
           </span>
           <span className="text-[10px] text-amber-600 dark:text-amber-400">Word precision</span>
         </div>
-
-        <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 shadow-2xs">
-          <span className="block text-[10px] font-black uppercase tracking-wider text-slate-500">
-            Active Tests
-          </span>
-          <span className="text-2xl font-black text-slate-800 dark:text-slate-200 mt-1 block">
-            {tests.length}
-          </span>
-          <span className="text-[10px] text-slate-400">English & Hindi</span>
-        </div>
       </div>
 
       {/* Typing Test Paper-Wise Result Summary Section */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="p-4 bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2">
+        <div
+          onClick={() => setShowPaperSummary(!showPaperSummary)}
+          className={`p-4 bg-slate-50/80 dark:bg-slate-800/60 flex items-center justify-between flex-wrap gap-2 cursor-pointer select-none transition-colors hover:bg-slate-100/70 dark:hover:bg-slate-800 ${
+            showPaperSummary ? 'border-b border-slate-200 dark:border-slate-800' : ''
+          }`}
+        >
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
               <BookOpen className="w-4 h-4" />
@@ -389,7 +427,10 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
 
           <button
             type="button"
-            onClick={() => setShowPaperSummary(!showPaperSummary)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowPaperSummary(!showPaperSummary);
+            }}
             className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/60 flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <span>{showPaperSummary ? 'Hide Details' : 'Show Paper Summary'}</span>
@@ -442,31 +483,69 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
 
                       {/* 6 Metric Badges: Assigned, Submission, Turnout, Qualified, Avg Speed, Highest */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-200/80 dark:border-slate-700/60">
-                        {/* 1. Assigned */}
-                        <div className="p-2 rounded-xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60">
-                          <span className="block text-[9px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                            Assigned
-                          </span>
-                          <span className="text-base font-black text-amber-900 dark:text-amber-200">
+                        {/* 1. Assigned (Clickable to view assigned candidates) */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rawTest = tests.find((t) => t.id === paper.testId);
+                            if (rawTest) {
+                              setActiveCandidatesModal({
+                                type: 'ASSIGNED',
+                                test: rawTest,
+                              });
+                            }
+                          }}
+                          className="p-2 rounded-xl bg-amber-50/80 hover:bg-amber-100/90 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 border border-amber-200/90 dark:border-amber-800/70 text-left transition-all hover:shadow-xs hover:scale-[1.02] cursor-pointer group focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          title="Click to view all candidates assigned to this typing test"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="block text-[9px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                              Assigned
+                            </span>
+                            <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 opacity-70 group-hover:opacity-100 transition-opacity">
+                              List ↗
+                            </span>
+                          </div>
+                          <span className="text-base font-black text-amber-900 dark:text-amber-200 block mt-0.5">
                             {paper.assignedCount}
                           </span>
                           <span className="block text-[9px] text-amber-600 dark:text-amber-400 truncate">
-                            {paper.isTargeted ? 'Targeted' : 'Candidates'}
+                            {paper.isTargeted ? 'Targeted' : 'Candidates'} • View list
                           </span>
-                        </div>
+                        </button>
 
-                        {/* 2. Submission */}
-                        <div className="p-2 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/60">
-                          <span className="block text-[9px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-400">
-                            Submission
-                          </span>
-                          <span className="text-base font-black text-blue-900 dark:text-blue-200">
+                        {/* 2. Submission (Clickable to view submitted candidates) */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rawTest = tests.find((t) => t.id === paper.testId);
+                            if (rawTest) {
+                              setActiveCandidatesModal({
+                                type: 'SUBMISSION',
+                                test: rawTest,
+                              });
+                            }
+                          }}
+                          className="p-2 rounded-xl bg-blue-50/80 hover:bg-blue-100/90 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 border border-blue-200/90 dark:border-blue-800/70 text-left transition-all hover:shadow-xs hover:scale-[1.02] cursor-pointer group focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          title="Click to view all candidates who submitted this typing test"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="block text-[9px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-400">
+                              Submission
+                            </span>
+                            <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 opacity-70 group-hover:opacity-100 transition-opacity">
+                              List ↗
+                            </span>
+                          </div>
+                          <span className="text-base font-black text-blue-900 dark:text-blue-200 block mt-0.5">
                             {paper.totalSubmissions}
                           </span>
-                          <span className="block text-[9px] text-blue-600 dark:text-blue-400">
-                            {paper.totalSubmissions === 1 ? 'Attempt' : 'Attempts'}
+                          <span className="block text-[9px] text-blue-600 dark:text-blue-400 truncate">
+                            {paper.totalSubmissions === 1 ? 'Attempt' : 'Attempts'} • View scores
                           </span>
-                        </div>
+                        </button>
 
                         {/* 3. Turnout */}
                         <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
@@ -911,6 +990,25 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
             viewingAttempt.referencePassage ||
             tests.find((t) => t.id === viewingAttempt.typingTestId)?.passageText
           }
+        />
+      )}
+
+      {/* Modal for Assigned or Submitted Candidates List */}
+      {activeCandidatesModal && (
+        <TypingTestCandidatesModal
+          isOpen={!!activeCandidatesModal}
+          onClose={() => setActiveCandidatesModal(null)}
+          initialTab={activeCandidatesModal.type}
+          test={activeCandidatesModal.test}
+          candidates={candidates}
+          attempts={attempts}
+          onViewScorecard={(attempt) => {
+            if (onViewScorecard) {
+              onViewScorecard(attempt);
+            } else {
+              setViewingAttempt(attempt);
+            }
+          }}
         />
       )}
     </div>

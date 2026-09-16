@@ -196,8 +196,12 @@ export default function App() {
   };
 
   const handleDeleteTypingTest = async (testId: string) => {
+    const target = typingTests.find((t) => t.id === testId);
     setTypingTests((prev) => prev.filter((t) => t.id !== testId));
-    await deleteTypingTestFromFirestore(testId);
+    setTypingAttempts((prev) =>
+      prev.filter((a) => a.typingTestId !== testId && (!target?.title || a.testTitle !== target.title))
+    );
+    await deleteTypingTestFromFirestore(testId, target?.title);
   };
 
   const handleSaveTypingAttempt = async (attemptToSave: TypingAttempt) => {
@@ -342,11 +346,22 @@ export default function App() {
   };
 
   const handleDeleteTest = async (testId: string) => {
+    const target = tests.find((t) => t.id === testId);
     setTests((prev) => prev.filter((t) => t.id !== testId));
+    // Immediately remove all attempts associated with this test from state so statistics and leaderboards update
+    setAttempts((prev) =>
+      prev.filter((a) => a.testId !== testId && (!target?.title || a.testTitle !== target.title))
+    );
     if (editingTest?.id === testId) {
       setEditingTest(null);
     }
-    await deleteTestFromFirestore(testId);
+    if (activeTakingTest?.id === testId) {
+      setActiveTakingTest(null);
+    }
+    if (activeViewingResult?.test.id === testId) {
+      setActiveViewingResult(null);
+    }
+    await deleteTestFromFirestore(testId, target?.title);
   };
 
   // Submit Test Handler

@@ -6,6 +6,9 @@ import {
   deleteDoc,
   onSnapshot,
   getDocs,
+  query,
+  where,
+  writeBatch,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Candidate, TestPaper, TestAttempt, EmailLog, TypingTest, TypingAttempt } from '../types';
@@ -317,11 +320,39 @@ export async function saveTestToFirestore(test: TestPaper) {
   }
 }
 
-// Delete test paper
-export async function deleteTestFromFirestore(testId: string) {
+// Delete test paper and all its associated attempts / statistics
+export async function deleteTestFromFirestore(testId: string, testTitle?: string) {
   const path = `${TESTS_COL}/${testId}`;
   try {
+    // 1. Delete test document
     await deleteDoc(doc(db, TESTS_COL, testId));
+
+    // 2. Query and batch delete all test attempts linked to this test
+    const attemptsSnap = await getDocs(
+      query(collection(db, ATTEMPTS_COL), where('testId', '==', testId))
+    );
+
+    const batch = writeBatch(db);
+    let deletedCount = 0;
+    attemptsSnap.docs.forEach((docSnap) => {
+      batch.delete(docSnap.ref);
+      deletedCount++;
+    });
+
+    // Also check if any attempt matched testTitle if testId differed
+    if (testTitle) {
+      const attemptsByTitleSnap = await getDocs(
+        query(collection(db, ATTEMPTS_COL), where('testTitle', '==', testTitle))
+      );
+      attemptsByTitleSnap.docs.forEach((docSnap) => {
+        batch.delete(docSnap.ref);
+        deletedCount++;
+      });
+    }
+
+    if (deletedCount > 0) {
+      await batch.commit();
+    }
   } catch (error) {
     console.error('Firestore delete test error:', error);
   }
@@ -357,11 +388,38 @@ export async function saveTypingTestToFirestore(test: TypingTest) {
   }
 }
 
-// Delete typing test
-export async function deleteTypingTestFromFirestore(testId: string) {
+// Delete typing test and all its associated attempts / statistics
+export async function deleteTypingTestFromFirestore(testId: string, testTitle?: string) {
   const path = `${TYPING_TESTS_COL}/${testId}`;
   try {
+    // 1. Delete typing test document
     await deleteDoc(doc(db, TYPING_TESTS_COL, testId));
+
+    // 2. Query and batch delete all typing attempts linked to this typing test
+    const attemptsSnap = await getDocs(
+      query(collection(db, TYPING_ATTEMPTS_COL), where('typingTestId', '==', testId))
+    );
+
+    const batch = writeBatch(db);
+    let deletedCount = 0;
+    attemptsSnap.docs.forEach((docSnap) => {
+      batch.delete(docSnap.ref);
+      deletedCount++;
+    });
+
+    if (testTitle) {
+      const attemptsByTitleSnap = await getDocs(
+        query(collection(db, TYPING_ATTEMPTS_COL), where('testTitle', '==', testTitle))
+      );
+      attemptsByTitleSnap.docs.forEach((docSnap) => {
+        batch.delete(docSnap.ref);
+        deletedCount++;
+      });
+    }
+
+    if (deletedCount > 0) {
+      await batch.commit();
+    }
   } catch (error) {
     console.error('Firestore delete typing test error:', error);
   }

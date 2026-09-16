@@ -33,12 +33,22 @@ export const CandidatePortal: React.FC<CandidatePortalProps> = ({
 }) => {
   const [viewingTypingAttempt, setViewingTypingAttempt] = useState<TypingAttempt | null>(null);
 
-  // Filter candidate's MCQ attempts
-  const myAttempts = attempts.filter((a) => a.candidateId === candidate.id || a.candidateEmail === candidate.email);
+  // Filter candidate's MCQ attempts (excluding deleted tests)
+  const validTestIds = new Set(tests.map((t) => t.id));
+  const validTestTitles = new Set(tests.map((t) => t.title));
+  const myAttempts = attempts.filter(
+    (a) =>
+      (a.candidateId === candidate.id || a.candidateEmail === candidate.email) &&
+      (validTestIds.has(a.testId) || (a.testTitle && validTestTitles.has(a.testTitle)))
+  );
 
-  // Filter candidate's Typing attempts
+  // Filter candidate's Typing attempts (excluding deleted typing tests)
+  const validTypingTestIds = new Set(typingTests.map((t) => t.id));
+  const validTypingTitles = new Set(typingTests.map((t) => t.title));
   const myTypingAttempts = typingAttempts.filter(
-    (a) => a.candidateId === candidate.id || a.candidateEmail === candidate.email
+    (a) =>
+      (a.candidateId === candidate.id || a.candidateEmail === candidate.email) &&
+      (validTypingTestIds.has(a.typingTestId) || (a.testTitle && validTypingTitles.has(a.testTitle)))
   );
 
   // Registration checks
