@@ -336,64 +336,64 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
       {/* Aggregate KPI Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 print:grid-cols-3">
         <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xs">
-          <span className="block text-[10px] font-black uppercase tracking-wider text-slate-500">
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Total Submissions
           </span>
-          <span className="text-2xl font-black text-slate-900 dark:text-white mt-1 block">
+          <span className="text-2xl font-bold text-slate-900 dark:text-white mt-1 block">
             {summaryStats.totalAppeared}
           </span>
           <span className="text-[10px] text-slate-400">Evaluated attempts</span>
         </div>
 
         <div className="p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/80 shadow-2xs">
-          <span className="block text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
             Qualified
           </span>
-          <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">
+          <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 block">
             {summaryStats.totalQualified}
           </span>
-          <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
+          <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
             {summaryStats.qualifiedPercentage}% Pass Rate
           </span>
         </div>
 
         <div className="p-4 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/80 shadow-2xs">
-          <span className="block text-[10px] font-black uppercase tracking-wider text-rose-700 dark:text-rose-400">
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-400">
             Disqualified
           </span>
-          <span className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1 block">
+          <span className="text-2xl font-bold text-rose-600 dark:text-rose-400 mt-1 block">
             {summaryStats.totalDisqualified}
           </span>
-          <span className="text-[10px] text-rose-700 dark:text-rose-400 font-semibold">
+          <span className="text-[10px] text-rose-700 dark:text-rose-400 font-medium">
             {summaryStats.disqualifiedPercentage}% Not Qualified
           </span>
         </div>
 
         <div className="p-4 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/80 shadow-2xs">
-          <span className="block text-[10px] font-black uppercase tracking-wider text-sky-700 dark:text-sky-400">
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-400">
             Avg Net Speed
           </span>
-          <span className="text-2xl font-black text-sky-600 dark:text-sky-400 mt-1 block">
-            {summaryStats.avgNetWpm} <span className="text-xs">WPM</span>
+          <span className="text-2xl font-bold text-sky-600 dark:text-sky-400 mt-1 block">
+            {summaryStats.avgNetWpm} <span className="text-xs font-normal">WPM</span>
           </span>
           <span className="text-[10px] text-sky-600 dark:text-sky-400">Net words/min</span>
         </div>
 
         <div className="p-4 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/80 shadow-2xs">
-          <span className="block text-[10px] font-black uppercase tracking-wider text-purple-700 dark:text-purple-400">
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-purple-700 dark:text-purple-400">
             Highest Net Speed
           </span>
-          <span className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1 block">
-            {summaryStats.highestNetWpm} <span className="text-xs">WPM</span>
+          <span className="text-2xl font-bold text-purple-600 dark:text-purple-400 mt-1 block">
+            {summaryStats.highestNetWpm} <span className="text-xs font-normal">WPM</span>
           </span>
           <span className="text-[10px] text-purple-600 dark:text-purple-400">Top candidate record</span>
         </div>
 
         <div className="p-4 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/80 shadow-2xs">
-          <span className="block text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
             Avg Accuracy
           </span>
-          <span className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1 block">
+          <span className="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1 block">
             {summaryStats.avgAccuracy}%
           </span>
           <span className="text-[10px] text-amber-600 dark:text-amber-400">Word precision</span>
@@ -413,7 +413,7 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
               <BookOpen className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white flex items-center gap-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-800 dark:text-white flex items-center gap-2">
                 <span>Typing Test Paper-Wise Result Summary</span>
                 <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
                   {paperWiseSummary.length} {paperWiseSummary.length === 1 ? 'Paper' : 'Papers'}
@@ -500,14 +500,14 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
                           title="Click to view all candidates assigned to this typing test"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="block text-[9px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                            <span className="block text-[9px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
                               Assigned
                             </span>
                             <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 opacity-70 group-hover:opacity-100 transition-opacity">
                               List ↗
                             </span>
                           </div>
-                          <span className="text-base font-black text-amber-900 dark:text-amber-200 block mt-0.5">
+                          <span className="text-base font-bold text-amber-900 dark:text-amber-200 block mt-0.5">
                             {paper.assignedCount}
                           </span>
                           <span className="block text-[9px] text-amber-600 dark:text-amber-400 truncate">
@@ -532,14 +532,14 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
                           title="Click to view all candidates who submitted this typing test"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="block text-[9px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-400">
+                            <span className="block text-[9px] font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-400">
                               Submission
                             </span>
                             <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 opacity-70 group-hover:opacity-100 transition-opacity">
                               List ↗
                             </span>
                           </div>
-                          <span className="text-base font-black text-blue-900 dark:text-blue-200 block mt-0.5">
+                          <span className="text-base font-bold text-blue-900 dark:text-blue-200 block mt-0.5">
                             {paper.totalSubmissions}
                           </span>
                           <span className="block text-[9px] text-blue-600 dark:text-blue-400 truncate">
@@ -549,10 +549,10 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
 
                         {/* 3. Turnout */}
                         <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800">
-                          <span className="block text-[9px] font-black uppercase tracking-wider text-slate-400">
+                          <span className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400">
                             Turnout
                           </span>
-                          <span className="text-base font-black text-slate-900 dark:text-white">
+                          <span className="text-base font-bold text-slate-900 dark:text-white">
                             {paper.totalAppeared}
                           </span>
                           <span className="block text-[9px] text-slate-500">
@@ -562,10 +562,10 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
 
                         {/* 4. Qualified */}
                         <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/60">
-                          <span className="block text-[9px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                          <span className="block text-[9px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                             Qualified
                           </span>
-                          <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                          <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
                             {paper.totalQualified}{' '}
                             <span className="text-[10px] font-normal">({paper.passPercentage}%)</span>
                           </span>
@@ -574,22 +574,22 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
 
                         {/* 5. Avg Speed */}
                         <div className="p-2 rounded-xl bg-sky-50 dark:bg-sky-950/50 border border-sky-200/80 dark:border-sky-800/60">
-                          <span className="block text-[9px] font-black uppercase tracking-wider text-sky-700 dark:text-sky-400">
+                          <span className="block text-[9px] font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-400">
                             Avg Speed
                           </span>
-                          <span className="text-base font-black text-sky-600 dark:text-sky-400">
-                            {paper.avgNetWpm} <span className="text-[10px]">WPM</span>
+                          <span className="text-base font-bold text-sky-600 dark:text-sky-400">
+                            {paper.avgNetWpm} <span className="text-[10px] font-normal">WPM</span>
                           </span>
                           <span className="block text-[9px] text-sky-600 dark:text-sky-400">{paper.avgAccuracy}% Acc</span>
                         </div>
 
                         {/* 6. Highest */}
                         <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/50 border border-purple-200/80 dark:border-purple-800/60">
-                          <span className="block text-[9px] font-black uppercase tracking-wider text-purple-700 dark:text-purple-400">
+                          <span className="block text-[9px] font-semibold uppercase tracking-wider text-purple-700 dark:text-purple-400">
                             Highest
                           </span>
-                          <span className="text-base font-black text-purple-600 dark:text-purple-400">
-                            {paper.highestNetWpm} <span className="text-[10px]">WPM</span>
+                          <span className="text-base font-bold text-purple-600 dark:text-purple-400">
+                            {paper.highestNetWpm} <span className="text-[10px] font-normal">WPM</span>
                           </span>
                           <span className="block text-[9px] text-purple-600 dark:text-purple-400">Top Speed</span>
                         </div>
@@ -618,7 +618,7 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
 
       {/* Filters Toolbar */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3 print:hidden">
-        <div className="flex items-center justify-between flex-wrap gap-2 text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400">
+        <div className="flex items-center justify-between flex-wrap gap-2 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-amber-600" />
             <span>Evaluation Filters & Search</span>
@@ -812,15 +812,15 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/80 text-[10px] font-black uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-700">
+              <thead className="bg-slate-50/80 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800">
                 <tr>
                   <th className="px-4 py-3">Roll / Candidate</th>
                   <th className="px-3 py-3">Medium</th>
                   <th className="px-3 py-3">Exam Date</th>
                   <th className="px-3 py-3 text-center">Total Words</th>
-                  <th className="px-3 py-3 text-center text-emerald-600">Correct</th>
-                  <th className="px-3 py-3 text-center text-rose-600">Incorrect</th>
-                  <th className="px-3 py-3 text-center text-amber-600">Skipped</th>
+                  <th className="px-3 py-3 text-center text-emerald-600 dark:text-emerald-400">Correct</th>
+                  <th className="px-3 py-3 text-center text-rose-600 dark:text-rose-400">Incorrect</th>
+                  <th className="px-3 py-3 text-center text-amber-600 dark:text-amber-400">Skipped</th>
                   <th className="px-3 py-3 text-center">Net WPM</th>
                   <th className="px-3 py-3 text-center">Accuracy</th>
                   <th className="px-3 py-3 text-center">Result</th>
@@ -842,11 +842,19 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
                     >
                       {/* Candidate Column */}
                       <td className="px-4 py-3">
-                        <div className="font-extrabold text-slate-900 dark:text-white">
+                        <div className="font-bold text-slate-900 dark:text-white">
                           {attempt.candidateName}
                         </div>
-                        <div className="text-[11px] font-mono text-slate-500">
-                          {attempt.registrationId || attempt.candidateId} • {attempt.block}
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                            {attempt.registrationId || attempt.candidateId}
+                          </span>
+                          {attempt.block && (
+                            <>
+                              <span className="text-slate-300 dark:text-slate-600">•</span>
+                              <span className="font-normal">{attempt.block}</span>
+                            </>
+                          )}
                         </div>
                       </td>
 
@@ -855,7 +863,7 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold ${
                             isHindi
-                              ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
+                              ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-hindi'
                               : 'bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300'
                           }`}
                         >
@@ -869,17 +877,17 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
                       </td>
 
                       {/* Total Words */}
-                      <td className="px-3 py-3 text-center font-bold text-slate-700 dark:text-slate-300">
+                      <td className="px-3 py-3 text-center font-bold text-slate-900 dark:text-white">
                         {attempt.totalWordsInPara || 0}
                       </td>
 
                       {/* Correct Words */}
-                      <td className="px-3 py-3 text-center font-black text-emerald-600 dark:text-emerald-400">
+                      <td className="px-3 py-3 text-center font-bold text-emerald-600 dark:text-emerald-400">
                         {attempt.correctWordsCount || 0}
                       </td>
 
                       {/* Incorrect Words */}
-                      <td className="px-3 py-3 text-center font-black text-rose-600 dark:text-rose-400">
+                      <td className="px-3 py-3 text-center font-bold text-rose-600 dark:text-rose-400">
                         {attempt.incorrectWordsCount || 0}
                       </td>
 
@@ -889,20 +897,20 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
                       </td>
 
                       {/* Net WPM */}
-                      <td className="px-3 py-3 text-center font-black text-sm text-slate-900 dark:text-white">
+                      <td className="px-3 py-3 text-center font-bold text-sm text-slate-900 dark:text-white">
                         {attempt.netWpm || 0}{' '}
                         <span className="text-[10px] font-normal text-slate-400">WPM</span>
                       </td>
 
                       {/* Accuracy */}
-                      <td className="px-3 py-3 text-center font-bold text-slate-700 dark:text-slate-300">
+                      <td className="px-3 py-3 text-center font-bold text-slate-900 dark:text-white">
                         {attempt.accuracyPercentage || 0}%
                       </td>
 
                       {/* Result */}
                       <td className="px-3 py-3 text-center">
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black ${
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                             isQualified
                               ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300'
                               : 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300'
