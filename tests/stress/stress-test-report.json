@@ -1,0 +1,96 @@
+{
+  "timestamp": "2026-11-03T05:52:05.055Z",
+  "targetConcurrency": 100,
+  "totalRequests": 400,
+  "totalSuccess": 400,
+  "totalFailed": 0,
+  "overallSuccessRate": 100,
+  "totalDurationMs": 1917,
+  "overallRps": 208.7,
+  "memoryUsageMb": {
+    "rss": 109.3,
+    "heapTotal": 34.4,
+    "heapUsed": 19.8
+  },
+  "latencyPercentilesMs": {
+    "min": 27.06,
+    "avg": 262.91,
+    "p50": 163.57,
+    "p90": 849.75,
+    "p95": 976.44,
+    "p99": 1080.99,
+    "max": 1109.71
+  },
+  "phases": [
+    {
+      "phaseName": "Health Check Handshake",
+      "totalRequests": 100,
+      "successfulRequests": 100,
+      "failedRequests": 0,
+      "successRate": 100,
+      "minLatencyMs": 155.11,
+      "maxLatencyMs": 317.12,
+      "avgLatencyMs": 182.52,
+      "p50LatencyMs": 174.33,
+      "p90LatencyMs": 235.55,
+      "p95LatencyMs": 237.17,
+      "p99LatencyMs": 240.36,
+      "requestsPerSecond": 214.6,
+      "durationMs": 466
+    },
+    {
+      "phaseName": "Desktop Setup Download",
+      "totalRequests": 100,
+      "successfulRequests": 100,
+      "failedRequests": 0,
+      "successRate": 100,
+      "minLatencyMs": 46.44,
+      "maxLatencyMs": 197.8,
+      "avgLatencyMs": 106.53,
+      "p50LatencyMs": 91.03,
+      "p90LatencyMs": 181.69,
+      "p95LatencyMs": 185.91,
+      "p99LatencyMs": 197.46,
+      "requestsPerSecond": 452.5,
+      "durationMs": 221
+    },
+    {
+      "phaseName": "Assessment Submission Notification",
+      "totalRequests": 100,
+      "successfulRequests": 100,
+      "failedRequests": 0,
+      "successRate": 100,
+      "minLatencyMs": 168.4,
+      "maxLatencyMs": 1109.71,
+      "avgLatencyMs": 716.7,
+      "p50LatencyMs": 757.32,
+      "p90LatencyMs": 1042.42,
+      "p95LatencyMs": 1075.51,
+      "p99LatencyMs": 1105.83,
+      "requestsPerSecond": 87.5,
+      "durationMs": 1143
+    },
+    {
+      "phaseName": "Synchronized Burst Barrier",
+      "totalRequests": 100,
+      "successfulRequests": 100,
+      "failedRequests": 0,
+      "successRate": 100,
+      "minLatencyMs": 27.06,
+      "maxLatencyMs": 70.5,
+      "avgLatencyMs": 45.91,
+      "p50LatencyMs": 44.73,
+      "p90LatencyMs": 65.08,
+      "p95LatencyMs": 67.99,
+      "p99LatencyMs": 70.44,
+      "requestsPerSecond": 1190.5,
+      "durationMs": 84
+    }
+  ],
+  "slaCheck": {
+    "concurrencyPassed": true,
+    "successRatePassed": true,
+    "latencyPassed": true,
+    "allPassed": true
+  }
+}

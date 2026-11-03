@@ -13,6 +13,8 @@ const baseDir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
 
 dotenv.config();
 
+let cachedEtherealTransporter: any = null;
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -605,6 +607,16 @@ EXTRACTION RULES:
       let responsePayload: any = null;
       let customSmtpErrorMessage = '';
 
+      // If simulateOnly is requested (e.g. unit/integration testing or high-concurrency load testing)
+      if (req.body.simulateOnly) {
+        return res.json({
+          success: true,
+          sentRealEmail: false,
+          simulated: true,
+          message: `Email notification benchmark simulated for ${targetRecipient}.`,
+        });
+      }
+
       // 1. Try Custom SMTP if credentials exist
       if (cleanSmtpPass) {
         const isGmail = smtpHost.toLowerCase().includes('gmail.com');
@@ -684,16 +696,19 @@ EXTRACTION RULES:
       // 2. Fallback to Free Ethereal SMTP Sandbox if custom SMTP was not configured
       if (!sentSuccess) {
         try {
-          const testAccount = await nodemailer.createTestAccount();
-          const etherealTransporter = nodemailer.createTransport({
-            host: 'smtp.ethereal.email',
-            port: 587,
-            secure: false,
-            auth: {
-              user: testAccount.user,
-              pass: testAccount.pass,
-            },
-          });
+          if (!cachedEtherealTransporter) {
+            const testAccount = await nodemailer.createTestAccount();
+            cachedEtherealTransporter = nodemailer.createTransport({
+              host: 'smtp.ethereal.email',
+              port: 587,
+              secure: false,
+              auth: {
+                user: testAccount.user,
+                pass: testAccount.pass,
+              },
+            });
+          }
+          const etherealTransporter = cachedEtherealTransporter;
 
           const info = await etherealTransporter.sendMail({
             from: `District Admin <${adminEmail}>`,
@@ -740,6 +755,31 @@ EXTRACTION RULES:
       return res.status(500).json({
         error: 'Failed to dispatch email: ' + (err.message || 'Unknown error'),
       });
+    }
+  });
+
+  // API Endpoint: 100 Concurrent Users Stress & Load Testing Benchmark
+  app.get('/api/stress-test', (req, res) => {
+    const reportPath = path.join(process.cwd(), 'tests', 'stress', 'stress-test-report.json');
+    if (fs.existsSync(reportPath)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
+        return res.json({ success: true, cached: true, report: data });
+      } catch (err: any) {
+        // fall through
+      }
+    }
+    return res.json({ success: false, message: 'No cached benchmark report found. Run POST /api/stress-test to execute benchmark.' });
+  });
+
+  app.post('/api/stress-test', async (req, res) => {
+    try {
+      const { runStressTest } = await import('./tests/stress/concurrentUsersStress');
+      const report = await runStressTest();
+      return res.json({ success: true, report });
+    } catch (err: any) {
+      console.error('[API Stress Test Execution Error]:', err);
+      return res.status(500).json({ success: false, error: err?.message || 'Stress test execution failed.' });
     }
   });
 

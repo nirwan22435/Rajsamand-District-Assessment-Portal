@@ -313,16 +313,16 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
               <button
                 type="button"
                 onClick={() => setAdminSubTab('REPORTS')}
-                className={`px-5 py-3 sm:px-6 sm:py-3.5 rounded-xl transition-all duration-200 flex items-center space-x-3 cursor-pointer text-sm sm:text-base font-extrabold select-none ${
+                className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl transition-all duration-200 flex items-center space-x-2.5 cursor-pointer text-xs uppercase tracking-wider font-extrabold select-none ${
                   adminSubTab === 'REPORTS'
-                    ? 'bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-600 text-white shadow-lg shadow-emerald-600/30 scale-[1.02] ring-2 ring-emerald-400/50'
-                    : 'bg-white/80 dark:bg-slate-900/70 text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-300 hover:scale-[1.01] hover:shadow-sm active:scale-[0.98] border border-slate-200/60 dark:border-slate-700/60'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-[1.02]'
+                    : 'bg-white/80 dark:bg-slate-900/70 text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700/60 hover:scale-[1.01] border border-slate-200/60 dark:border-slate-700/60'
                 }`}
               >
-                <BarChart3 className={`w-5 h-5 transition-transform group-hover:scale-110 ${adminSubTab === 'REPORTS' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                <BarChart3 className={`w-4 h-4 transition-transform ${adminSubTab === 'REPORTS' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
                 <span>Typing Reports</span>
                 <span
-                  className={`ml-1.5 px-2.5 py-0.5 rounded-full text-xs font-black transition-colors ${
+                  className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black transition-colors ${
                     adminSubTab === 'REPORTS'
                       ? 'bg-white/25 text-white border border-white/30'
                       : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
@@ -335,16 +335,16 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
               <button
                 type="button"
                 onClick={() => setAdminSubTab('TYPING_CANDIDATES')}
-                className={`px-5 py-3 sm:px-6 sm:py-3.5 rounded-xl transition-all duration-200 flex items-center space-x-3 cursor-pointer text-sm sm:text-base font-extrabold select-none ${
+                className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl transition-all duration-200 flex items-center space-x-2.5 cursor-pointer text-xs uppercase tracking-wider font-extrabold select-none ${
                   adminSubTab === 'TYPING_CANDIDATES'
-                    ? 'bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-600 text-white shadow-lg shadow-emerald-600/30 scale-[1.02] ring-2 ring-emerald-400/50'
-                    : 'bg-white/80 dark:bg-slate-900/70 text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-300 hover:scale-[1.01] hover:shadow-sm active:scale-[0.98] border border-slate-200/60 dark:border-slate-700/60'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-[1.02]'
+                    : 'bg-white/80 dark:bg-slate-900/70 text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700/60 hover:scale-[1.01] border border-slate-200/60 dark:border-slate-700/60'
                 }`}
               >
-                <Users className={`w-5 h-5 transition-transform group-hover:scale-110 ${adminSubTab === 'TYPING_CANDIDATES' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                <Users className={`w-4 h-4 transition-transform ${adminSubTab === 'TYPING_CANDIDATES' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
                 <span>Registered Candidates</span>
                 <span
-                  className={`ml-1.5 px-2.5 py-0.5 rounded-full text-xs font-black transition-colors ${
+                  className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black transition-colors ${
                     adminSubTab === 'TYPING_CANDIDATES'
                       ? 'bg-white/25 text-white border border-white/30'
                       : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
@@ -357,16 +357,16 @@ export const TypingTestSection: React.FC<TypingTestSectionProps> = ({
               <button
                 type="button"
                 onClick={() => setAdminSubTab('MANAGE_TESTS')}
-                className={`px-5 py-3 sm:px-6 sm:py-3.5 rounded-xl transition-all duration-200 flex items-center space-x-3 cursor-pointer text-sm sm:text-base font-extrabold select-none ${
+                className={`px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl transition-all duration-200 flex items-center space-x-2.5 cursor-pointer text-xs uppercase tracking-wider font-extrabold select-none ${
                   adminSubTab === 'MANAGE_TESTS'
-                    ? 'bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-600 text-white shadow-lg shadow-emerald-600/30 scale-[1.02] ring-2 ring-emerald-400/50'
-                    : 'bg-white/80 dark:bg-slate-900/70 text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-700 dark:hover:text-emerald-300 hover:scale-[1.01] hover:shadow-sm active:scale-[0.98] border border-slate-200/60 dark:border-slate-700/60'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 scale-[1.02]'
+                    : 'bg-white/80 dark:bg-slate-900/70 text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-700/60 hover:scale-[1.01] border border-slate-200/60 dark:border-slate-700/60'
                 }`}
               >
-                <BookOpen className={`w-5 h-5 transition-transform group-hover:scale-110 ${adminSubTab === 'MANAGE_TESTS' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                <BookOpen className={`w-4 h-4 transition-transform ${adminSubTab === 'MANAGE_TESTS' ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
                 <span>Typing Paragraph</span>
                 <span
-                  className={`ml-1.5 px-2.5 py-0.5 rounded-full text-xs font-black transition-colors ${
+                  className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black transition-colors ${
                     adminSubTab === 'MANAGE_TESTS'
                       ? 'bg-white/25 text-white border border-white/30'
                       : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'

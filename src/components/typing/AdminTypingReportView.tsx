@@ -811,23 +811,23 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-semibold text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800">
+            <table className="w-full text-left text-xs font-sans">
+              <thead className="bg-slate-50/80 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-800">
                 <tr>
                   <th className="px-4 py-3">Roll / Candidate</th>
                   <th className="px-3 py-3">Medium</th>
                   <th className="px-3 py-3">Exam Date</th>
                   <th className="px-3 py-3 text-center">Total Words</th>
-                  <th className="px-3 py-3 text-center text-emerald-600 dark:text-emerald-400">Correct</th>
+                  <th className="px-3 py-3 text-center text-sky-600 dark:text-sky-400">Correct</th>
                   <th className="px-3 py-3 text-center text-rose-600 dark:text-rose-400">Incorrect</th>
-                  <th className="px-3 py-3 text-center text-amber-600 dark:text-amber-400">Skipped</th>
+                  <th className="px-3 py-3 text-center text-sky-600 dark:text-sky-400">Skipped</th>
                   <th className="px-3 py-3 text-center">Net WPM</th>
                   <th className="px-3 py-3 text-center">Accuracy</th>
                   <th className="px-3 py-3 text-center">Result</th>
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-sans">
                 {filteredAttempts.map((attempt) => {
                   const isHindi = attempt.language === 'HINDI_DEVLYS_010';
                   const isQualified = attempt.status === 'QUALIFIED';
@@ -842,7 +842,7 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
                     >
                       {/* Candidate Column */}
                       <td className="px-4 py-3">
-                        <div className="font-bold text-slate-900 dark:text-white">
+                        <div className="font-bold text-slate-900 dark:text-white text-xs">
                           {attempt.candidateName}
                         </div>
                         <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
@@ -852,7 +852,7 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
                           {attempt.block && (
                             <>
                               <span className="text-slate-300 dark:text-slate-600">•</span>
-                              <span className="font-normal">{attempt.block}</span>
+                              <span className="font-medium text-slate-500 dark:text-slate-400">{attempt.block}</span>
                             </>
                           )}
                         </div>
@@ -872,45 +872,45 @@ export const AdminTypingReportView: React.FC<AdminTypingReportViewProps> = ({
                       </td>
 
                       {/* Exam Date Column */}
-                      <td className="px-3 py-3 text-slate-600 dark:text-slate-400 font-medium">
+                      <td className="px-3 py-3 text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">
                         {dateDisplay}
                       </td>
 
                       {/* Total Words */}
-                      <td className="px-3 py-3 text-center font-bold text-slate-900 dark:text-white">
+                      <td className="px-3 py-3 text-center font-bold text-slate-900 dark:text-white tabular-nums">
                         {attempt.totalWordsInPara || 0}
                       </td>
 
                       {/* Correct Words */}
-                      <td className="px-3 py-3 text-center font-bold text-emerald-600 dark:text-emerald-400">
+                      <td className="px-3 py-3 text-center font-bold text-sky-600 dark:text-sky-400 tabular-nums">
                         {attempt.correctWordsCount || 0}
                       </td>
 
                       {/* Incorrect Words */}
-                      <td className="px-3 py-3 text-center font-bold text-rose-600 dark:text-rose-400">
+                      <td className="px-3 py-3 text-center font-bold text-rose-600 dark:text-rose-400 tabular-nums">
                         {attempt.incorrectWordsCount || 0}
                       </td>
 
                       {/* Skipped Words */}
-                      <td className="px-3 py-3 text-center font-bold text-amber-600 dark:text-amber-400">
+                      <td className="px-3 py-3 text-center font-bold text-sky-600 dark:text-sky-400 tabular-nums">
                         {attempt.skippedWordsCount ?? attempt.untypedWordsCount ?? 0}
                       </td>
 
                       {/* Net WPM */}
-                      <td className="px-3 py-3 text-center font-bold text-sm text-slate-900 dark:text-white">
+                      <td className="px-3 py-3 text-center font-bold text-sm text-slate-900 dark:text-white tabular-nums">
                         {attempt.netWpm || 0}{' '}
                         <span className="text-[10px] font-normal text-slate-400">WPM</span>
                       </td>
 
                       {/* Accuracy */}
-                      <td className="px-3 py-3 text-center font-bold text-slate-900 dark:text-white">
+                      <td className="px-3 py-3 text-center font-bold text-slate-900 dark:text-white tabular-nums">
                         {attempt.accuracyPercentage || 0}%
                       </td>
 
                       {/* Result */}
                       <td className="px-3 py-3 text-center">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                             isQualified
                               ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300'
                               : 'bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300'
