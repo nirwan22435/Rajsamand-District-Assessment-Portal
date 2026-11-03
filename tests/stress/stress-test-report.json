@@ -1,25 +1,25 @@
 {
-  "timestamp": "2026-11-03T05:52:05.055Z",
+  "timestamp": "2026-11-03T09:54:55.863Z",
   "targetConcurrency": 100,
   "totalRequests": 400,
   "totalSuccess": 400,
   "totalFailed": 0,
   "overallSuccessRate": 100,
-  "totalDurationMs": 1917,
-  "overallRps": 208.7,
+  "totalDurationMs": 989,
+  "overallRps": 404.4,
   "memoryUsageMb": {
-    "rss": 109.3,
-    "heapTotal": 34.4,
-    "heapUsed": 19.8
+    "rss": 114.1,
+    "heapTotal": 35.4,
+    "heapUsed": 21.2
   },
   "latencyPercentilesMs": {
-    "min": 27.06,
-    "avg": 262.91,
-    "p50": 163.57,
-    "p90": 849.75,
-    "p95": 976.44,
-    "p99": 1080.99,
-    "max": 1109.71
+    "min": 24.64,
+    "avg": 128.44,
+    "p50": 103.3,
+    "p90": 316.5,
+    "p95": 417.56,
+    "p99": 475.6,
+    "max": 496.18
   },
   "phases": [
     {
@@ -28,15 +28,15 @@
       "successfulRequests": 100,
       "failedRequests": 0,
       "successRate": 100,
-      "minLatencyMs": 155.11,
-      "maxLatencyMs": 317.12,
-      "avgLatencyMs": 182.52,
-      "p50LatencyMs": 174.33,
-      "p90LatencyMs": 235.55,
-      "p95LatencyMs": 237.17,
-      "p99LatencyMs": 240.36,
-      "requestsPerSecond": 214.6,
-      "durationMs": 466
+      "minLatencyMs": 67.81,
+      "maxLatencyMs": 167.7,
+      "avgLatencyMs": 99.28,
+      "p50LatencyMs": 103.99,
+      "p90LatencyMs": 111.71,
+      "p95LatencyMs": 115.06,
+      "p99LatencyMs": 119.4,
+      "requestsPerSecond": 427.4,
+      "durationMs": 234
     },
     {
       "phaseName": "Desktop Setup Download",
@@ -44,15 +44,15 @@
       "successfulRequests": 100,
       "failedRequests": 0,
       "successRate": 100,
-      "minLatencyMs": 46.44,
-      "maxLatencyMs": 197.8,
-      "avgLatencyMs": 106.53,
-      "p50LatencyMs": 91.03,
-      "p90LatencyMs": 181.69,
-      "p95LatencyMs": 185.91,
-      "p99LatencyMs": 197.46,
-      "requestsPerSecond": 452.5,
-      "durationMs": 221
+      "minLatencyMs": 44.38,
+      "maxLatencyMs": 118.88,
+      "avgLatencyMs": 90.97,
+      "p50LatencyMs": 105.61,
+      "p90LatencyMs": 116.91,
+      "p95LatencyMs": 118.24,
+      "p99LatencyMs": 118.66,
+      "requestsPerSecond": 641,
+      "durationMs": 156
     },
     {
       "phaseName": "Assessment Submission Notification",
@@ -60,15 +60,15 @@
       "successfulRequests": 100,
       "failedRequests": 0,
       "successRate": 100,
-      "minLatencyMs": 168.4,
-      "maxLatencyMs": 1109.71,
-      "avgLatencyMs": 716.7,
-      "p50LatencyMs": 757.32,
-      "p90LatencyMs": 1042.42,
-      "p95LatencyMs": 1075.51,
-      "p99LatencyMs": 1105.83,
-      "requestsPerSecond": 87.5,
-      "durationMs": 1143
+      "minLatencyMs": 77.59,
+      "maxLatencyMs": 496.18,
+      "avgLatencyMs": 284.23,
+      "p50LatencyMs": 278.16,
+      "p90LatencyMs": 455.33,
+      "p95LatencyMs": 470.62,
+      "p99LatencyMs": 491.32,
+      "requestsPerSecond": 190.5,
+      "durationMs": 525
     },
     {
       "phaseName": "Synchronized Burst Barrier",
@@ -76,15 +76,15 @@
       "successfulRequests": 100,
       "failedRequests": 0,
       "successRate": 100,
-      "minLatencyMs": 27.06,
-      "maxLatencyMs": 70.5,
-      "avgLatencyMs": 45.91,
-      "p50LatencyMs": 44.73,
-      "p90LatencyMs": 65.08,
-      "p95LatencyMs": 67.99,
-      "p99LatencyMs": 70.44,
-      "requestsPerSecond": 1190.5,
-      "durationMs": 84
+      "minLatencyMs": 24.64,
+      "maxLatencyMs": 60.39,
+      "avgLatencyMs": 39.28,
+      "p50LatencyMs": 38.22,
+      "p90LatencyMs": 56.02,
+      "p95LatencyMs": 58.18,
+      "p99LatencyMs": 59.84,
+      "requestsPerSecond": 1369.9,
+      "durationMs": 73
     }
   ],
   "slaCheck": {
